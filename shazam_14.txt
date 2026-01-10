@@ -1,0 +1,37 @@
+Input
+  StopPts(6.0); AlvoPts(18.0); NivelADX(25); nLotes(3);
+
+Var
+  vMME20, vHiLo, vADX : Float;
+  bJanelaSujeira : Boolean;
+
+Begin
+  vMME20 := MediaExp(20, Close);
+  vHiLo := HiloActivator(3);
+  vADX := ADX(14, 14);
+  
+  bJanelaSujeira := ((Time >= 0955) and (Time <= 1005)) or 
+                    ((Time >= 1055) and (Time <= 1105));
+
+  // Lógica Visual
+  if (bJanelaSujeira) then 
+     PaintBar(clYellow)
+  else if (vADX > NivelADX) then
+  begin
+     if (Close > vHiLo) and (Close > vMME20) then PaintBar(clGreen)
+     else if (Close < vHiLo) and (Close < vMME20) then PaintBar(clRed)
+     else PaintBar(clWhite);
+  end 
+  else PaintBar(clWhite);
+
+  if (BuyPosition = 0) and (vADX > NivelADX) and (Not bJanelaSujeira) then
+  begin
+    if (Close > vHiLo) and (Close > vMME20) then BuyAtMarket(nLotes);
+  end;
+
+  if (BuyPosition > 0) then
+  begin
+    SellToCoverLimit(BuyPrice + AlvoPts, nLotes);
+    SellToCoverStop(BuyPrice - StopPts, BuyPrice - StopPts, nLotes);
+  end;
+End;

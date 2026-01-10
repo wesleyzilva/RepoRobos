@@ -1,0 +1,78 @@
+Input
+  TamanhoTexto(12);
+  FatorVolume(1.5);
+  VariacaoExaustao(1.0);
+
+Var
+  vAjuste, vVWAP, vMaxOntem, vMinOntem, vFechAnt, vVarPercent : Float;
+  vVolMedia : Float;
+  vCor : Integer;
+  vVolumeRapido : Boolean;
+  bJanelaSujeira : Boolean;
+
+Begin
+  // 1. DADOS MESTRES
+  vAjuste   := PriorCote(1); 
+  vVWAP     := VWAP(1);      
+  vMaxOntem := HighD(1); 
+  vMinOntem := LowD(1);
+  vFechAnt  := PriorCote(0);
+  
+  // 2. CÁLCULOS MACRO E VOLUME
+  if (vFechAnt > 0) then vVarPercent := ((Close - vFechAnt) / vFechAnt) * 100;
+  vVolMedia := Media(20, Volume);
+  vVolumeRapido := (Volume > (vVolMedia * FatorVolume));
+
+  // 3. DEFINIÇÃO DA JANELA DE SUJEIRA (PTAX)
+  bJanelaSujeira := ((Time >= 0955) and (Time <= 1005)) or 
+                    ((Time >= 1055) and (Time <= 1105)) or
+                    ((Time >= 1155) and (Time <= 1205));
+
+  // 4. LÓGICA DO SEMÁFORO
+  if (bJanelaSujeira) then
+     vCor := clYellow // Amarelo para PTAX
+  else if (Close > vVWAP) and (Close > vAjuste) and (Close > vMaxOntem) then
+     vCor := clGreen
+  else if (Close < vVWAP) and (Close < vAjuste) and (Close < vMinOntem) then
+     vCor := clRed
+  else if ((Close > vVWAP) and (Close < vAjuste)) or ((Close < vVWAP) and (Close > vAjuste)) then
+     vCor := clBlue
+  else
+     vCor := clYellow;
+
+  // 5. ALERTA DE VOLUME (IGNIÇÃO)
+  if (vVolumeRapido) and (Not bJanelaSujeira) then
+  begin
+    if (vCor = clGreen) then vCor := clLime;   
+    if (vCor = clRed) then vCor := 16711935;  
+  end;
+
+  PaintBar(vCor);
+
+  // 6. PLOTAGEM DAS LINHAS
+  Plot(vMaxOntem); SetPlotColor(1, clMaroon); SetPlotWidth(1, 2);
+  Plot3(vMinOntem); SetPlotColor(3, clAqua); SetPlotWidth(3, 2);
+  Plot5(vVWAP); SetPlotColor(5, clWhite);
+  Plot6(vAjuste); SetPlotColor(6, clYellow); SetPlotWidth(6, 2);
+
+  // 7. VEREDITO FINAL (TEXTO)
+  if (LastBarOnChart) then
+  begin
+     // Alerta de Exaustão
+     if (Abs(vVarPercent) >= VariacaoExaustao) then 
+        PlotText("!!! CUIDADO: EXAUSTAO MACRO !!!", clYellow, 0, TamanhoTexto + 2);
+
+     // Veredito por cor
+     if (bJanelaSujeira) then 
+        PlotText("JANELA DE SUJEIRA: PTAX EM DISPUTA", clYellow, 1, TamanhoTexto)
+     else
+     begin
+        if (vCor = clLime)   then PlotText("VEREDITO: COMPRA EXPLOSIVA", clLime, 1, TamanhoTexto);
+        if (vCor = clGreen)  then PlotText("VEREDITO: COMPRA (TENDENCIA)", clGreen, 1, TamanhoTexto);
+        if (vCor = 16711935) then PlotText("VEREDITO: VENDA EXPLOSIVA", 16711935, 1, TamanhoTexto);
+        if (vCor = clRed)    then PlotText("VEREDITO: VENDA (TENDENCIA)", clRed, 1, TamanhoTexto);
+        if (vCor = clBlue)   then PlotText("AGUARDE: ZONA DE BRIGA", clWhite, 1, TamanhoTexto);
+        if (vCor = clYellow) then PlotText("AGUARDE: ROMPIMENTO", clYellow, 1, TamanhoTexto);
+     end;
+  end;
+End;

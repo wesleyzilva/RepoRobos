@@ -1,0 +1,72 @@
+Input
+  StopPts(8.5);         // O respiro que salvou o 15m no melhor momento
+  AlvoPts(38.0);        // Alvo de expansão (puxa o fator para cima)
+  ParcialPts(11.5);     // Parcial técnica para garantir o 5m
+  LookbackFibo(25);     // Fibo mais longo (entradas mais seletivas)
+  QtdeContratos(3);     
+
+Var
+  vFibo618, vMaxH, vMinH  : Float;
+  vVWAP, vMME_Sinergia    : Float; 
+  vUltimaBarra            : Integer;
+  vLucro                  : Float;
+  vTocouFibo              : Boolean;
+
+Begin
+  // 1. SINERGIA (MME 60 no 5m = MME 20 no 15m)
+  vMME_Sinergia := MediaExp(60, Close);
+  vVWAP  := VWAP(1); 
+  vMaxH := Highest(High, LookbackFibo); 
+  vMinH := Lowest(Low, LookbackFibo);   
+  vFibo618 := vMaxH - ((vMaxH - vMinH) * 0.618);
+
+  // 2. REGRA DE OURO (Sua instrução 09/01: Esperar 1 candle)
+  if (BuyPosition = 0) and (CurrentBar > (vUltimaBarra + 1)) then
+  begin
+    if (Time >= 0905) and (Time < 1215) then 
+    begin
+       // Filtro de Sinergia: Compra no recuo do Fibo se a tendência maior for de ALTA
+       if (Low <= vFibo618) and (Close > vMME_Sinergia) and (vFibo618 > vVWAP) then 
+          vTocouFibo := true;
+
+       if (vTocouFibo) then
+       begin
+          BuyStop(High[1] + 0.5, High[1] + 0.5, QtdeContratos);
+          
+          // Se perder a média de sinergia, a tendência do 15m enfraqueceu
+          if (Close < vMME_Sinergia) then vTocouFibo := false;
+       end;
+    end;
+  end;
+
+  // 3. GESTÃO DO MELHOR MOMENTO
+  if (BuyPosition > 0) then
+  begin
+    vTocouFibo := false; 
+    vLucro := Close - BuyPrice;
+
+    // Ordens de Saída
+    SellToCoverStop(BuyPrice - StopPts, BuyPrice - StopPts, BuyPosition);
+    SellToCoverLimit(BuyPrice + AlvoPts, BuyPosition);
+
+    // Parcial: 2 de 3 contratos com 11.5 pontos
+    // Note: 11.5 é maior que o stop de 8.5. Isso garante o lucro.
+    if (BuyPosition = QtdeContratos) then
+       SellToCoverLimit(BuyPrice + ParcialPts, 2);
+
+    // Proteção Ativa
+    if (BuyPosition < QtdeContratos) then
+    begin
+       // Trava no 0x0 + 1.5pt após a parcial
+       SellToCoverStop(BuyPrice + 1.5, BuyPrice + 1.5, BuyPosition);
+       
+       // Trailing Stop (O segredo das grandes tendências do 15m)
+       if (vLucro >= 20.0) then
+          SellToCoverStop(Lowest(Low, 2), Lowest(Low, 2), BuyPosition);
+    end;
+
+    vUltimaBarra := CurrentBar;
+  end;
+
+  if (Time >= 1555) then ClosePosition;
+End;
