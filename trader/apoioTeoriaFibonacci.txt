@@ -1,0 +1,46 @@
+FERRAMENTAS DE APOIO PARA FIBONACCI (O KIT DE PRECISÃO)
+
+Assim como na Teoria de Dow, hoje temos ferramentas que automatizam ou facilitam o uso de Fibonacci. Não é preciso calcular na mão.
+
+--------------------------------------------------------------------------------
+1. FERRAMENTAS DE DESENHO E AUTOMATIZAÇÃO
+
+A. Retração de Fibonacci (Price Retracement)
+   - O que é: A ferramenta padrão de qualquer plataforma (Profit, MT5).
+   - Como usar: Clica no Fundo, arrasta até o Topo. As linhas (38.2, 50, 61.8) aparecem sozinhas.
+   - Apoio Visual: Configure as linhas com cores diferentes (ex: 61.8% em Dourado/Amarelo) para destacar a zona de decisão.
+
+B. Projeção de Fibonacci (Price Projection)
+   - O que é: Ferramenta de 3 pontos (Fundo -> Topo -> Fundo da Correção).
+   - Como usar: Define os alvos de saída (100% ou 161.8% da perna de alta). Essencial para saber onde colocar o "Take Profit".
+
+C. Detector de Topos e Fundos (ZigZag)
+   - O que é: Indicador que desenha linhas ligando os pivôs.
+   - Apoio: Elimina a dúvida subjetiva "Isso é um topo?". Se o ZigZag marcou, é um ponto válido para traçar seu Fibo.
+
+--------------------------------------------------------------------------------
+2. O CONCEITO DE CONFLUÊNCIA (O "SUPER APOIO")
+
+Fibonacci sozinho funciona, mas Fibonacci com amigos é imbatível. Chamamos de "Cluster" ou "Confluência" quando dois indicadores apontam para o mesmo preço.
+
+A. Fibo + Médias Móveis (O Muro de Concreto)
+   - Cenário: O preço cai até a retração de 61.8% E, exatamente ali, passa a Média de 20 ou 200 períodos.
+   - Resultado: A chance de segurar é dobrada. É o melhor ponto de entrada possível.
+
+B. Fibo + Suporte/Resistência (Troca de Polaridade)
+   - Cenário: O nível de 50% de Fibo coincide com um topo anterior que foi rompido.
+   - Lógica: "O que era teto virou chão" + "Metade do movimento". Psicologia pura.
+
+C. Fibo + VWAP
+   - Cenário: Retração de Fibo coincide com a linha da VWAP diária.
+   - Peso: Institucional. Robôs de grandes bancos defendem essa região.
+
+--------------------------------------------------------------------------------
+3. HIERARQUIA DE IMPORTÂNCIA (PESOS)
+
+Nem toda linha de Fibo tem a mesma força.
+
+1. Retração de 61.8% (Peso 50%): A "Proporção Áurea". É onde a maioria dos robôs (inclusive o seu `fibo_5m`) está programada para comprar.
+2. Retração de 50% (Peso 30%): Ponto psicológico. Funciona muito bem em índices (WIN/SP500).
+3. Retração de 38.2% (Peso 10%): Apenas em tendências fortíssimas. Geralmente perigoso para iniciantes pois o stop fica caro.
+4. Expansão de 100% (Peso 10%): O alvo principal. É onde a maioria zera a posição, gerando resistência natural.
