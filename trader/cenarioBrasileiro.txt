@@ -1,0 +1,46 @@
+No Brasil, a margem de lucro líquida (o que sobra no bolso após pagar todos os custos e impostos) varia muito conforme o setor. Baseado em dados de mercado (Sebrae, Serasa, FGV), as médias gerais são:
+
+Serviços: 20% a 30%. É o setor com margens mais altas, pois não tem custo de mercadoria vendida (CMV), apenas mão de obra e custos fixos.
+Comércio (Varejo): 10% a 15%. Lojas de roupas, eletrônicos, etc.
+Indústria: 6% a 8%. Margens mais apertadas devido ao alto custo de produção e logística.
+Atacado e Supermercados: 2% a 5%. Trabalham com margens unitárias baixíssimas, mas ganham no volume (giro de estoque rápido).
+
+A taxa livre de risco (Selic) no Brasil gira em torno de 0,8% a 1,0% ao mês.
+Um robô que faça 3% a 5% ao mês sobre o capital alocado já é considerado excepcional e muito acima de qualquer negócio físico tradicional.
+
+--------------
+ Imposto de Renda (IR) para Traders
+O imposto é federal e as regras valem para qualquer corretora. O pagamento não é automático; você deve calcular e pagar via DARF até o último dia útil do mês seguinte ao lucro.
+
+Day Trade (Operações que começam e terminam no mesmo dia)
+Alíquota: 20% sobre o lucro líquido.
+Isenção: Não existe. Teve lucro de R$ 1,00, tem que pagar imposto.
+Dedo-duro (Retido na Fonte): A corretora retém 1% do lucro antecipadamente para avisar a Receita. Você desconta esse valor na hora de pagar o DARF.
+Swing Trade (Operações que duram mais de um dia)
+Alíquota: 15% sobre o lucro líquido.
+Isenção (Apenas Ações): Se você vender menos de R$ 20.000,00 no mês (somando todas as vendas de ações), o lucro é isento de IR.
+Atenção: Essa isenção não vale para ETFs, BDRs ou Contratos Futuros (Índice/Dólar). Para esses, é 15% sobre qualquer lucro.
+Dedo-duro: 0,005% sobre o valor da venda.
+Resumo Prático
+Custo / Imposto	Day Trade	Swing Trade
+Corretagem Toro	0% (Grátis)	0% (Grátis)
+Imposto (IR)	20% sobre o lucro	15% sobre o lucro
+Isenção de IR	Nenhuma	Vendas < R$ 20k (só Ações)
+Compensação	Pode abater prejuízos anteriores de Day Trade	Pode abater prejuízos anteriores de Swing Trade
+-------------
+Taxas da B3 (Emolumentos): Aproximadamente R$ 0,25 a R$ 0,30 por contrato (compra + venda). É um custo baixo, cobrado direto pela Bolsa, não pela corretora.
+
+ste é o único custo alto que você deve evitar a todo custo.
+
+O que é: Se você esquecer uma ordem aberta e o horário limite chegar (geralmente 18:00 para índice, mas a corretora começa a zerar antes, por volta das 17:50), o robô de risco da Toro zera sua posição.
+Custo: R$ 35,00 por contrato
+-------------
+Perda no Investimento,Ganho Necessário para Recuperar
+5%,"5,26%"
+10%,"11,11%"
+20%,"25,00%"
+30%,"42,86%"
+40%,"66,67%"
+50%,"100,00% (Dobrar o capital - Oficalmente quebrado)"
+75%,"300,00%"
+90%,"900,00%"
