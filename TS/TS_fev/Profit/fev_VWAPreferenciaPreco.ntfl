@@ -1,0 +1,36 @@
+{
+  Estratégia: fev_VWAPreferenciaPreco
+  Autor: Wesley
+  Descrição: Regra de Coloração que funciona como um filtro institucional.
+             Pinta os candles com base na sua posição em relação à VWAP diária.
+}
+
+Var
+  vVwap      : Real;
+  corCompra  : Integer;
+  corVenda   : Integer;
+  corNeutra  : Integer;
+
+begin
+  // --- DEFINIÇÃO DE CORES ---
+  // Cores baseadas no seu arquivo CoresPadroesCandles.txt
+  corCompra := RGB(0, 255, 0);     // Verde: Território de Compra com candle de força
+  corVenda  := RGB(255, 0, 0);     // Vermelho: Território de Venda com candle de força
+  corNeutra := RGB(105, 105, 105); // Cinza: Mercado em pullback ou sem direção clara
+
+  // --- CÁLCULO DO INDICADOR ---
+  // A função VWAP já é nativa do ProfitChart
+  vVwap := VWAP(0);
+
+  // --- LÓGICA DE PINTURA ---
+  // 1. Pinta tudo de cinza por padrão (condição neutra)
+  PaintBar(corNeutra);
+
+  // 2. CONDIÇÃO DE COMPRA: Preço acima da VWAP e candle positivo (força compradora)
+  if (Close > vVwap) and (Close > Open) then
+    PaintBar(corCompra);
+
+  // 3. CONDIÇÃO DE VENDA: Preço abaixo da VWAP e candle negativo (força vendedora)
+  if (Close < vVwap) and (Close < Open) then
+    PaintBar(corVenda);
+end;

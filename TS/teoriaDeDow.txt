@@ -1,0 +1,77 @@
+Teoria de Dow — Guia prático para transformar em Trade System (operação diária)
+
+Objetivo
+- Fornecer um documento base com pontos práticos da Teoria de Dow para evoluir um trade system diário.
+- Estruturar princípios, regras operacionais, gestão de risco, checklist e plano de validação.
+
+1) Escopo
+- Timeframe principal: gráfico diário (usar intraday — ex.: 1H — para confirmação e execução). 
+- Instrumentos: ações e índices (adaptável a forex/commodities). 
+- Horizonte inicial: operação diária (intra-day entries; posições encerradas no mesmo dia ou mantidas conforme regra).
+
+2) Resumo dos princípios aplicáveis da Teoria de Dow
+- Mercado desconta tudo: priorizar preço e volume como sinais primários.
+- Tendências: identificar tendência primária (maior), tendência secundária (correções) e menores (setups intraday).
+- Três movimentos: operar pullbacks/continuações em direção da tendência primária.
+- Confirmação entre índices/ativos: exigir confirmação em 1–2 ativos correlatos ou em múltiplos timeframes.
+- Volume confirma movimentos: breakouts com volume acima da média validam entrada; volume fraco => suspeitar.
+
+3) Fases do mercado (uso prático)
+- Accumulation: preço lateral com volume crescente em suportes — início potencial de tendência.
+- Public Participation: tendência clara com rompimentos e volume; fase preferida para operar a favor da tendência.
+- Distribution: exaustão; cuidado com sinais contrários e com alta volatilidade sem confirmação de volume.
+
+4) Regras operacionais (exemplos claros para evoluir)
+- Identificação de tendência (diário):
+	- Alta: série de higher highs e higher lows no diário; Média móvel exponencial `EMA(50)` inclinada para cima como apoio.
+	- Baixa: série de lower lows e lower highs; `EMA(50)` inclinada para baixo.
+- Entrada (trade longo em tendência de alta):
+	- Aguarde pullback até suporte relevante (último swing low, EMA(20) ou Bandas/ATR). 
+	- Entre no rompimento do swing high local com volume acima da média (ex.: volume > média 20 períodos).
+	- Confirme no timeframe inferior (ex.: 1H) estrutura (higher high/higher low) antes de executar.
+- Entrada (short em tendência de baixa): simétrica — pullback até resistência e rompimento com volume.
+
+5) Confirmações e filtros adicionais
+- Confirmar direção no gráfico diário antes de operar intraday.
+- Verificar indicador de volatilidade (ATR(14)) para dimensionar stops; evitar ativos com spread/volatilidade incompatíveis.
+- Evitar operações durante notícias macro sensíveis; limpar trades próximos a eventos.
+- Regra dos 3% ou "Regra dos Dois Dias" (Filtros de Rompimento): Clássicos da Teoria de Dow. Exigem confirmação para evitar violinos.
+    - *Filtro de Preço:* O preço deve romper 3% (Diário) ou 0.3% (Intraday).
+    - *Filtro de Tempo (Regra dos Dois Dias):* O preço deve fechar 2 dias (ou 2 candles) consecutivos além do nível para confirmar a tendência.
+
+6) Gestão de risco (prática)
+- Risco por trade: 1% a 2% do capital por operação como regra inicial.
+- Stop Loss: abaixo do último swing low (para buy) ou acima do swing high (para short) ou `2 * ATR(14)` — escolher método consistente.
+- Position sizing: tamanho = (Capital * risco_por_trade) / (distância_entry_stop) — ajustar por lote/contrato.
+- Take Profit / saída: R:R mínimo 1:2; usar níveis de suporte/resistência ou trailing stop (ex.: EMA(20) ou `1.5 * ATR`) para proteção de ganho.
+
+7) Critérios de não operar
+- Mercado lateral sem tendência definida no diário.
+- Volume insuficiente no breakout ou divergências entre ativos correlatos.
+- Proximidade de notícias macro importantes.
+
+8) Checklist diário (antes/durante/depois)
+- Antes (pré-abertura): confirmar direção no diário; listar setups possíveis; calcular risco e tamanho.
+- Durante: monitorar execução; validar volume e confirmação no intraday; ajustar stops se necessário.
+- Depois (pós-sessão): registrar resultado, anotar observações do setup e atualizar diário de trades.
+
+9) Plano de backtest e validação
+- Dados: usar 1–3 anos de dados diários e dados intraday suficientes (1H ou 30m) para confirmações.
+- Métricas: expectancy, win rate, profit factor, max drawdown, número de trades por período.
+- Processo: backtest histórico → otimização mínima (evitar overfitting) → forward-test em paper trading por 2–3 meses.
+
+10) Métricas de sucesso e ajustes
+- Expectancy > 0; profit factor ideal > 1.5; drawdown aceitável conforme perfil (ex.: <20%).
+- Ajustar parâmetros apenas com evidência estatística clara.
+
+11) Próximos passos sugeridos (para evoluir o sistema)
+- A. Formalizar regras com parâmetros (ex.: EMA periods, ATR multiplier, volume threshold) e criar arquivo de parâmetros.
+- B. Gerar cases de entrada/saída em CSV para backtest (colunas: data, open, high, low, close, volume, sinal, entry, stop, tp).
+- C. Implementar backtest simples (Python/Pandas ou plataforma já usada) e rodar validações iniciais.
+- D. Criar rotina de checklist diária automática (script) para acelerar execução.
+
+Notas finais
+- Este documento é uma base inicial. Para transformar em sistema operacional completo, converta cada regra em especificação técnica (parâmetros, pseudocódigo) e depois em scripts/testes.
+
+--
+Documento gerado para evolução do trade system — editar e expandir conforme necessário.

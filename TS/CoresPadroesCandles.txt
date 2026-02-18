@@ -1,0 +1,13 @@
+Todo candle começa cinza.
+Cinza: Mercado sem tendencia. RGB (105, 105, 105)
+
+Cores padrões do mercado:
+Verde: Mercado em compra. RGB (0, 255, 0)
+Vermelho: Mercado em venda. RGB (255, 0, 0)
+
+Cores uteis:
+(Amarelo) - RGB (255, 255, 0) - Sinal de ouro para mais de 4 confluencias direcionais
+(Fuchsia) - RGB (255, 0, 255) - venda forte
+(Ciano) - RGB (0, 255, 255) - compra forte
+(Azul Royal) - RGB (65, 105, 225) - sinais de exaustao de compra
+(Marrom) - RGB (165, 42, 42) - sinais de exaustão de venda

@@ -1,0 +1,119 @@
+    {
+    Estratégia: fev_PriceActionVSA_OBV
+    Tipo: Execução (Coloração + Trading)
+    Autor: Wesley
+    Descrição: Regra de Coloração de Alta Seletividade (Gold Signal).
+                Combina Price Action (Força), VSA (Volume) e OBV (Fluxo).
+                
+    Lógica Visual:
+    - Candle Neutro: Cinza (Padrão).
+    - Sinal de Ouro: Amarelo (Entrada).
+    - Candle Seguinte: Verde (se Compra) ou Vermelho (se Venda), indicando a direção.
+    }
+
+    Input
+    PeriodoMedia(20);
+    FatorVolume(1.0); // Volume deve ser maior que a média (1.0x)
+
+    Var
+    // Cores
+    cAmarelo, cVerde, cVermelho, cCinza : Integer;
+    
+    // Variáveis de Cálculo
+    fMedia20 : Float;
+    fMediaVol : Float;
+    fCorpo, fRange, fPavioSup, fPavioInf : Float;
+    vOBV : Float;
+    
+    // Booleanos de Condição
+    bTendenciaAlta, bTendenciaBaixa : Boolean;
+    bFluxoComprador, bFluxoVendedor : Boolean;
+    bVolumeOK : Boolean;
+    bBarraForcaCompra, bBarraForcaVenda : Boolean;
+    bAnteriorDeAlta, bAnteriorDeBaixa : Boolean;
+    
+    // Sinais
+    bGoldSignalCompra : Boolean;
+    bGoldSignalVenda : Boolean;
+
+    Begin
+    // --- DEFINIÇÃO DE CORES ---
+    cAmarelo  := RGB(255, 255, 0);
+    cVerde    := RGB(0, 255, 0);
+    cVermelho := RGB(255, 0, 0);
+    cCinza    := RGB(105, 105, 105);
+
+    // --- CÁLCULOS TÉCNICOS ---
+    
+    // 1. Médias e Volume (VSA)
+    fMedia20 := MediaExp(PeriodoMedia, Close);
+    fMediaVol := Media(Quantity, PeriodoMedia);
+    bVolumeOK := (Quantity > fMediaVol * FatorVolume);
+
+    // 2. Fluxo (OBV)
+    vOBV := OBV;
+    bFluxoComprador := (vOBV > vOBV[1]);
+    bFluxoVendedor  := (vOBV < vOBV[1]);
+
+    // 3. Price Action (Anatomia do Candle)
+    fRange := Range;
+    fCorpo := Abs(Close - Open);
+    fPavioSup := High - Max(Close, Open);
+    fPavioInf := Min(Close, Open) - Low;
+
+    // 4. Contexto de Tendência
+    bTendenciaAlta := (Close > fMedia20) and (fMedia20 > fMedia20[1]);
+    bTendenciaBaixa := (Close < fMedia20) and (fMedia20 < fMedia20[1]);
+    
+    bAnteriorDeAlta := (Close[1] > Open[1]);
+    bAnteriorDeBaixa := (Close[1] < Open[1]);
+
+    // 5. Definição de Barra de Força (Corpo > 60% e Pavio a favor pequeno)
+    // Relaxei levemente para 60% para capturar mais sinais válidos com volume
+    bBarraForcaCompra := (Close > Open) and (fCorpo >= fRange * 0.60) and (fPavioSup <= fRange * 0.25);
+    bBarraForcaVenda  := (Close < Open) and (fCorpo >= fRange * 0.60) and (fPavioInf <= fRange * 0.25);
+
+    // --- LÓGICA DO GOLD SIGNAL (CONFLUÊNCIA TOTAL) ---
+    
+    // Compra: Força + Tendência + Continuidade + Rompimento + Volume + OBV
+    bGoldSignalCompra := bBarraForcaCompra and bTendenciaAlta and bAnteriorDeAlta and (Close > High[1]) and bVolumeOK and bFluxoComprador;
+
+    // Venda: Força + Tendência + Continuidade + Rompimento + Volume + OBV
+    bGoldSignalVenda := bBarraForcaVenda and bTendenciaBaixa and bAnteriorDeBaixa and (Close < Low[1]) and bVolumeOK and bFluxoVendedor;
+
+    // --- PINTURA (REGRA DE ESTADO) ---
+    
+    // 1. Padrão: Cinza
+    PaintBar(cCinza);
+
+    // 2. Sinal de Ouro (Prioridade Máxima)
+    if bGoldSignalCompra or bGoldSignalVenda then
+        PaintBar(cAmarelo)
+    
+    // 3. Candle Seguinte ao Sinal (Direção do Movimento)
+    // Verifica se o candle ANTERIOR foi Gold Signal
+    else if (bGoldSignalCompra[1]) then
+        PaintBar(cVerde) // Marca a direção da compra
+    else if (bGoldSignalVenda[1]) then
+        PaintBar(cVermelho); // Marca a direção da venda
+
+    // 4. Regra do Primeiro Candle (Ignorar Abertura)
+    if (Date <> Date[1]) then
+        PaintBar(cCinza);
+
+    // --- EXECUÇÃO (ROBÔ) ---
+    // Compra
+    if (bGoldSignalCompra) then
+    begin
+        if (IsSold) then ClosePosition;
+        if (Not IsBought) then BuyAtMarket;
+    end;
+
+    // Venda
+    if (bGoldSignalVenda) then
+    begin
+        if (IsBought) then ClosePosition;
+        if (Not IsSold) then SellShortAtMarket;
+    end;
+
+    End;

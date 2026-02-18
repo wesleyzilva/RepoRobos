@@ -1,0 +1,136 @@
+{
+  Indicador: fev_PriceActionSuporteResistencia
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Identifica zonas de Suporte e Resistência Históricos (Máximas e Mínimas de Longo Prazo).
+             Pinta de Vermelho ao testar Resistência (Venda) e Verde ao testar Suporte (Compra).
+             Estratégia de Retorno à Média / Rejeição de Extremos.
+}
+
+input
+  PeriodoHistorico(10000); // ATENÇÃO: 10.000 candles = ~4 meses no 5m. Pode causar lentidão.
+  MinimoToques(9);        // 3-5=Padrão, 10=Muralha (Muito Forte). Define a densidade da zona.
+  ToleranciaTicks(5);      // Margem de erro. 5 ticks = 25pts (WIN) ou 2.5pts (WDO).
+  FiltroRompimento(0);     // Ticks adicionais para confirmar rompimento (evita violino)
+  UsarRegraDow(false);     // Se true, usa % (0.3%) em vez de ticks fixos para o rompimento
+  PercentualDow(0.3);      // Regra de Dow adaptada para Intraday (0.3% em vez de 3%)
+
+var
+  fResistencia, fSuporte, fMargemBreak : float;
+  cCinza, cVerde, cVermelho, cRompimentoAlta, cRompimentoBaixa : integer;
+  i, iToquesRes, iToquesSup : integer;
+  fTol : float;
+  bZonaForteRes, bZonaForteSup : boolean;
+  fActiveRes, fActiveSup : float; // Variáveis de estado para "lembrar" as zonas ativas
+
+begin
+  // --- 1. CONFIGURAÇÃO DE CORES ---
+  cCinza    := RGB(105, 105, 105); // Neutro
+  cVerde    := RGB(0, 255, 0);     // Compra (Suporte)
+  cVermelho := RGB(255, 0, 0);     // Venda (Resistência)
+  cRompimentoAlta  := RGB(0, 191, 255); // Azul Claro (Breakout Alta)
+  cRompimentoBaixa := RGB(255, 140, 0); // Laranja (Breakout Baixa)
+
+  // --- 2. GERENCIAMENTO DE ESTADO (MEMÓRIA DAS ZONAS) ---
+  // Carrega os valores das zonas ativas do candle anterior
+  fActiveRes := 0;
+  fActiveSup := 0;
+  if CurrentBar > 0 then
+  begin
+    fActiveRes := fActiveRes[1];
+    fActiveSup := fActiveSup[1];
+  end;
+
+  // --- 3. CÁLCULO DOS NÍVEIS CANDIDATOS ---
+  // Identifica o FECHAMENTO mais alto e mais baixo do período.
+  // A resistência/suporte é definida por onde o mercado CONCORDA em fechar,
+  // não por picos de volatilidade (High/Low).
+  fResistencia := Highest(Close, PeriodoHistorico)[1];
+  fSuporte     := Lowest(Close, PeriodoHistorico)[1];
+
+  // --- 4. VALIDAÇÃO DE FORÇA DA ZONA (CONTAGEM DE TOQUES) ---
+  // Define a tolerância de preço (Ticks * Tamanho do Tick)
+  fTol := ToleranciaTicks * MinPriceIncrement;
+  if fTol = 0 then fTol := Close * 0.0005; // Fallback de segurança
+
+  iToquesRes := 0;
+  iToquesSup := 0;
+
+  // Varre o histórico para contar quantas vezes o preço testou a região
+  for i := 1 to PeriodoHistorico do
+  begin
+    // Conta quantos FECHAMENTOS ocorreram perto da zona de resistência
+    if (Abs(Close[i] - fResistencia) <= fTol) then iToquesRes := iToquesRes + 1;
+    // Conta quantos FECHAMENTOS ocorreram perto da zona de suporte
+    if (Abs(Close[i] - fSuporte) <= fTol) then iToquesSup := iToquesSup + 1;
+  end;
+
+  bZonaForteRes := (iToquesRes >= MinimoToques);
+  bZonaForteSup := (iToquesSup >= MinimoToques);
+
+  // --- 5. DETECÇÃO DE SINAL E ATIVAÇÃO/INVALIDAÇÃO DE ZONA ---
+  // Se uma zona de resistência forte é rejeitada, ela se torna a zona ATIVA.
+  // A máxima (High) viola a zona de fechamentos (fResistencia), mas o candle
+  // fecha ABAIXO dela, confirmando a rejeição.
+  if (High > fResistencia) and (Close < fResistencia) and bZonaForteRes then
+  begin
+    fActiveRes := fResistencia; // Ativa a zona de resistência
+  end;
+
+  // Se uma zona de suporte forte é rejeitada, ela se torna a zona ATIVA.
+  // A mínima (Low) viola a zona de fechamentos (fSuporte), mas o candle
+  // fecha ACIMA dela, confirmando a rejeição.
+  if (Low < fSuporte) and (Close > fSuporte) and bZonaForteSup then
+  begin
+    fActiveSup := fSuporte; // Ativa a zona de suporte
+  end;
+
+  // --- 6. REGRAS DE COLORAÇÃO CONTÍNUA ---
+  PaintBar(cCinza); // Padrão: Cinza
+
+  // Pinta de VERMELHO qualquer candle que toque na zona de resistência ATIVA
+  if (fActiveRes > 0) and (High >= fActiveRes - fTol) then
+  begin
+    PaintBar(cVermelho);
+    PlotText("▼", cVermelho, 12, 0, High * 1.001); // Seta de Venda em todos os toques
+  end;
+  
+  // Pinta de VERDE qualquer candle que toque na zona de suporte ATIVA
+  if (fActiveSup > 0) and (Low <= fActiveSup + fTol) then
+  begin
+    PaintBar(cVerde);
+    PlotText("▲", cVerde, 12, 0, Low * 0.999); // Seta de Compra em todos os toques
+  end;
+
+  // --- 7. VISUALIZAÇÃO E LÓGICA DE ROMPIMENTO ---
+  // Se o preço fechar fora da zona ativa (+ Filtro), invalida a zona e pinta de rompimento.
+  
+  // Define a margem extra necessária para confirmar o rompimento
+  if UsarRegraDow then
+    fMargemBreak := (Close * (PercentualDow / 100)) // Calcula % do preço atual (ex: 0.3%)
+  else
+    fMargemBreak := (FiltroRompimento * MinPriceIncrement); // Usa ticks fixos
+
+  // Rompimento de Resistência
+  // Preço > (Resistência + Tolerância da Zona + Margem de Segurança do Rompimento)
+  if (fActiveRes > 0) and (Close > fActiveRes + fTol + fMargemBreak) then
+  begin
+    PaintBar(cRompimentoAlta);
+    PlotText("BREAK", cRompimentoAlta, 10, 0, High * 1.002);
+    fActiveRes := 0; // Invalida a zona
+  end;
+
+  // Rompimento de Suporte
+  if (fActiveSup > 0) and (Close < fActiveSup - fTol - fMargemBreak) then
+  begin
+    PaintBar(cRompimentoBaixa);
+    PlotText("BREAK", cRompimentoBaixa, 10, 0, Low * 0.998);
+    fActiveSup := 0; // Invalida a zona
+  end;
+
+  // --- 8. VISUALIZAÇÃO DOS NÍVEIS ATIVOS ---
+  // Plota as linhas das zonas ativas no gráfico para referência visual
+  if (fActiveRes > 0) then begin Plot(fActiveRes); SetPlotColor(1, cVermelho); SetPlotWidth(1, 2); end;
+  
+  if (fActiveSup > 0) then begin Plot2(fActiveSup); SetPlotColor(2, cVerde); SetPlotWidth(2, 2); end;
+
+end;

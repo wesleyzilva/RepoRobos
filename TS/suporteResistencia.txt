@@ -1,0 +1,49 @@
+Plano de operação de Suporte e Resistência.
+
+Panorama e Contextualização
+1- Em 1M (Mensal): Marcar Topos e Fundos Históricos (2-5 anos). Zonas de rejeição forte.
+2- Em 1W (Semanal): Marcar Pivôs principais e LTA/LTB (1-2 anos).
+3- Em 1D (Diário): Marcar Gaps, Máxima/Mínima de ontem e anteontem, Médias 20/50 (3-6 meses).
+    * Identificar Gaps: Área (Preparação), Fuga (Inicio), Continuação (Meio), Exaustão (Fim).
+4- Em 60m: Refinar linhas próximas e marcar VWAP Semanal.
+5- Em 15m: Execução. Marcar Ajuste e Pivôs do dia.
+
+No intraday
+1- Aguardar 10AM e aguardar o primeiro canal em 15 min.
+Quantidade de candles:
+5m - Candle 20 (inicio), Candle 50 (meio), candle 80 (fim)
+15m - Candle 10 (inicio), candle 25 (fim)
+
+2- No dia anterior qual as zonas de compras e vendas baseado em pavios?
+
+No dia atual em 5m
+1- Estender as zonas do dia anterior.
+2- Ficar de olho em pivos da tendência e atuar em zonas de rompimento.
+3- SL na minima do pivot e ENTRADA na quebra do pivot.
+4- SG avaliar Fibonacci para alvo em 50% e 61,8%. OU qual a projeção do candle de força?
+    Se bater colocar em 100%.
+
+OPERAR QUANDO O PLACAR DIZER O QUE A MAIORIA QUER. 
+DEMOCRATICO
+- Fibonacci = DIZ COMPRA
+- Suporte resistencia = DIZ COMPRA
+- Medias Moveis = DIZ VENDE
+- Estrutura = INDEFINIDO
+Ajuda: 
+GAP = INDEFINIDO, 
+Volume = DIZ COMPRA
+3X1X2
+
+Gatilho: Quebra do pivot.
+
+Regra de condução do trade.
+1- Qual o canal de LTB e LTA que está se formando?
+2- Movimentar SL conforme condução.
+------------------------------------------------------
+DICA: Deixar Break Even no automático. 
+Quando vai por no zero objetivamente? 70% do objetivo.
+Stop caro?
+
+Critérios para jogar para o ZERO.
+70% (Trade curto sem espaço)
+2:1 (Mais longo e casado com estruturas)

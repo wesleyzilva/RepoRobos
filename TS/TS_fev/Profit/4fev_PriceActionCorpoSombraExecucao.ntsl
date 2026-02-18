@@ -1,0 +1,110 @@
+var
+  // Definição de Cores Personalizadas
+  cCinza, cVerde, cVermelho, cAmarelo, cFuchsia, cCiano, cAzulRoyal, cMarrom : Integer;
+
+  fCorpo, fPavioSup, fPavioInf, fRange : float;
+  bAlta, bBaixa : boolean;
+  fMedia20 : float;
+  vOBV : float;
+  bFluxoComprador, bFluxoVendedor : boolean;
+  bTendenciaAlta, bTendenciaBaixa, bAnteriorDeAlta, bAnteriorDeBaixa : boolean;
+  bGoldSignalCompra, bGoldSignalVenda : boolean;
+
+begin
+  // Inicialização das Cores
+  cCinza      := RGB(105, 105, 105);
+  cVerde      := RGB(0, 255, 0);
+  cVermelho   := RGB(255, 0, 0);
+  cAmarelo    := RGB(255, 255, 0);
+  cFuchsia    := RGB(255, 0, 255);
+  cCiano      := RGB(0, 255, 255);
+  cAzulRoyal  := RGB(65, 105, 225);
+  cMarrom     := RGB(165, 42, 42);
+
+  // 1. Cálculos Básicos do Candle
+  fRange := Range;
+  fCorpo := Abs(Close - Open);
+  
+  if (Close >= Open) then
+    begin
+      fPavioSup := High - Close;
+      fPavioInf := Open - Low;
+      bAlta := True;
+      bBaixa := False;
+    end
+  else
+    begin
+      fPavioSup := High - Open;
+      fPavioInf := Close - Low;
+      bAlta := False;
+      bBaixa := True;
+    end;
+
+  // 1.1 Filtro de Fluxo (OBV Puro)
+  vOBV := OBV;
+  bFluxoComprador := (vOBV > vOBV[1]);
+  bFluxoVendedor  := (vOBV < vOBV[1]);
+
+  // Contexto de Tendência (para o Gold Signal)
+  fMedia20 := MediaExp(20, Close);
+  bTendenciaAlta := (Close > fMedia20) and (fMedia20 > fMedia20[1]);
+  bTendenciaBaixa := (Close < fMedia20) and (fMedia20 < fMedia20[1]);
+
+  // Contexto do candle anterior para o Gold Signal (Sua nova condição)
+  bAnteriorDeAlta := Close[1] > Open[1];   // Candle anterior foi de compra
+  bAnteriorDeBaixa := Close[1] < Open[1];  // Candle anterior foi de venda
+
+  // 2. Lógica de Coloração (Hierarquia de Prioridade)
+  
+  // Default: Cinza (Mercado sem tendência / Ruído)
+  PaintBar(cCinza);
+
+  // Cálculo dos Sinais Gold (Atual)
+  bGoldSignalCompra := bAlta and bTendenciaAlta and (fCorpo >= (fRange * 0.70)) and (Close > High[1]) and bAnteriorDeAlta and (fPavioSup <= (fRange * 0.20)) and bFluxoComprador;
+  bGoldSignalVenda := bBaixa and bTendenciaBaixa and (fCorpo >= (fRange * 0.70)) and (Close < Low[1]) and bAnteriorDeBaixa and (fPavioInf <= (fRange * 0.20)) and bFluxoVendedor;
+
+  // Prioridade 1: Gold Signal (Amarelo) - Mais de 4 confluências
+  if bGoldSignalCompra then
+  begin
+    PaintBar(cAmarelo); // Gold Signal Compra
+    Alert(cAmarelo);
+  end
+  else if bGoldSignalVenda then
+  begin
+    PaintBar(cAmarelo); // Gold Signal Venda
+    Alert(cAmarelo);
+  end
+
+  // Prioridade 1.1: Continuidade do Gold Signal (Candle Seguinte)
+  // Se o candle anterior foi Gold, o atual pinta de Verde/Vermelho para confirmar direção
+  else if (Close[1] >= Open[1]) and ((Close[1] > fMedia20[1]) and (fMedia20[1] > fMedia20[2])) and (Abs(Close[1] - Open[1]) >= (Range[1] * 0.70)) and (Close[1] > High[2]) and (Close[2] > Open[2]) and ((High[1] - Close[1]) <= (Range[1] * 0.20)) and (vOBV[1] > vOBV[2]) then
+    PaintBar(cVerde)
+  else if (Close[1] < Open[1]) and ((Close[1] < fMedia20[1]) and (fMedia20[1] < fMedia20[2])) and (Abs(Close[1] - Open[1]) >= (Range[1] * 0.70)) and (Close[1] < Low[2]) and (Close[2] < Open[2]) and ((Close[1] - Low[1]) <= (Range[1] * 0.20)) and (vOBV[1] < vOBV[2]) then
+    PaintBar(cVermelho)
+
+  // Prioridade 3: Exaustão (Azul Royal / Marrom)
+  else if (fPavioSup > (fCorpo * 2)) and (fPavioSup > fPavioInf) and bFluxoVendedor and bAnteriorDeAlta and (High >= High[1]) then
+    PaintBar(cAzulRoyal) // Estrela Cadente
+  else if (fPavioInf > (fCorpo * 2)) and (fPavioInf > fPavioSup) and bFluxoComprador and bAnteriorDeBaixa and (Low <= Low[1]) then
+    PaintBar(cMarrom) // Martelo
+
+  // Prioridade 4: Padrões Técnicos (Verde/Vermelho)
+  else if (Close > Open) and (Close > High[1]) and (Open < Low[1]) and bFluxoComprador then
+    PaintBar(cVerde) // Engolfo de Alta
+  else if (Close < Open) and (Close < Low[1]) and (Open > High[1]) and bFluxoVendedor then
+    PaintBar(cVermelho) // Engolfo de Baixa
+
+  // Prioridade 2: Força / Momentum (Ciano / Fuchsia)
+  else if (fCorpo >= (fRange * 0.70)) and bAlta and (fPavioSup <= (fRange * 0.20)) and bFluxoComprador then
+    PaintBar(cCiano) // Barra de Força Compra
+  else if (fCorpo >= (fRange * 0.70)) and bBaixa and (fPavioInf <= (fRange * 0.20)) and bFluxoVendedor then
+    PaintBar(cFuchsia); // Barra de Força Venda
+
+  // Garante que o primeiro candle seja visualmente Verde ou Vermelho apenas
+  if (Date <> Date[1]) then
+    if (Close >= Open) then
+      PaintBar(cVerde)
+    else
+      PaintBar(cVermelho);
+
+end;

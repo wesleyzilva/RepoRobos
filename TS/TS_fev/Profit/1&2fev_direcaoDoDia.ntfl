@@ -1,0 +1,72 @@
+{
+  Indicador: fev_direcaoDoDia
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Unificação do "Porteiro" (VWAP) com a "Tendência" (Médias).
+             Rank 1 (Institucional) + Rank 3 (Contexto).
+             Só pinta se houver confluência total.
+}
+
+var
+  // Variáveis VWAP (Institucional)
+  vVwapDiaria, vVwapSemanal : float;
+  bCompraVWAP, bVendaVWAP : boolean;
+
+  // Variáveis Médias (Tendência)
+  mme9, mme20, mma200 : float;
+  bCompraMedias, bVendaMedias : boolean;
+
+  // Cores
+  cCompraForte, cVendaForte, cNeutro : integer;
+
+begin
+  // --- 1. CONFIGURAÇÃO DE CORES ---
+  cCompraForte := RGB(0, 255, 0);     // Verde Limão
+  cVendaForte  := RGB(255, 0, 0);     // Vermelho Vivo
+  cNeutro      := RGB(105, 105, 105); // Cinza (Zona de Risco/Indecisão)
+
+  // --- 2. CÁLCULO INSTITUCIONAL (VWAP) ---
+  // O "Porteiro" - Rank 1
+  vVwapDiaria  := VWAP(1);
+  vVwapSemanal := VWAP(2);
+
+  // Regra: Preço deve estar acima/abaixo de AMBAS as VWAPs
+  bCompraVWAP := (Close > vVwapDiaria) and (Close > vVwapSemanal);
+  bVendaVWAP  := (Close < vVwapDiaria) and (Close < vVwapSemanal);
+
+  // --- 3. CÁLCULO DE TENDÊNCIA (MÉDIAS) ---
+  // O "Contexto" - Rank 3 (Simplificado para Direção)
+  mme9   := MediaExp(9, Close);
+  mme20  := MediaExp(20, Close);
+  mma200 := Media(200, Close);
+
+  // Regra: Alinhamento básico de curto prazo a favor do longo
+  // Compra: Preço > 9 > 20. (A 200 serve como filtro de "Caixote" opcional, aqui usada para validar tendência macro)
+  bCompraMedias := (Close > mme9) and (mme9 > mme20); 
+  
+  // Venda: Preço < 9 < 20.
+  bVendaMedias  := (Close < mme9) and (mme9 < mme20);
+
+  // --- 4. LÓGICA DE DECISÃO (CONFLUÊNCIA) ---
+  
+  // Default: Neutro
+  PaintBar(cNeutro);
+
+  // CENÁRIO COMPRADOR
+  // Institucional autoriza E Tendência confirma
+  if (bCompraVWAP) and (bCompraMedias) then
+    begin
+      PaintBar(cCompraForte);
+    end;
+
+  // CENÁRIO VENDEDOR
+  // Institucional autoriza E Tendência confirma
+  if (bVendaVWAP) and (bVendaMedias) then
+    begin
+      PaintBar(cVendaForte);
+    end;
+
+  // --- 5. LIMPEZA VISUAL ---
+  // Garante que o primeiro candle do dia (leilão/abertura) seja neutro até definição
+  if (Date <> Date[1]) then
+    PaintBar(cNeutro);
+end;

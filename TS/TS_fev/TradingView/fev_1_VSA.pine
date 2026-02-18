@@ -1,0 +1,39 @@
+//@version=5
+indicator("VSA Simplificado", overlay=false) // Overlay false para plotar histograma em painel inferior
+
+// --- 1. CÁLCULOS BÁSICOS ---
+fRange = high - low
+fRange := fRange == 0 ? 0.01 : fRange
+fCorpo = math.abs(close - open)
+
+// --- 2. CÁLCULO DE PRESSÃO ---
+fPressao = ((2 * close - high - low) / fRange) * volume
+
+// --- 3. FILTROS DE QUALIDADE ---
+fMediaVol = ta.sma(volume, 20)
+
+// Filtro A: Volume > Média + 10%
+bTemVolume = volume > (fMediaVol * 1.10)
+
+// Filtro B: Corpo > 50% do Range
+bTemDirecao = fCorpo > (fRange * 0.50)
+
+// --- 4. LÓGICA DE COLORAÇÃO ---
+color corPlot = color.rgb(160, 160, 160) // Cinza padrão
+color corBarra = color.rgb(160, 160, 160)
+
+if bTemVolume and bTemDirecao
+    if fPressao > 0
+        // Compra
+        corPlot := color.lime
+        corBarra := color.lime
+    else
+        // Venda
+        corPlot := color.red
+        corBarra := color.red
+
+// Plota o Histograma de Pressão
+plot(fPressao, color=corPlot, style=plot.style_columns, title="Pressão VSA")
+
+// Opcional: Pintar as barras do gráfico principal também
+barcolor(corBarra)

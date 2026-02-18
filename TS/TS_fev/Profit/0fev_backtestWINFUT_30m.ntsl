@@ -1,0 +1,397 @@
+// {
+//   Estratégia: Robô de Execução WINFUT 30m (Sistema Wesley)
+//   Tipo: Execução (Automação)
+//   Descrição: Versão otimizada para o Módulo de Automação do Profit.
+//              Inclui travas de segurança contra repetição de ordens e lógica de reversão.
+// }
+
+Input
+  PeriodoMedia(20);
+  PeriodoEstrutura(5);
+  FatorAlvo(2.0); // Relação Risco/Retorno
+  AtivarBreakeven(true); // Liga/Desliga Breakeven
+  AtivarTrailingStop(false); // Liga/Desliga Trailing Stop (Média 9)
+  UsarFiltroVWAP(true);      // Proj 1: Filtro de VWAP (Macro - O Porteiro)
+  UsarFiltroTendencia(true); // Proj 2: Filtro de Média 20 (Direção - O GPS)
+  UsarFiltroEstrutura(true); // Proj 3: Filtro de Rompimento (Momento - O Mapa)
+  UsarFiltroVeto(true);      // Proj 5/6: Filtro de Pavio Contra (Proteção)
+  UsarFiltroOBV(true);       // Proj 5: Filtro de Fluxo (OBV - O Tanque)
+  SomenteGoldSignal(true);  // Se True, ignora entradas normais e só pega Gold
+  UsarFiltroInclinacao(true); // Novo: Filtro de Lateralidade (Slope M20)
+  LimiarInclinacao(15);         // Novo: Pontos de inclinação mínima (Ex: 5 pts WIN, 0.5 WDO)
+  UsarFiltroCaixote(false);    // Novo: Filtro de Zona de Turbulência (50 vs 200)
+  UsarFiltroVolume(true);      // Novo: Filtro de VSA (Volume > Média)
+  UsarFiltroIniciativa(true);  // Novo: Seguir fluxo do 1º candle se for Climático
+  UsarFiltroDow(false);        // Novo: Regra de Dow (0.3% ou 2 Candles para confirmar rompimento)
+  PercentualDow(0.3);          // Porcentagem para o Filtro Dow (Ex: 0.3%)
+
+Var
+  // Variáveis de Indicadores
+  vVWAP_Diaria : Float;
+  vMedia20 : Float;
+  vMedia9 : Float;
+  vMedia50 : Float;
+  vMedia200 : Float;
+  vMediaVol : Float;
+  vOBV : Float;
+  
+  // Variáveis de Fluxo (OBV)
+  bFluxoComprador : Boolean;
+  bFluxoVendedor : Boolean;
+  
+  // Variáveis de Lógica (Projetos)
+  bProj1_MacroCompra : Boolean;
+  bProj1_MacroVenda : Boolean;
+  
+  bProj2_TendenciaCompra : Boolean;
+  bProj2_TendenciaVenda : Boolean;
+  bProj2_TendenciaCompraAnt : Boolean;
+  bProj2_TendenciaVendaAnt : Boolean;
+  
+  bProj3_EstruturaCompra : Boolean;
+  bProj3_EstruturaVenda : Boolean;
+
+  // Auxiliares para filtro Dow (evitar warning de acesso posicional)
+  bEstruturaDowCompra, bEstruturaDowVenda: Boolean;
+  bEstruturaSimplesCompra, bEstruturaSimplesVenda: Boolean;
+  
+  bProj4_GatilhoCompra : Boolean;
+  bProj4_GatilhoVenda : Boolean;
+  
+  bProj5_6_VetoCompra : Boolean;
+  bProj5_6_VetoVenda : Boolean;
+  
+  // Variáveis Novos Filtros
+  bFiltroInclinacaoOK : Boolean;
+  bFiltroCaixoteOK : Boolean;
+  bFiltroVolumeOK : Boolean;
+  
+  // Variáveis de Iniciativa (Primeiro Candle)
+  bViésDiaCompra : Boolean;
+  bViésDiaVenda : Boolean;
+  
+  // Variáveis Gold Signal
+  bGoldSignalCompra : Boolean;
+  bGoldSignalVenda : Boolean;
+  cAmarelo : Integer;
+  cCinza : Integer;
+  cCiano : Integer;
+  cBranco : Integer;
+  cVermelho : Integer;
+  cVerde : Integer;
+  
+  // Auxiliares Candle
+  TamCorpo : Float;
+  TamPavioSup : Float;
+  TamPavioInf : Float;
+  RangeCandle : Float;
+  
+  // Variáveis de Gestão de Risco
+  fStopLoss : Float;
+  fGatilhoBE : Float;
+  bBreakeven : Boolean;
+  
+  // Variáveis de Sinal Final
+  bSinalCompra : Boolean;
+  bSinalVenda : Boolean;
+  
+  // Variáveis de Horário
+  iHoraAtual : Integer;
+  bHorarioOperar : Boolean;
+  
+  // Variáveis de Controle de Intervalo
+  iBarraUltimaSaida : Integer;
+
+Begin
+  cAmarelo := RGB(255, 255, 0);
+  cCinza := RGB(105, 105, 105);
+  cCiano := RGB(0, 255, 255);
+  cBranco := RGB(255, 255, 255);
+  cVermelho := RGB(255, 0, 0);
+  cVerde := RGB(0, 255, 0);
+  PaintBar(cCinza);
+
+  // ---------------------------------------------------------------------
+  // CÁLCULO DE INDICADORES (Antecipado para uso na Iniciativa)
+  // ---------------------------------------------------------------------
+  vVWAP_Diaria := VWAP(1);
+  vMedia20 := MediaExp(PeriodoMedia, Close);
+  vMedia9 := MediaExp(9, Close);
+  vMedia50 := Media(50, Close);
+  vMedia200 := Media(200, Close);
+  vMediaVol := Media(Quantity, 20);
+
+  // ---------------------------------------------------------------------
+  // CONTROLE DE HORÁRIO
+  // ---------------------------------------------------------------------
+  iHoraAtual := Time;
+  // Ignora o primeiro candle do dia (Date <> Date[1]) para evitar distorções de indicadores
+  // E detecta se houve Iniciativa Profissional para definir o viés do dia
+  if (Date <> Date[1]) then
+  begin
+    bHorarioOperar := False;
+    
+    // Reset diário dos vieses
+    bViésDiaCompra := False;
+    bViésDiaVenda := False;
+
+    // Detecção de Iniciativa: Corpo > 70% e Volume > 2x Média (Climático)
+    // Usamos vMediaVol[1] para comparar com a média histórica (sem a distorção do candle atual)
+    if (Abs(Close - Open) >= (High - Low) * 0.70) and (Quantity > vMediaVol[1] * 2.0) then
+    begin
+      if (Close > Open) then bViésDiaCompra := True;
+      if (Close < Open) then bViésDiaVenda := True;
+    end;
+  end
+  else
+    bHorarioOperar := True; // Permite operar em qualquer horário após o primeiro candle
+
+  // Se o preço reverter a iniciativa (perder a mínima/máxima do dia), anula o viés
+  if bViésDiaCompra and (Close < Low[1]) then bViésDiaCompra := False; // Simplificado: perdeu low anterior
+  if bViésDiaVenda and (Close > High[1]) then bViésDiaVenda := False;
+
+  // OBV Puro (Fluxo)
+  vOBV := OBV;
+  bFluxoComprador := (vOBV > vOBV[1]);
+  bFluxoVendedor := (vOBV < vOBV[1]);
+
+  // ---------------------------------------------------------------------
+  // LÓGICA DOS PROJETOS (FILTROS)
+  // ---------------------------------------------------------------------
+  
+  // Proj 1: Macro
+  bProj1_MacroCompra := (Close > vVWAP_Diaria);
+  bProj1_MacroVenda := (Close < vVWAP_Diaria);
+
+  // Proj 2: Tendência
+  bProj2_TendenciaCompra := (Close > vMedia20) and (vMedia20 > vMedia20[1]);
+  bProj2_TendenciaVenda := (Close < vMedia20) and (vMedia20 < vMedia20[1]);
+  bProj2_TendenciaCompraAnt := (Close[1] > vMedia20[1]) and (vMedia20[1] > vMedia20[2]);
+  bProj2_TendenciaVendaAnt := (Close[1] < vMedia20[1]) and (vMedia20[1] < vMedia20[2]);
+
+  // Proj 3: Estrutura
+  // Calcula ambos os cenários de rompimento para evitar warnings de acesso posicional
+  // Cenário 1: Rompimento simples
+  bEstruturaSimplesCompra := (Close > Highest(High, PeriodoEstrutura)[1]);
+  bEstruturaSimplesVenda := (Close < Lowest(Low, PeriodoEstrutura)[1]);
+
+  // Cenário 2: Rompimento com Filtro Dow (Preço ou Tempo)
+  bEstruturaDowCompra := (Close > Highest(High, PeriodoEstrutura)[1] * (1 + PercentualDow/100)) or 
+                         ((Close > Highest(High, PeriodoEstrutura)[1]) and (Close[1] > Highest(High, PeriodoEstrutura)[2]));
+  bEstruturaDowVenda := (Close < Lowest(Low, PeriodoEstrutura)[1] * (1 - PercentualDow/100)) or 
+                        ((Close < Lowest(Low, PeriodoEstrutura)[1]) and (Close[1] < Lowest(Low, PeriodoEstrutura)[2]));
+
+  // Atribui a regra de estrutura com base no parâmetro de entrada
+  if UsarFiltroDow then
+  begin
+    bProj3_EstruturaCompra := bEstruturaDowCompra;
+    bProj3_EstruturaVenda := bEstruturaDowVenda;
+  end
+  else
+  begin
+    bProj3_EstruturaCompra := bEstruturaSimplesCompra;
+    bProj3_EstruturaVenda := bEstruturaSimplesVenda;
+  end;
+
+  // Proj 4: Gatilho
+  RangeCandle := High - Low;
+  TamCorpo := Abs(Close - Open);
+  bProj4_GatilhoCompra := (Close > Open) and (TamCorpo >= 0.60 * RangeCandle);
+  bProj4_GatilhoVenda := (Close < Open) and (TamCorpo >= 0.60 * RangeCandle);
+
+  // Proj 5/6: Veto
+  TamPavioSup := High - Max(Close, Open);
+  TamPavioInf := Min(Close, Open) - Low;
+  bProj5_6_VetoCompra := (TamPavioSup > TamCorpo * 0.5);
+  bProj5_6_VetoVenda := (TamPavioInf > TamCorpo * 0.5);
+
+  // Filtros Extras
+  if UsarFiltroInclinacao then
+    bFiltroInclinacaoOK := (Abs(vMedia20 - vMedia20[1]) >= LimiarInclinacao)
+  else
+    bFiltroInclinacaoOK := True;
+
+  if UsarFiltroCaixote then
+    bFiltroCaixoteOK := not ((Close > Min(vMedia50, vMedia200)) and (Close < Max(vMedia50, vMedia200)))
+  else
+    bFiltroCaixoteOK := True;
+
+  if UsarFiltroVolume then
+    bFiltroVolumeOK := (Quantity >= vMediaVol)
+  else
+    bFiltroVolumeOK := True;
+
+  // Gold Signal
+  bGoldSignalCompra := (TamCorpo >= (RangeCandle * 0.70)) and (Close > Open) and bProj2_TendenciaCompra and bProj2_TendenciaCompraAnt and (Close > High[1]) and (Close[1] > Open[1]) and (TamPavioSup <= (RangeCandle * 0.20)) and bFluxoComprador;
+  bGoldSignalVenda := (TamCorpo >= (RangeCandle * 0.70)) and (Close < Open) and bProj2_TendenciaVenda and bProj2_TendenciaVendaAnt and (Close < Low[1]) and (Close[1] < Open[1]) and (TamPavioInf <= (RangeCandle * 0.20)) and bFluxoVendedor;
+
+  // ---------------------------------------------------------------------
+  // CONSOLIDAÇÃO DOS SINAIS
+  // ---------------------------------------------------------------------
+  
+  bSinalCompra := (bProj1_MacroCompra or not UsarFiltroVWAP) 
+                  and (bProj2_TendenciaCompra or not UsarFiltroTendencia) 
+                  and (bProj3_EstruturaCompra or not UsarFiltroEstrutura) 
+                  and (bGoldSignalCompra or (bProj4_GatilhoCompra and not SomenteGoldSignal)) 
+                  and ((Not bProj5_6_VetoCompra) or not UsarFiltroVeto)
+                  and (bFluxoComprador or not UsarFiltroOBV)
+                  and (bViésDiaCompra or (not bViésDiaVenda) or not UsarFiltroIniciativa) // Se tem viés de venda, não compra
+                  and bFiltroInclinacaoOK and bFiltroCaixoteOK and bFiltroVolumeOK
+                  and bHorarioOperar;
+
+  bSinalVenda := (bProj1_MacroVenda or not UsarFiltroVWAP) 
+                 and (bProj2_TendenciaVenda or not UsarFiltroTendencia) 
+                 and (bProj3_EstruturaVenda or not UsarFiltroEstrutura) 
+                 and (bGoldSignalVenda or (bProj4_GatilhoVenda and not SomenteGoldSignal)) 
+                 and ((Not bProj5_6_VetoVenda) or not UsarFiltroVeto)
+                 and (bFluxoVendedor or not UsarFiltroOBV)
+                 and (bViésDiaVenda or (not bViésDiaCompra) or not UsarFiltroIniciativa) // Se tem viés de compra, não vende
+                 and bFiltroInclinacaoOK and bFiltroCaixoteOK and bFiltroVolumeOK
+                 and bHorarioOperar;
+
+  // ---------------------------------------------------------------------
+  // EXECUÇÃO DE ORDENS (ROBÔ)
+  // ---------------------------------------------------------------------
+  
+  // COMPRA
+  If bSinalCompra then
+  begin
+    if bGoldSignalCompra then begin PaintBar(cAmarelo); Alert(cAmarelo); end;
+    
+    // Se não estiver comprado
+    if Not IsBought then
+    begin
+      // Se estiver vendido, zera e marca saída (não inverte direto)
+      if IsSold then 
+      begin
+        ClosePosition;
+        PaintBar(cVermelho);
+        iBarraUltimaSaida := CurrentBar;
+      end
+      // Se não estiver posicionado e respeitar o intervalo de 1 candle
+      else if (CurrentBar > iBarraUltimaSaida + 1) then
+      begin
+        BuyAtMarket;
+        PaintBar(cVermelho);
+        
+        // Define Risco Inicial
+        fStopLoss := Low;
+        fGatilhoBE := Close + ((Close - Low) * FatorAlvo * 0.70);
+        bBreakeven := False;
+      end;
+    end;
+  end;
+
+  // VENDA
+  If bSinalVenda then
+  begin
+    if bGoldSignalVenda then begin PaintBar(cAmarelo); Alert(cAmarelo); end;
+    
+    // Se não estiver vendido
+    if Not IsSold then
+    begin
+      // Se estiver comprado, zera e marca saída (não inverte direto)
+      if IsBought then 
+      begin
+        ClosePosition;
+        PaintBar(cVerde);
+        iBarraUltimaSaida := CurrentBar;
+      end
+      // Se não estiver posicionado e respeitar o intervalo de 1 candle
+      else if (CurrentBar > iBarraUltimaSaida + 1) then
+      begin
+        SellShortAtMarket;
+        PaintBar(cVerde);
+        
+        // Define Risco Inicial
+        fStopLoss := High;
+        fGatilhoBE := Close - ((High - Close) * FatorAlvo * 0.70);
+        bBreakeven := False;
+      end;
+    end;
+  end;
+
+  // ---------------------------------------------------------------------
+  // GESTÃO DE POSIÇÃO (SAÍDAS)
+  // ---------------------------------------------------------------------
+
+  // GESTÃO COMPRA
+  If (IsBought) then 
+  begin
+    // Breakeven
+    if (AtivarBreakeven) and (High >= fGatilhoBE) and (not bBreakeven) then
+    begin
+      fStopLoss := BuyPrice;
+      bBreakeven := True;
+      PlotText("BE", cAmarelo, 0, High);
+    end;
+
+    // Trailing Stop (M9)
+    if (AtivarTrailingStop) and (vMedia9 > fStopLoss) and (Close > vMedia9) then
+      fStopLoss := vMedia9;
+
+    // Saída pelo Stop Loss (ou Gain do BE/Trailing)
+    if (Low <= fStopLoss) then
+    begin
+      ClosePosition;
+      PaintBar(cVerde);
+      iBarraUltimaSaida := CurrentBar;
+      PlotText("Stop", cCinza, 0, Low);
+    end
+    // Saída pela Tendência (M20)
+    else if (Close < vMedia20) then 
+    begin
+      ClosePosition;
+      PaintBar(cVerde);
+      iBarraUltimaSaida := CurrentBar;
+      PlotText("Sair M20", cCinza, 0, Low);
+    end;
+  end;
+
+  // GESTÃO VENDA
+  If (IsSold) then 
+  begin
+    // Breakeven
+    if (AtivarBreakeven) and (Low <= fGatilhoBE) and (not bBreakeven) then
+    begin
+      fStopLoss := SellPrice;
+      bBreakeven := True;
+      PlotText("BE", cAmarelo, 0, Low);
+    end;
+
+    // Trailing Stop (M9)
+    if (AtivarTrailingStop) and (vMedia9 < fStopLoss) and (Close < vMedia9) then
+      fStopLoss := vMedia9;
+
+    // Saída pelo Stop Loss (ou Gain do BE/Trailing)
+    if (High >= fStopLoss) then
+    begin
+      ClosePosition;
+      PaintBar(cVermelho);
+      iBarraUltimaSaida := CurrentBar;
+      PlotText("Stop", cCinza, 0, High);
+    end
+    // Saída pela Tendência (M20)
+    else if (Close > vMedia20) then 
+    begin
+      ClosePosition;
+      PaintBar(cVermelho);
+      iBarraUltimaSaida := CurrentBar;
+      PlotText("Sair M20", cCinza, 0, High);
+    end;
+  end;
+
+  // Screening Visual (Diagnóstico de Filtros)
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (bProj4_GatilhoCompra or bProj4_GatilhoVenda) and ((not bFiltroInclinacaoOK) or (not bFiltroCaixoteOK)) then
+      PaintBar(cBranco);
+  end;
+
+  // Garante que o primeiro candle seja visualmente Cinza (Neutro)
+  if (Date <> Date[1]) then
+  begin
+    PaintBar(cCinza);
+  end;
+
+End;
