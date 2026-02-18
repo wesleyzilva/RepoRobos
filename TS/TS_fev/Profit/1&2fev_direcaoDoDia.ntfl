@@ -15,6 +15,9 @@ var
   mme9, mme20, mma200 : float;
   bCompraMedias, bVendaMedias : boolean;
 
+  // Variáveis Price Action (Primeiro candle)
+  fCorpoAbertura, fPavioSupAbertura, fPavioInfAbertura : float;
+
   // Cores
   cCompraForte, cVendaForte, cNeutro : integer;
 
@@ -65,8 +68,35 @@ begin
       PaintBar(cVendaForte);
     end;
 
-  // --- 5. LIMPEZA VISUAL ---
-  // Garante que o primeiro candle do dia (leilão/abertura) seja neutro até definição
+  // --- 5. PRIMEIRO CANDLE (PRICE ACTION) ---
+  // Apenas no primeiro candle do dia: rejeição forte prevalece sobre a cor do corpo.
   if (Date <> Date[1]) then
-    PaintBar(cNeutro);
+    begin
+      fCorpoAbertura := Abs(Close - Open);
+
+      if (Close >= Open) then
+        begin
+          fPavioSupAbertura := High - Close;
+          fPavioInfAbertura := Open - Low;
+        end
+      else
+        begin
+          fPavioSupAbertura := High - Open;
+          fPavioInfAbertura := Close - Low;
+        end;
+
+      // Rejeição vendedora (pavio superior dominante)
+      if (fPavioSupAbertura >= (fCorpoAbertura * 1.5)) and (fPavioSupAbertura > fPavioInfAbertura) then
+        PaintBar(cVendaForte)
+
+      // Rejeição compradora (pavio inferior dominante)
+      else if (fPavioInfAbertura >= (fCorpoAbertura * 1.5)) and (fPavioInfAbertura > fPavioSupAbertura) then
+        PaintBar(cCompraForte)
+
+      // Sem rejeição clara: segue direção do corpo
+      else if (Close >= Open) then
+        PaintBar(cCompraForte)
+      else
+        PaintBar(cVendaForte);
+    end;
 end;

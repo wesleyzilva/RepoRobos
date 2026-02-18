@@ -3,12 +3,17 @@ var
   cCinza, cVerde, cVermelho, cAmarelo, cFuchsia, cCiano, cAzulRoyal, cMarrom : Integer;
 
   fCorpo, fPavioSup, fPavioInf, fRange : float;
+  fOpen1, fClose1, fHigh1, fLow1, fOpen2, fClose2, fHigh2, fLow2 : float;
+  fCorpo1, fRange1, fPavioSup1, fPavioInf1 : float;
+  fMedia20_1, fMedia20_2 : float;
+  vOBV1, vOBV2 : float;
   bAlta, bBaixa : boolean;
   fMedia20 : float;
   vOBV : float;
   bFluxoComprador, bFluxoVendedor : boolean;
   bTendenciaAlta, bTendenciaBaixa, bAnteriorDeAlta, bAnteriorDeBaixa : boolean;
   bGoldSignalCompra, bGoldSignalVenda : boolean;
+  bGoldContinuacaoCompra, bGoldContinuacaoVenda : boolean;
 
 begin
   // Inicialização das Cores
@@ -54,6 +59,38 @@ begin
   bAnteriorDeAlta := Close[1] > Open[1];   // Candle anterior foi de compra
   bAnteriorDeBaixa := Close[1] < Open[1];  // Candle anterior foi de venda
 
+  // Pré-cálculos de séries para evitar acessos posicionais dentro de condicionais
+  fOpen1 := Open[1];
+  fClose1 := Close[1];
+  fHigh1 := High[1];
+  fLow1 := Low[1];
+  fOpen2 := Open[2];
+  fClose2 := Close[2];
+  fHigh2 := High[2];
+  fLow2 := Low[2];
+
+  fRange1 := Range[1];
+  fCorpo1 := Abs(fClose1 - fOpen1);
+
+  if (fClose1 >= fOpen1) then
+  begin
+    fPavioSup1 := fHigh1 - fClose1;
+    fPavioInf1 := fOpen1 - fLow1;
+  end
+  else
+  begin
+    fPavioSup1 := fHigh1 - fOpen1;
+    fPavioInf1 := fClose1 - fLow1;
+  end;
+
+  fMedia20_1 := MediaExp(20, Close[1]);
+  fMedia20_2 := MediaExp(20, Close[2]);
+  vOBV1 := OBV[1];
+  vOBV2 := OBV[2];
+
+  bGoldContinuacaoCompra := (fClose1 >= fOpen1) and (fClose1 > fMedia20_1) and (fMedia20_1 > fMedia20_2) and (fCorpo1 >= (fRange1 * 0.70)) and (fClose1 > fHigh2) and (fClose2 > fOpen2) and (fPavioSup1 <= (fRange1 * 0.20)) and (vOBV1 > vOBV2);
+  bGoldContinuacaoVenda := (fClose1 < fOpen1) and (fClose1 < fMedia20_1) and (fMedia20_1 < fMedia20_2) and (fCorpo1 >= (fRange1 * 0.70)) and (fClose1 < fLow2) and (fClose2 < fOpen2) and (fPavioInf1 <= (fRange1 * 0.20)) and (vOBV1 < vOBV2);
+
   // 2. Lógica de Coloração (Hierarquia de Prioridade)
   
   // Default: Cinza (Mercado sem tendência / Ruído)
@@ -77,9 +114,9 @@ begin
 
   // Prioridade 1.1: Continuidade do Gold Signal (Candle Seguinte)
   // Se o candle anterior foi Gold, o atual pinta de Verde/Vermelho para confirmar direção
-  else if (Close[1] >= Open[1]) and ((Close[1] > fMedia20[1]) and (fMedia20[1] > fMedia20[2])) and (Abs(Close[1] - Open[1]) >= (Range[1] * 0.70)) and (Close[1] > High[2]) and (Close[2] > Open[2]) and ((High[1] - Close[1]) <= (Range[1] * 0.20)) and (vOBV[1] > vOBV[2]) then
+  else if bGoldContinuacaoCompra then
     PaintBar(cVerde)
-  else if (Close[1] < Open[1]) and ((Close[1] < fMedia20[1]) and (fMedia20[1] < fMedia20[2])) and (Abs(Close[1] - Open[1]) >= (Range[1] * 0.70)) and (Close[1] < Low[2]) and (Close[2] < Open[2]) and ((Close[1] - Low[1]) <= (Range[1] * 0.20)) and (vOBV[1] < vOBV[2]) then
+  else if bGoldContinuacaoVenda then
     PaintBar(cVermelho)
 
   // Prioridade 3: Exaustão (Azul Royal / Marrom)
@@ -100,11 +137,23 @@ begin
   else if (fCorpo >= (fRange * 0.70)) and bBaixa and (fPavioInf <= (fRange * 0.20)) and bFluxoVendedor then
     PaintBar(cFuchsia); // Barra de Força Venda
 
-  // Garante que o primeiro candle seja visualmente Verde ou Vermelho apenas
+  // Classificação do primeiro candle do dia por Price Action + tipo de candle
+  // Regra: rejeição forte prevalece sobre a cor do corpo.
   if (Date <> Date[1]) then
-    if (Close >= Open) then
+  begin
+    // Rejeição vendedora forte (pavio superior dominante): sinal de venda
+    if (fPavioSup >= (fCorpo * 1.5)) and (fPavioSup > fPavioInf) then
+      PaintBar(cVermelho)
+
+    // Rejeição compradora forte (pavio inferior dominante): sinal de compra
+    else if (fPavioInf >= (fCorpo * 1.5)) and (fPavioInf > fPavioSup) then
+      PaintBar(cVerde)
+
+    // Sem rejeição clara: segue direção do fechamento
+    else if (Close >= Open) then
       PaintBar(cVerde)
     else
       PaintBar(cVermelho);
+  end;
 
 end;

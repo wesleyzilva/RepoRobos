@@ -1,5 +1,5 @@
 var
-  cCinza, cVerde, cVermelho : Integer;
+  cCinza, cVerde, cVermelho, cDourado : Integer;
   fMaxEstrutura, fMinEstrutura : float;
   iPeriodoTeste : Integer;
 
@@ -8,6 +8,7 @@ begin
   cCinza    := RGB(105, 105, 105); // Correção / Estrutura
   cVerde    := RGB(0, 255, 0);     // Rompimento de Alta
   cVermelho := RGB(255, 0, 0);     // Rompimento de Baixa
+  cDourado  := RGB(255, 215, 0);   // Confirmação de pivô + candle a favor
 
   // Definição do Período de Teste (Mínimo de 5 candles)
   // A teoria pede para testar de 5 a 12.
@@ -23,6 +24,19 @@ begin
   // Coloração Padrão: Cinza (Estamos dentro da estrutura ou correção)
   PaintBar(cCinza);
 
+  // Confirmação do pivô no candle atual:
+  // Alta: candle anterior é pivô de fundo e o atual fecha para cima -> Verde.
+  if ((Low[1] < Low[2]) and (Low[1] < Low) and (Close > Open) and (Close > Close[1])) then
+  begin
+    PaintBar(cVerde);
+  end;
+
+  // Baixa: candle anterior é pivô de topo e o atual fecha para baixo -> Vermelho.
+  if ((High[1] > High[2]) and (High[1] > High) and (Close < Open) and (Close < Close[1])) then
+  begin
+    PaintBar(cVermelho);
+  end;
+
   // Lógica de Rompimento do Pivô Estrutural
   
   // 1. Sinal de Compra (Verde)
@@ -31,7 +45,6 @@ begin
   if (Close > fMaxEstrutura) then
   begin
     PaintBar(cVerde);
-    Alert('Rompimento de ALTA! Preço: ' + FloatToStr(Close));
   end;
 
   // 2. Sinal de Venda (Vermelho)
@@ -40,7 +53,13 @@ begin
   if (Close < fMinEstrutura) then
   begin
     PaintBar(cVermelho);
-    Alert('Rompimento de BAIXA! Preço: ' + FloatToStr(Close));
+  end;
+
+  // Dourado somente após 2 candles de continuidade depois da confirmação do pivô.
+  if (((Low[3] < Low[4]) and (Low[3] < Low[2]) and (Close[2] > Open[2]) and (Close[2] > Close[3]) and (Close[1] > Open[1]) and (Close[1] > Close[2]))
+      or ((High[3] > High[4]) and (High[3] > High[2]) and (Close[2] < Open[2]) and (Close[2] < Close[3]) and (Close[1] < Open[1]) and (Close[1] < Close[2]))) then
+  begin
+    PaintBar(cDourado);
   end;
 
   // Nota: O "Sinal mais forte" é o rompimento. 

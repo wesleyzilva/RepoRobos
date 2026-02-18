@@ -56,12 +56,14 @@ begin
             begin
               PaintBar(CorAbsorcaoFundo);
               PlotText("ABS", CorAbsorcaoFundo, 8, 0, Low * 0.999);
+              Alert(CorAbsorcaoFundo);
             end;
 
           if bEstrela then
             begin
               PaintBar(CorAbsorcaoTopo);
               PlotText("ABS", CorAbsorcaoTopo, 8, 0, High * 1.001);
+              Alert(CorAbsorcaoTopo);
             end;
         end;
     end;
