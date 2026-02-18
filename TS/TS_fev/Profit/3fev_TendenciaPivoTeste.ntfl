@@ -2,7 +2,6 @@ var
   cCinza, cVerde, cVermelho : Integer;
   fMaxEstrutura, fMinEstrutura : float;
   iPeriodoTeste : Integer;
-  bRompeuAlta, bRompeuBaixa : Boolean;
 
 begin
   // Inicialização das Cores
@@ -29,21 +28,19 @@ begin
   // 1. Sinal de Compra (Verde)
   // O fechamento rompe a máxima da estrutura dos últimos 5+ candles.
   // Isso confirma o fim da correção e retomada da alta.
-  bRompeuAlta := (Close > fMaxEstrutura);
-  if bRompeuAlta then
+  if (Close > fMaxEstrutura) then
   begin
     PaintBar(cVerde);
-    Alert('Rompimento de ALTA detectado! Preço: ' + FloatToStr(Close));
+    Alert('Rompimento de ALTA! Preço: ' + FloatToStr(Close));
   end;
 
   // 2. Sinal de Venda (Vermelho)
   // O fechamento perde a mínima da estrutura dos últimos 5+ candles.
   // Isso confirma o fim da correção e retomada da baixa.
-  bRompeuBaixa := (Close < fMinEstrutura);
-  if bRompeuBaixa then
+  if (Close < fMinEstrutura) then
   begin
     PaintBar(cVermelho);
-    Alert('Rompimento de BAIXA detectado! Preço: ' + FloatToStr(Close));
+    Alert('Rompimento de BAIXA! Preço: ' + FloatToStr(Close));
   end;
 
   // Nota: O "Sinal mais forte" é o rompimento. 
