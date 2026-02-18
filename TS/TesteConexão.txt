@@ -1,1 +1,12 @@
-testeConexão.txt 
+testeConexão.txt
+
+Teste de conexão com o repositório remoto
+Data: 18 de fevereiro de 2026
+Branch: nova-branch
+
+Este arquivo foi modificado para testar:
+- Conexão com GitHub
+- Criação de nova branch
+- Commit e push de alterações
+
+Status: Conexão validada com sucesso! ✓ 
