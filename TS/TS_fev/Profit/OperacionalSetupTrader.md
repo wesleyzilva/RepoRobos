@@ -58,22 +58,24 @@ Operar a favor do fluxo institucional (VWAP), validado pela estrutura de preço 
 
 ## 4. Configuração de Tela (Layout Profit)
 
-Organize o ProfitChart em 3 abas ou janelas para seguir o fluxo de decisão:
+Organize o ProfitChart em 3 abas principais:
 
-1.  **ABA 1: MACRO (O Porteiro)**
-    *   **Indicador:** `fev_VWAPsemanalDiario.ntfl`
-    *   **Função:** Define a permissão.
-    *   *Regra:* Se estiver **Cinza**, proibido operar. Se **Verde**, só compra. Se **Vermelho**, só venda.
+1.  **ABA 1: CONFLUÊNCIA DE DIREÇÃO + TENDÊNCIA (5min)**
+    *   **Indicadores:** `fev_direcaoDoDia.ntfl` + `3fev_TendenciaPivoTeste.ntfl`
+    *   **Função:** Define viés do dia e confirma direção da tendência para entrada.
+    *   *Regra:* Só considerar operação quando direção inicial e tendência em 5min estiverem alinhadas.
 
-2.  **ABA 2: ESTRUTURA (O Mapa)**
-    *   **Indicador:** `fevTendenciaPivoTeste.ntsl`
-    *   **Função:** Valida o rompimento.
-    *   *Regra:* O preço precisa romper a máxima/mínima dos últimos 5 candles (ficar colorido) para confirmar que o mercado está andando.
+2.  **ABA 2: REVERSÃO COM VOLUME (2min)**
+    *   **Indicador:** `fev_2minReversaoComVolume.ntsl`
+    *   **Função:** Gestão de saída e veto de continuidade.
+    *   *Regra:* Se surgir reversão clara com volume, encerrar operação e aguardar novo ciclo de entrada.
 
-3.  **ABA 3: EXECUÇÃO (O Gatilho)**
-    *   **Indicador:** `fev_PriceActionCorpoSombraExecucao.ntsl` (ou `fev_PriceAction.ntsl`)
-    *   **Auxiliar:** `fev_MediasSetupDiario.ntsl` (Médias 9, 14, 20, 50, 200).
-    *   **Função:** Onde você clica.
+3.  **ABA 3: LEITURA FINA DE FLUXO E CANDLE**
+    *   **Indicadores:** `fev_PriceActionVSA_OBV.ntsl` + `fev_PriceActionTiposCandlesLeitura.ntfl`
+    *   **Função:** Refino de contexto (fluxo/OBV + leitura do tipo de candle).
+    *   *Regra:* Usar como confirmação qualitativa antes de clicar e durante o gerenciamento.
+
+**Abas adicionais (apoio):** `0fev_backtestWINFUT_30m.ntsl` e `fev_PriceActionCorpoSombraExecucao.ntsl`.
 
 ---
 
