@@ -3,6 +3,7 @@ var
   cCinza, cVerde, cVermelho, cAmarelo, cFuchsia, cCiano, cAzulRoyal, cMarrom : Integer;
 
   fCorpo, fPavioSup, fPavioInf, fRange : float;
+  fCorpoAnt, fPavioSupAnt, fPavioInfAnt, fRangeAnt : float;
   fOpen1, fClose1, fHigh1, fLow1, fOpen2, fClose2, fHigh2, fLow2 : float;
   fCorpo1, fRange1, fPavioSup1, fPavioInf1 : float;
   fMedia20_1, fMedia20_2 : float;
@@ -12,6 +13,8 @@ var
   vOBV : float;
   bFluxoComprador, bFluxoVendedor : boolean;
   bTendenciaAlta, bTendenciaBaixa, bAnteriorDeAlta, bAnteriorDeBaixa : boolean;
+  bDoisAtrasAlta, bDoisAtrasBaixa : boolean;
+  bAntMartelo, bAntEstrela, bReversaoCompraConfirmada, bReversaoVendaConfirmada : boolean;
   bGoldSignalCompra, bGoldSignalVenda : boolean;
   bGoldContinuacaoCompra, bGoldContinuacaoVenda : boolean;
 
@@ -58,6 +61,8 @@ begin
   // Contexto do candle anterior para o Gold Signal (Sua nova condição)
   bAnteriorDeAlta := Close[1] > Open[1];   // Candle anterior foi de compra
   bAnteriorDeBaixa := Close[1] < Open[1];  // Candle anterior foi de venda
+  bDoisAtrasAlta := Close[2] > Open[2];
+  bDoisAtrasBaixa := Close[2] < Open[2];
 
   // Pré-cálculos de séries para evitar acessos posicionais dentro de condicionais
   fOpen1 := Open[1];
@@ -91,6 +96,27 @@ begin
   bGoldContinuacaoCompra := (fClose1 >= fOpen1) and (fClose1 > fMedia20_1) and (fMedia20_1 > fMedia20_2) and (fCorpo1 >= (fRange1 * 0.70)) and (fClose1 > fHigh2) and (fClose2 > fOpen2) and (fPavioSup1 <= (fRange1 * 0.20)) and (vOBV1 > vOBV2);
   bGoldContinuacaoVenda := (fClose1 < fOpen1) and (fClose1 < fMedia20_1) and (fMedia20_1 < fMedia20_2) and (fCorpo1 >= (fRange1 * 0.70)) and (fClose1 < fLow2) and (fClose2 < fOpen2) and (fPavioInf1 <= (fRange1 * 0.20)) and (vOBV1 < vOBV2);
 
+  // Reversão confirmada: contexto anterior [2] + candle de reversão [1] + confirmação no candle atual
+  fRangeAnt := fHigh1 - fLow1;
+  fCorpoAnt := Abs(fClose1 - fOpen1);
+
+  if (fClose1 >= fOpen1) then
+  begin
+    fPavioSupAnt := fHigh1 - fClose1;
+    fPavioInfAnt := fOpen1 - fLow1;
+  end
+  else
+  begin
+    fPavioSupAnt := fHigh1 - fOpen1;
+    fPavioInfAnt := fClose1 - fLow1;
+  end;
+
+  bAntMartelo := (fRangeAnt > 0) and (fPavioInfAnt > (fCorpoAnt * 2)) and (fPavioSupAnt < fCorpoAnt);
+  bAntEstrela := (fRangeAnt > 0) and (fPavioSupAnt > (fCorpoAnt * 2)) and (fPavioInfAnt < fCorpoAnt);
+
+  bReversaoCompraConfirmada := bAntMartelo and bDoisAtrasBaixa and (fLow1 <= fLow2) and bFluxoComprador and (Close > fHigh1);
+  bReversaoVendaConfirmada := bAntEstrela and bDoisAtrasAlta and (fHigh1 >= fHigh2) and bFluxoVendedor and (Close < fLow1);
+
   // 2. Lógica de Coloração (Hierarquia de Prioridade)
   
   // Default: Cinza (Mercado sem tendência / Ruído)
@@ -119,11 +145,11 @@ begin
   else if bGoldContinuacaoVenda then
     PaintBar(cVermelho)
 
-  // Prioridade 3: Exaustão (Azul Royal / Marrom)
-  else if (fPavioSup > (fCorpo * 2)) and (fPavioSup > fPavioInf) and bFluxoVendedor and bAnteriorDeAlta and (High >= High[1]) then
-    PaintBar(cAzulRoyal) // Estrela Cadente
-  else if (fPavioInf > (fCorpo * 2)) and (fPavioInf > fPavioSup) and bFluxoComprador and bAnteriorDeBaixa and (Low <= Low[1]) then
-    PaintBar(cMarrom) // Martelo
+  // Prioridade 3: Reversão confirmada (anterior + posterior)
+  else if bReversaoVendaConfirmada then
+    PaintBar(cAzulRoyal) // Estrela Cadente confirmada
+  else if bReversaoCompraConfirmada then
+    PaintBar(cMarrom) // Martelo confirmado
 
   // Prioridade 4: Padrões Técnicos (Verde/Vermelho)
   else if (Close > Open) and (Close > High[1]) and (Open < Low[1]) and bFluxoComprador then

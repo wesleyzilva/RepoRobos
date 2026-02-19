@@ -37,7 +37,8 @@ begin
   TamPavioInf := Min(Open, Close) - Low;
 
   // Proteção contra divisão por zero
-  if Range > 0 then
+  // Ignora o primeiro candle do dia para evitar sinal falso na abertura
+  if (Range > 0) and (Date = Date[1]) then
     begin
       // Definição de Martelo (Força Compradora)
       // Pavio inferior é pelo menos 2x o tamanho do corpo E pavio superior é pequeno

@@ -4,11 +4,13 @@ var
   
   // Variáveis de Anatomia
   fCorpo, fPavioSup, fPavioInf, fRange : float;
+  fCorpoAnt, fPavioSupAnt, fPavioInfAnt, fRangeAnt : float;
   bAlta, bBaixa : boolean;
   
   // Variáveis de Contexto (Candle Anterior)
-  bAntAlta, bAntBaixa : boolean;
-  fAntMax, fAntMin : float;
+  bAntAlta, bAntBaixa, bAnt2Alta, bAnt2Baixa : boolean;
+  bMarteloAnterior, bEstrelaAnterior, bMarteloConfirmado, bEstrelaConfirmada : boolean;
+  fAntMax, fAntMin, fAnt2Max, fAnt2Min : float;
 
 begin
   // 1. Definição de Cores
@@ -25,8 +27,12 @@ begin
   // 2. Cálculos do Contexto (Candle Anterior)
   bAntAlta  := Close[1] > Open[1];
   bAntBaixa := Close[1] < Open[1];
+  bAnt2Alta  := Close[2] > Open[2];
+  bAnt2Baixa := Close[2] < Open[2];
   fAntMax   := High[1];
   fAntMin   := Low[1];
+  fAnt2Max  := High[2];
+  fAnt2Min  := Low[2];
 
   // 3. Cálculos do Candle Atual
   fRange := Range;
@@ -47,6 +53,28 @@ begin
       bBaixa := True;
     end;
 
+  // 3.1 Cálculos do candle anterior (para confirmação de reversão)
+  fRangeAnt := fAntMax - fAntMin;
+  fCorpoAnt := Abs(Close[1] - Open[1]);
+
+  if (Close[1] >= Open[1]) then
+    begin
+      fPavioSupAnt := fAntMax - Close[1];
+      fPavioInfAnt := Open[1] - fAntMin;
+    end
+  else
+    begin
+      fPavioSupAnt := fAntMax - Open[1];
+      fPavioInfAnt := Close[1] - fAntMin;
+    end;
+
+  // Reversão confirmada: candle de reversão [1] + confirmação no candle atual
+  bMarteloAnterior := (fRangeAnt > 0) and (fPavioInfAnt > (fCorpoAnt * 2)) and (fPavioSupAnt < fCorpoAnt);
+  bEstrelaAnterior := (fRangeAnt > 0) and (fPavioSupAnt > (fCorpoAnt * 2)) and (fPavioInfAnt < fCorpoAnt);
+
+  bMarteloConfirmado := bMarteloAnterior and bAnt2Baixa and (fAntMin <= fAnt2Min) and (Close > fAntMax);
+  bEstrelaConfirmada := bEstrelaAnterior and bAnt2Alta and (fAntMax >= fAnt2Max) and (Close < fAntMin);
+
   // 4. Lógica de Coloração (Hierarquia de Prioridade)
   
   // Default
@@ -59,13 +87,10 @@ begin
   // Engolfo de Baixa (Requer candle anterior de alta)
   else if bBaixa and bAntAlta and (Close < fAntMin) and (Open >= Close[1]) then
     PaintBar(cVermelho)
-  // Martelo (Requer candle anterior de baixa e teste de fundo)
-  // Pavio inferior > 2x corpo E pavio superior pequeno
-  else if (fPavioInf > (fCorpo * 2)) and (fPavioSup < fCorpo) and bAntBaixa and (Low <= fAntMin) then
+  // Martelo e Estrela só pintam após confirmação (anterior + posterior)
+  else if bMarteloConfirmado then
     PaintBar(cMarrom)
-  // Estrela Cadente (Requer candle anterior de alta e teste de topo)
-  // Pavio superior > 2x corpo E pavio inferior pequeno
-  else if (fPavioSup > (fCorpo * 2)) and (fPavioInf < fCorpo) and bAntAlta and (High >= fAntMax) then
+  else if bEstrelaConfirmada then
     PaintBar(cAzulRoyal)
 
   // --- NÍVEL 2: FORÇA (CONTINUAÇÃO) ---

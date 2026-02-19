@@ -1,7 +1,11 @@
+input
+  CandlesConfirmacaoDourado(2);
+
 var
   cCinza, cVerde, cVermelho, cDourado : Integer;
-  fMaxEstrutura, fMinEstrutura : float;
-  iPeriodoTeste : Integer;
+  fMaxEstrutura, fMinEstrutura, fMaxEstruturaAnt, fMinEstruturaAnt : float;
+  iPeriodoTeste, iCandlesConfirmacao : Integer;
+  bDouradoCompra, bDouradoVenda, bAnteriorDirecional : Boolean;
 
 begin
   // Inicialização das Cores
@@ -16,10 +20,18 @@ begin
   // durou *pelo menos* 5 candles (o mínimo para ser estrutural).
   // Se a correção durou 12, ela também satisfaz a condição > 5.
   iPeriodoTeste := 5;
+  iCandlesConfirmacao := CandlesConfirmacaoDourado;
+
+  if (iCandlesConfirmacao < 1) then
+    iCandlesConfirmacao := 1;
 
   // Identifica a Máxima e Mínima da Estrutura anterior (excluindo o candle atual)
   fMaxEstrutura := Highest(High[1], iPeriodoTeste);
   fMinEstrutura := Lowest(Low[1], iPeriodoTeste);
+
+  // Estrutura para validar se o candle anterior já era direcional (verde/vermelho)
+  fMaxEstruturaAnt := Highest(High[2], iPeriodoTeste);
+  fMinEstruturaAnt := Lowest(Low[2], iPeriodoTeste);
 
   // Coloração Padrão: Cinza (Estamos dentro da estrutura ou correção)
   PaintBar(cCinza);
@@ -55,9 +67,24 @@ begin
     PaintBar(cVermelho);
   end;
 
-  // Dourado somente após 2 candles de continuidade depois da confirmação do pivô.
-  if (((Low[3] < Low[4]) and (Low[3] < Low[2]) and (Close[2] > Open[2]) and (Close[2] > Close[3]) and (Close[1] > Open[1]) and (Close[1] > Close[2]))
-      or ((High[3] > High[4]) and (High[3] > High[2]) and (Close[2] < Open[2]) and (Close[2] < Close[3]) and (Close[1] < Open[1]) and (Close[1] < Close[2]))) then
+  // Dourado com quantidade de candles de confirmação parametrizável.
+  // Se CandlesConfirmacaoDourado = 1, usa 1 candle de continuidade.
+  // Se CandlesConfirmacaoDourado >= 2, usa 2 candles de continuidade.
+  if (iCandlesConfirmacao = 1) then
+  begin
+    bDouradoCompra := (Low[2] < Low[3]) and (Low[2] < Low[1]) and (Close[1] > Open[1]) and (Close[1] > Close[2]);
+    bDouradoVenda := (High[2] > High[3]) and (High[2] > High[1]) and (Close[1] < Open[1]) and (Close[1] < Close[2]);
+  end
+  else
+  begin
+    bDouradoCompra := (Low[3] < Low[4]) and (Low[3] < Low[2]) and (Close[2] > Open[2]) and (Close[2] > Close[3]) and (Close[1] > Open[1]) and (Close[1] > Close[2]);
+    bDouradoVenda := (High[3] > High[4]) and (High[3] > High[2]) and (Close[2] < Open[2]) and (Close[2] < Close[3]) and (Close[1] < Open[1]) and (Close[1] < Close[2]);
+  end;
+
+  bAnteriorDirecional := ((Close[1] > fMaxEstruturaAnt) or ((Low[2] < Low[3]) and (Low[2] < Low[1]) and (Close[1] > Open[1]) and (Close[1] > Close[2])))
+      or ((Close[1] < fMinEstruturaAnt) or ((High[2] > High[3]) and (High[2] > High[1]) and (Close[1] < Open[1]) and (Close[1] < Close[2])));
+
+  if (bAnteriorDirecional) and (bDouradoCompra or bDouradoVenda) then
   begin
     PaintBar(cDourado);
   end;

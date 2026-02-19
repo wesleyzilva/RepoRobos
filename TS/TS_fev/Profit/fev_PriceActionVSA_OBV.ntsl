@@ -95,7 +95,8 @@
     else if (bGoldSignalCompra[1]) then
         PaintBar(cVerde) // Marca a direção da compra
     else if (bGoldSignalVenda[1]) then
-        PaintBar(cVermelho); // Marca a direção da venda
+        PaintBar(cVermelho) // Marca a direção da venda
+    ;
 
     // 4. Regra do Primeiro Candle (Ignorar Abertura)
     if (Date <> Date[1]) then
