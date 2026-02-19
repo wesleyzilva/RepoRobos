@@ -79,41 +79,32 @@ Organize o ProfitChart em 3 abas principais:
 
 ---
 
-## 5. O Algoritmo de Decisão (Checklist de Entrada)
+## 5. O Algoritmo de Decisão (Checklist Operacional - 3 Abas)
 
 **Siga a ordem exata. Se um passo falhar, ABORTE.**
 
-### PASSO 1: Validação Institucional
-*   Olhe para a **Aba Macro**.
-*   O preço está alinhado com a VWAP Diária e Semanal? (Cor Verde ou Vermelha).
-    *   *Sim:* Avance.
-    *   *Não:* Espere.
+### PASSO 1: Viés Inicial + Tendência (ABA 1)
+*   Olhe `fev_direcaoDoDia.ntfl` e `3fev_TendenciaPivoTeste.ntfl` na mesma aba.
+*   Defina o viés pelo primeiro candle do dia (compra/venda).
+*   Só avance se a leitura de tendência em 5min estiver alinhada com esse viés.
 
-### PASSO 2: Validação de Estrutura
-*   Olhe para a **Aba Estrutura**.
-*   O preço rompeu a congestão recente (> 5 candles)?
-    *   *Sim:* Avance.
+### PASSO 2: Entrada por Estrutura (ABA 1)
+*   Aguarde no `3fev_TendenciaPivoTeste.ntfl`:
+    *   candle direcional de confirmação (verde/vermelho);
+    *   seguido do candle **dourado**.
+*   Sem dourado, sem entrada.
 
-### PASSO 3: O Gatilho (Price Action)
-*   Olhe para a **Aba Execução**. Qual o sinal?
-    *   **🥇 Gold Signal (Amarelo):** Entrada de Alta Convicção (Mão Cheia). *Confluência de Força + Tendência + Continuidade.*
-    *   **🥈 Força (Ciano/Fuchsia):** Entrada de Momentum (Mão Normal).
-    *   **🥉 Técnico (Verde/Vermelho):** Entrada Técnica (Mão Leve).
+### PASSO 3: Refino de Qualidade (ABA 3)
+*   Confirmar contexto com `fev_PriceActionVSA_OBV.ntsl` e `fev_PriceActionTiposCandlesLeitura.ntfl`.
+*   Se houver leitura conflitante (exaustão/rejeição forte contra), cancelar ou reduzir risco.
 
-### PASSO 4: O Veto (Refino)
-*   **Veto de Candle:** Olhe para o indicador `fev_PriceActionAnaliseSombra` ou `fev_VSAassinaturaInstitucional`.
-*   Existe pavio gigante contra? Existe volume de reversão (Upthrust/Shakeout contra)?
-    *   *Sim:* Cancele ou espere confirmação.
-    *   *Não:* Avance para o Veto Final.
+### PASSO 4: Gestão da Operação (ABA 2)
+*   Monitorar `fev_2minReversaoComVolume.ntsl` durante toda a posição.
+*   Se aparecer reversão clara com volume, **encerrar a operação**.
 
-### PASSO 5: O Veto de Fluxo (OBV)
-*   **Veto de Fluxo:** Olhe para o indicador `fev_OBVvolumeVerdadeiro`.
-*   **Para uma COMPRA:** A linha do OBV está **Verde** (acima da sua média)?
-    *   *Sim:* **CLICK (Executar).**
-    *   *Não (Vermelha):* **VETO.** O fluxo de volume não confirma a alta. Risco de armadilha.
-*   **Para uma VENDA:** A linha do OBV está **Vermelha** (abaixo da sua média)?
-    *   *Sim:* **CLICK (Executar).**
-    *   *Não (Verde):* **VETO.** O fluxo de volume não confirma a baixa.
+### PASSO 5: Reentrada
+*   Após saída por reversão, aguardar preço sair da zona de reversão.
+*   Reentrar apenas em novo ciclo completo (Passos 1 a 4).
 
 ---
 
@@ -121,11 +112,10 @@ Organize o ProfitChart em 3 abas principais:
 
 Não olhe para o gráfico o tempo todo. Deixe o sistema trabalhar.
 
-*   **Alarme 1 (Prioridade Máxima):** `fev_PainelDecisao`. Se tocar, significa que VWAP + Estrutura + Gatilho alinharam. Olhe imediatamente.
-    *   *Nota:* O indicador `fev_PainelDecisao` foi criado para automatizar os Passos 1, 2 e 5 do checklist. Ele mostra "COMPRA/VENDA AUTORIZADA" e toca um alarme apenas quando os filtros macro (VWAP, Estrutura e OBV) estão alinhados, liberando você para procurar o gatilho de entrada.
-*   **Alarme 2 (Oportunidade):** `fev_PriceAction` (Gold Signal). Se tocar, verifique se o Painel autoriza.
-*   **Alarme 3 (Tendência):** `fev_MediasSetup` (Ciano/Fuchsia). Indica início de fluxo forte. Prepare-se para pullbacks.
-*   **Silêncio:** Se não houver alarmes, o mercado está em "Ruído" (Cinza). Vá estudar ou fazer outra coisa.
+*   **Alarme 1 (Entrada):** Candle **dourado** no `3fev_TendenciaPivoTeste.ntfl` (ABA 1).
+*   **Alarme 2 (Saída):** Reversão com volume no `fev_2minReversaoComVolume.ntsl` (ABA 2).
+*   **Alarme 3 (Refino):** Conflito de leitura em `fev_PriceActionVSA_OBV.ntsl` / `fev_PriceActionTiposCandlesLeitura.ntfl` (ABA 3).
+*   **Silêncio operacional:** Sem dourado ou com reversão ativa, não operar.
 
 ## 7. Gestão de Risco e Alvos
 
@@ -153,7 +143,9 @@ Não olhe para o gráfico o tempo todo. Deixe o sistema trabalhar.
 ---
 
 ## 9. Validação e Disciplina
-*   **Trava de Segurança:** Não podemos mudar a estrutura operacional até ser validada pelos resultados em `resultado2026.csv`.
+*   **Trava de Segurança:** Lógica principal **congelada até março** para validação estatística.
+*   **Permitido até março:** apenas ajustes críticos de segurança e consistência (sem alterar gatilho principal).
+*   **Condição para destravar ajustes:** melhora consistente dos resultados em `resultado2026.csv`.
 
 ---
 
