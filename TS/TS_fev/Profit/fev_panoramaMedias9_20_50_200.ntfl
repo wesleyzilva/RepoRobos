@@ -32,6 +32,7 @@ input
   MinSeparacao9_20Perc(0.02);
   MinSeparacao50_200Perc(0.02);
   MinDist20_50Perc(0.05);
+  DistMinCruzamento9_20(50.0); // Distância mínima em pontos entre MME9 e MME20 para habilitar sinal
   MaxDist20_50Perc(0.35);
   MaxDistanciaMME20Perc(0.80);
   ExigirAlinhamentoMMA200(true);
@@ -42,6 +43,7 @@ var
   fMME20_1, fMMA50_1, fMMA200_1 : Float;
   fInclinacaoMME20Perc, fInclinacaoMMA50Perc, fInclinacaoMMA200Perc : Float;
   fSeparacao9_20Perc, fSeparacao50_200Perc, fDistanciaMME20Perc, fDist20_50Perc : Float;
+  fDistancia9_20Pontos : Float;
   fPesoAlta, fPesoBaixa, fPesoTotal, fPesoMinimo : Float;
   iDataAnterior, iHoraAtual, iHoraHHMM : Integer;
   bAlta9, bBaixa9 : Boolean;
@@ -52,6 +54,7 @@ var
   bSeparacaoOK, bDistanciaOK : Boolean;
   bDist20_50OK : Boolean;
   bRegime200AltaOK, bRegime200BaixaOK : Boolean;
+  bMedias9_20ProximasCruzar : Boolean;
   bFaixa1Ativa, bFaixa2Ativa : Boolean;
   bDentroFaixa1, bDentroFaixa2 : Boolean;
   bFaixaSeguranca : Boolean;
@@ -138,6 +141,10 @@ begin
       fDist20_50Perc := (Abs(fMME20 - fMMA50) / fMME20) * 100
     else
       fDist20_50Perc := 0;
+
+    // Distância em pontos entre MME9 e MME20 (para detectar proximidade de cruzamento)
+    fDistancia9_20Pontos := Abs(fMME9 - fMME20);
+    bMedias9_20ProximasCruzar := (fDistancia9_20Pontos < DistMinCruzamento9_20);
 
     // Sinais individuais por média
     bAlta9 := (Close > fMME9);
@@ -231,7 +238,10 @@ begin
         bVendaHabilitada := bVendaHabilitada and bInclinacaoBaixaOK and bSeparacaoOK and bDistanciaOK and bDist20_50OK and bRegime200BaixaOK;
       end;
 
-      if bCompraHabilitada then
+      // Se médias 9/20 estiverem próximas de cruzar (< 50 pts), pinta preto
+      if bMedias9_20ProximasCruzar then
+        PaintBar(cSeguranca)
+      else if bCompraHabilitada then
         PaintBar(cCompra)
       else if bVendaHabilitada then
         PaintBar(cVenda)
