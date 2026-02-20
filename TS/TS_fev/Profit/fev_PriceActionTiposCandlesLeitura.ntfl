@@ -1,6 +1,6 @@
 var
   // Cores
-  cMarrom, cAzulRoyal, cVerde, cVermelho, cLaranja, cBranco, cCiano, cFuchsia, cCinza : Integer;
+  cVerde, cVermelho, cLaranja, cBranco, cCinza : Integer;
   
   // Variáveis de Anatomia
   fCorpo, fPavioSup, fPavioInf, fRange : float;
@@ -12,16 +12,18 @@ var
   bMarteloAnterior, bEstrelaAnterior, bMarteloConfirmado, bEstrelaConfirmada : boolean;
   fAntMax, fAntMin, fAnt2Max, fAnt2Min : float;
 
+  // Padrões válidos (contexto + anatomia)
+  bEngolfoAltaValido, bEngolfoBaixaValido : boolean;
+  bInsideBarValido, bDojiRealValido : boolean;
+  bContextoAlta, bContextoBaixa : boolean;
+  bSinalCompraContextual, bSinalVendaContextual : boolean;
+
 begin
   // 1. Definição de Cores
-  cMarrom     := RGB(165, 42, 42);   // Martelo
-  cAzulRoyal  := RGB(65, 105, 225);  // Estrela
-  cVerde      := RGB(0, 255, 0);     // Engolfo Alta
-  cVermelho   := RGB(255, 0, 0);     // Engolfo Baixa
+  cVerde      := RGB(0, 255, 0);     // Compra contextualizada
+  cVermelho   := RGB(255, 0, 0);     // Venda contextualizada
   cLaranja    := RGB(255, 140, 0);   // Inside Bar
   cBranco     := RGB(255, 255, 255); // Doji
-  cCiano      := RGB(0, 255, 255);   // Força Compra
-  cFuchsia    := RGB(255, 0, 255);   // Força Venda
   cCinza      := RGB(105, 105, 105); // Neutro
 
   // 2. Cálculos do Contexto (Candle Anterior)
@@ -75,34 +77,40 @@ begin
   bMarteloConfirmado := bMarteloAnterior and bAnt2Baixa and (fAntMin <= fAnt2Min) and (Close > fAntMax);
   bEstrelaConfirmada := bEstrelaAnterior and bAnt2Alta and (fAntMax >= fAnt2Max) and (Close < fAntMin);
 
+  // 3.2 Validação de contexto antes da cor
+  bContextoAlta := bAntBaixa or bAnt2Baixa;
+  bContextoBaixa := bAntAlta or bAnt2Alta;
+
+  // Engolfo real = anatomia + contexto
+  bEngolfoAltaValido := bAlta and bContextoAlta and bAntBaixa and (Close > fAntMax) and (Open <= Close[1]);
+  bEngolfoBaixaValido := bBaixa and bContextoBaixa and bAntAlta and (Close < fAntMin) and (Open >= Close[1]);
+
+  // Inside bar real = candle dentro do anterior + contração de range
+  bInsideBarValido := (High < fAntMax) and (Low > fAntMin) and (fRangeAnt > 0) and (fRange < (fRangeAnt * 0.85));
+
+  // Doji real = corpo muito pequeno + sombras relevantes
+  bDojiRealValido := (fRange > 0) and (fCorpo <= (fRange * 0.10)) and (fPavioSup >= (fRange * 0.25)) and (fPavioInf >= (fRange * 0.25));
+
+  // Sinal final contextualizado: contexto primeiro, padrão depois
+  bSinalCompraContextual := bEngolfoAltaValido or bMarteloConfirmado;
+  bSinalVendaContextual := bEngolfoBaixaValido or bEstrelaConfirmada;
+
   // 4. Lógica de Coloração (Hierarquia de Prioridade)
   
   // Default
   PaintBar(cCinza);
 
-  // --- NÍVEL 3: REVERSÃO E PADRÕES TÉCNICOS (PRIORIDADE MÁXIMA) ---
-  // Engolfo de Alta (Requer candle anterior de baixa)
-  if bAlta and bAntBaixa and (Close > fAntMax) and (Open <= Close[1]) then
+  // --- NÍVEL 3: SINAL CONTEXTUALIZADO (PRIORIDADE MÁXIMA) ---
+  // Sequência: contexto validado -> padrão validado -> cor
+  if bSinalCompraContextual then
     PaintBar(cVerde)
-  // Engolfo de Baixa (Requer candle anterior de alta)
-  else if bBaixa and bAntAlta and (Close < fAntMin) and (Open >= Close[1]) then
+  else if bSinalVendaContextual then
     PaintBar(cVermelho)
-  // Martelo e Estrela só pintam após confirmação (anterior + posterior)
-  else if bMarteloConfirmado then
-    PaintBar(cMarrom)
-  else if bEstrelaConfirmada then
-    PaintBar(cAzulRoyal)
 
-  // --- NÍVEL 2: FORÇA (CONTINUAÇÃO) ---
-  else if (fCorpo >= (fRange * 0.70)) and bAlta and (fPavioSup <= (fRange * 0.20)) and (Close > fAntMax) then
-    PaintBar(cCiano)
-  else if (fCorpo >= (fRange * 0.70)) and bBaixa and (fPavioInf <= (fRange * 0.20)) and (Close < fAntMin) then
-    PaintBar(cFuchsia)
-
-  // --- NÍVEL 1: INDECISÃO ---
-  else if (High < fAntMax) and (Low > fAntMin) then
+  // --- NÍVEL 2: INDECISÃO ---
+  else if bInsideBarValido then
     PaintBar(cLaranja) // Inside Bar
-  else if (fCorpo <= (fRange * 0.10)) then
+  else if bDojiRealValido then
     PaintBar(cBranco); // Doji
 
   // Garante que o primeiro candle seja visualmente Cinza (Neutro)

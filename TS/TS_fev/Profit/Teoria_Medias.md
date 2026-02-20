@@ -1,5 +1,36 @@
 # Teoria Operacional: Médias Móveis (O GPS do Mercado)
 
+## Tabela de Contexto Operacional (Como Operar as Médias)
+
+Use esta tabela como decisão rápida antes de qualquer entrada.
+
+| Contexto | Alinhamento das Médias | Distância / Inclinação | Leitura | Ação Operacional |
+| :--- | :--- | :--- | :--- | :--- |
+| **Compra Forte (Tendência Saudável)** | `Preço > MME9 > MME20 > MMA50 > MMA200` | MME20 e MMA50 inclinadas para cima + separação crescente | Fluxo comprador consistente | **Habilitar compra.** Buscar pullback em 9/20 ou faixa 20-50 |
+| **Compra Moderada** | `Preço > MME20 > MMA50` (9 pode oscilar) | Inclinação positiva, porém separação menor | Tendência de alta com menos impulso | **Compra seletiva.** Exigir candle gatilho e gestão curta |
+| **Venda Forte (Tendência Saudável)** | `Preço < MME9 < MME20 < MMA50 < MMA200` | MME20 e MMA50 inclinadas para baixo + separação crescente | Fluxo vendedor consistente | **Habilitar venda.** Buscar repique para 9/20 |
+| **Venda Moderada** | `Preço < MME20 < MMA50` (9 pode oscilar) | Inclinação negativa, porém separação menor | Tendência de baixa com menos impulso | **Venda seletiva.** Exigir confirmação estrutural |
+| **Lateral (Médias Emboladas)** | Cruzamentos frequentes entre 9 e 20; 20 próxima da 50 | Inclinação fraca/flat | Sem vantagem estatística em tendência | **Não operar tendência.** Aguardar expansão das médias |
+| **Esticado Acima da 20** | Preço muito distante da MME20 em alta | Distância excessiva da 20 (elástico tensionado) | Risco de regressão à média | **Evitar novas compras.** Priorizar realização/parcial |
+| **Esticado Abaixo da 20** | Preço muito distante da MME20 em baixa | Distância excessiva da 20 | Risco de repique contra tendência | **Evitar novas vendas.** Proteger lucro |
+| **Conflito com MMA200** | Curto prazo aponta compra, mas preço abaixo da 200 (ou inverso) | 200 contra a direção local | Regime misto / turbulência | **Reduzir mão ou aguardar.** Priorizar direção da 200 |
+| **Pullback na Zona 20-50** | Tendência já definida e preço corrige para 20/50 | Inclinação ainda favorável | Reteste técnico de continuação | **Procurar gatilho de Price Action** (engolfo/martelo/estrela confirmada) |
+
+### Regras de habilitação (resumo prático)
+- **Habilitar compra:** alinhamento de alta + inclinação positiva + sem esticamento + sem conflito relevante com 200.
+- **Habilitar venda:** alinhamento de baixa + inclinação negativa + sem esticamento + sem conflito relevante com 200.
+- **Bloquear operação:** médias comprimidas, 20 flat, distância extrema da 20 ou janela de notícia.
+
+### Distância mínima segura (referência prática)
+
+| Par de Médias | Distância mínima segura (%) | Referência em pts (WIN ~130.000) | Faixa ideal (%) | Faixa ideal em pts |
+| :--- | :--- | :--- | :--- | :--- |
+| **MME9 x MME20** | **0,02%** | ~**26 pts** | **0,03% a 0,05%** | ~**39 a 65 pts** |
+| **MME20 x MMA50** | **0,05%** | ~**65 pts** | **0,05% a 0,35%** | ~**65 a 455 pts** |
+
+- **Leitura:** abaixo do mínimo, considerar mercado comprimido/lateral e reduzir agressividade.
+- **Observação:** pontos variam com o preço do índice; usar a referência como guia prático.
+
 ## 1. O Setup de Médias (A Família)
 Cada média tem uma função específica e uma "personalidade". A combinação de Aritméticas (MMA) e Exponenciais (MME) equilibra a reação rápida com a estabilidade institucional.
 

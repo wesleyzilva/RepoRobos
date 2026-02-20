@@ -34,3 +34,62 @@ No Brasil, a liquidez é concentrada. Fora destes ativos, a análise técnica pe
 
 ### Dica de Ouro
 Se você está começando a estudar padrões gráficos clássicos (Oco, Bandeira, Topo Duplo), treine no **S&P 500 (ES)** ou **EUR/USD**. Eles são os "livros didáticos" do mercado. O **WIN** é mais "sujo" e exige mais malícia.
+
+## 4. Técnicas Operacionais por Ativo (Resumo Prático)
+
+| Ativo | Técnica que tende a funcionar melhor | O que evitar |
+| :--- | :--- | :--- |
+| **WINFUT** | **Estrutura de preço** (pivô, rompimento com reteste, pullback em tendência). | Operar rompimento seco sem confirmação de fechamento e sem filtro de horário. |
+| **WDOFUT** | **Níveis institucionais** (VWAP, ajuste, máxima/mínima anterior, janelas PTAX). | Operar contra VWAP dominante e ignorar horário de fluxo forte. |
+| **WSPFUT/WSFUT** | **Correlação e direção macro** (ES/US500 + abertura americana). | Operar sem checar contexto dos futuros americanos. |
+| **BITFUT** | **Momentum/tendência com volume** (continuação após compressão/rompimento). | Forçar operação em lateral curta com volatilidade errática. |
+| **PETR4/VALE3/ITUB4** | **Suporte/Resistência + Pullback** em zonas claras, com leitura do contexto setorial. | Ignorar gap de abertura e notícia setorial/global correlata. |
+
+---
+
+## 5. Setups-Chave e Quando Usar
+
+### 5.1 Rompimento de 2 Falhas (Reversão)
+**Ideia:** o preço tenta romper um nível 2 vezes, falha nas duas e depois perde o fundo (ou rompe topo) de defesa.
+
+**Melhor uso:**
+- Em região de resistência/suporte importante.
+- Quando aparece exaustão (pavio, perda de força, volume de absorção).
+
+**Confirmação mínima:**
+- Quebra da estrutura de defesa após a segunda falha.
+- Fechamento do candle de confirmação fora da micro-estrutura.
+
+### 5.2 Retração de 50% (Zona de Valor)
+**Ideia:** após impulso forte, o preço corrige até metade do movimento para buscar continuidade.
+
+**Melhor uso:**
+- Em tendência já definida (não em lateral).
+- Com confluência de média (20/50), VWAP ou suporte/resistência.
+
+**Confirmação mínima:**
+- Candle de reação no 50% (martelo, engolfo, rejeição).
+- Entrada na superação/perda do candle gatilho.
+
+### 5.3 Outros Setups de Alta Probabilidade
+- **Rompimento + Reteste:** rompe nível, volta para testar e continua.
+- **Pullback na MME 20:** tendência clara com retorno controlado à média.
+- **Pivô 1-2-3:** mudança de estrutura com confirmação de continuidade.
+- **VWAP Reclaim/Reject:** recuperação ou rejeição da VWAP em contexto direcional.
+
+---
+
+## 6. Características que Você Precisa Observar Antes de Operar
+
+1. **Regime do mercado:** tendência ou lateralização?
+2. **Liquidez do horário:** está em janela boa ou em horário "morto"?
+3. **Distância do preço para média/VWAP:** está esticado ou em zona de valor?
+4. **Inclinação das médias:** 20 e 50 confirmam direção?
+5. **Estrutura válida:** houve rompimento real ou só violino?
+6. **Volume:** confirma movimento ou mostra absorção?
+7. **Contexto externo:** notícia, abertura EUA, correlação com ativo líder.
+
+### Regra de decisão rápida
+- **Confluência completa:** operar.
+- **Confluência parcial:** reduzir mão.
+- **Sem confluência:** não operar.

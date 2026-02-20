@@ -1,0 +1,107 @@
+{
+  Indicador: fev_TendenciaPivoTesteDeOuro
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Tendência por rompimento de estrutura com filtro MME 9/20.
+             Sinal dourado após confirmação sequencial do pivô.
+}
+
+input
+  PeriodoEstrutura(5);
+  CandlesConfirmacaoDourado(1);
+
+var
+  cCinza, cVerde, cVermelho, cDourado : Integer;
+  fMaxEstrutura, fMinEstrutura : float;
+  fMME9, fMME20 : float;
+  iPeriodoTeste, iCandlesConfirmacao : Integer;
+  bEstruturaAlta, bEstruturaBaixa : Boolean;
+  bFiltroMediaAlta, bFiltroMediaBaixa : Boolean;
+  bPivotAltaConfirmado, bPivotBaixaConfirmado : Boolean;
+  bDouradoCompra, bDouradoVenda : Boolean;
+
+begin
+  // Inicialização das Cores
+  cCinza    := RGB(105, 105, 105); // Correção / Estrutura
+  cVerde    := RGB(0, 255, 0);     // Rompimento de Alta
+  cVermelho := RGB(255, 0, 0);     // Rompimento de Baixa
+  cDourado  := RGB(255, 215, 0);   // Confirmação de pivô + candle a favor
+
+  iPeriodoTeste := PeriodoEstrutura;
+  iCandlesConfirmacao := CandlesConfirmacaoDourado;
+
+  if (iPeriodoTeste < 3) then
+    iPeriodoTeste := 3;
+
+  if (iCandlesConfirmacao < 1) then
+    iCandlesConfirmacao := 1;
+  if (iCandlesConfirmacao > 3) then
+    iCandlesConfirmacao := 3;
+
+  // Identifica a Máxima e Mínima da Estrutura anterior (excluindo o candle atual)
+  fMaxEstrutura := Highest(High[1], iPeriodoTeste);
+  fMinEstrutura := Lowest(Low[1], iPeriodoTeste);
+
+  // Médias para filtro intraday de tendência
+  fMME9 := MediaExp(9, Close);
+  fMME20 := MediaExp(20, Close);
+  // Habilitação obrigatória para operar pivô: alinhamento MME 9 e 20
+  bFiltroMediaAlta := (Close > fMME9) and (fMME9 > fMME20);
+  bFiltroMediaBaixa := (Close < fMME9) and (fMME9 < fMME20);
+
+  // Estrutura válida (Regra de Ouro):
+  // Alta -> fechamento acima da máxima dos últimos N candles
+  // Baixa -> fechamento abaixo da mínima dos últimos N candles
+  bEstruturaAlta := (Close > fMaxEstrutura);
+  bEstruturaBaixa := (Close < fMinEstrutura);
+
+  // Coloração Padrão: Cinza (Estamos dentro da estrutura ou correção)
+  PaintBar(cCinza);
+  // Modo mais simples:
+  // Pivot de alta = estrutura de alta + médias 9/20 alinhadas para alta
+  // Pivot de baixa = estrutura de baixa + médias 9/20 alinhadas para baixa
+  bPivotAltaConfirmado := bEstruturaAlta and bFiltroMediaAlta;
+  bPivotBaixaConfirmado := bEstruturaBaixa and bFiltroMediaBaixa;
+
+  // Candle de confirmação do pivô no candle atual
+  if bPivotAltaConfirmado then
+  begin
+    PaintBar(cVerde);
+  end;
+
+  if bPivotBaixaConfirmado then
+  begin
+    PaintBar(cVermelho);
+  end;
+
+  // Confirmação final do pivô por sequência pós-confirmação:
+  // Se CandlesConfirmacaoDourado = 1, exige 1 candle após o pivô fechando a favor.
+  // Se CandlesConfirmacaoDourado >= 2, exige 2 candles após o pivô fechando a favor.
+  if (iCandlesConfirmacao = 1) then
+  begin
+    bDouradoCompra := bPivotAltaConfirmado[1] and (Close > Open) and (Close > Close[1]);
+    bDouradoVenda := bPivotBaixaConfirmado[1] and (Close < Open) and (Close < Close[1]);
+  end
+  else if (iCandlesConfirmacao = 2) then
+  begin
+    bDouradoCompra := bPivotAltaConfirmado[2] and (Close[1] > Open[1]) and (Close[1] > Close[2]) and (Close > Open) and (Close > Close[1]);
+    bDouradoVenda := bPivotBaixaConfirmado[2] and (Close[1] < Open[1]) and (Close[1] < Close[2]) and (Close < Open) and (Close < Close[1]);
+  end
+  else
+  begin
+    bDouradoCompra := bPivotAltaConfirmado[3] and (Close[2] > Open[2]) and (Close[2] > Close[3]) and (Close[1] > Open[1]) and (Close[1] > Close[2]) and (Close > Open) and (Close > Close[1]);
+    bDouradoVenda := bPivotBaixaConfirmado[3] and (Close[2] < Open[2]) and (Close[2] < Close[3]) and (Close[1] < Open[1]) and (Close[1] < Close[2]) and (Close < Open) and (Close < Close[1]);
+  end;
+
+  if (bDouradoCompra or bDouradoVenda) then
+  begin
+    PaintBar(cDourado);
+  end;
+
+  // Nota: O "Sinal mais forte" é o rompimento. 
+  // Enquanto não rompe (Close dentro do range fMinEstrutura e fMaxEstrutura),
+  // o candle permanece Cinza, indicando acumulação.
+
+  // Garante que o primeiro candle seja visualmente Cinza (Neutro)
+  if (Date <> Date[1]) then
+    PaintBar(cCinza);
+end;

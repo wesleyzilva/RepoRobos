@@ -54,6 +54,27 @@ Operar a favor do fluxo institucional (VWAP), validado pela estrutura de preço 
 *   **Retorno:** Aguardar 15 minutos após a divulgação para a volatilidade baixar e o spread normalizar.
 *   **Principais Eventos:** Payroll (1ª Sexta do mês), CPI (Inflação EUA), FOMC (Juros EUA), PIB.
 
+#### Indicadores para não ficar posicionado (foco B3)
+
+Use este bloco como regra fixa para `WIN` e `WDO`:
+
+- **Janela padrão de proteção:** `-5 min / +15 min` do horário da divulgação.
+- **Janela ampliada (evento crítico):** `-10 min / +20 min`.
+
+| Indicador / Evento | Mercado | Horário típico (Brasília) | Janela recomendada sem posição |
+| :--- | :--- | :--- | :--- |
+| **IPCA / IPCA-15** | Brasil | 09:00 | -5 min até +15 min |
+| **IBC-Br / Produção Industrial / Varejo (IBGE)** | Brasil | 09:00 | -5 min até +15 min |
+| **Ata/Decisão Copom + coletiva** | Brasil | Fim de tarde/noite (varia) | -10 min até +20 min |
+| **Payroll (NFP)** | EUA | 09:30 | -10 min até +20 min |
+| **CPI / PPI (EUA)** | EUA | 09:30 | -10 min até +20 min |
+| **FOMC (taxa e comunicado)** | EUA | 15:00 | -10 min até +20 min |
+| **Coletiva do Fed (Powell)** | EUA | 15:30 | -10 min até +20 min |
+| **PIB EUA / ISM / Confiança Michigan (alto impacto)** | EUA | 09:30 ou 11:00 | -5 min até +15 min |
+
+**Regra de ouro:** se o calendário marcar alta relevância, priorize proteção. Primeiro sobreviver, depois performar.
+**Observação:** horários podem mudar por calendário oficial, horário de verão e evento extraordinário. Confirmar diariamente no calendário econômico antes da abertura.
+
 ---
 
 ## 4. Configuração de Tela (Layout Profit)
