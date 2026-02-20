@@ -10,8 +10,5 @@ Este arquivo foi modificado para testar:
 - Commit e push de alterações
 
 Status: Conexão validada com sucesso! ✓
-<<<<<<< HEAD
----
-=======
-...
->>>>>>> 138b43f69b2cc2e51d022cfa929f742ba1c680b0
+
+Apenas particular
