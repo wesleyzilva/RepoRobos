@@ -9,4 +9,4 @@ Este arquivo foi modificado para testar:
 - Criação de nova branch
 - Commit e push de alterações
 
-Status: Conexão validada com sucesso! ✓ 
+Status: Conexão validada com sucesso! ✓
