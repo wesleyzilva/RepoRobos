@@ -11,5 +11,9 @@ Este arquivo foi modificado para testar:
 
 Status: Conexão validada com sucesso! ✓
 
+<<<<<<< HEAD
 
 Apenas Remoto
+=======
+Apenas particular
+>>>>>>> 736bc5b7a3d77735b98565e56d940ecd3b0d2894
