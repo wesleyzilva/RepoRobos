@@ -19,9 +19,10 @@ var
   vMediaVol, fMME20, fDistanciaMME20Perc : float;
   fFatorVolumeEfetivo, fMultiplicadorPavioEfetivo, fMaxPavioOpostoEfetivo, fDistMaxMME20Efetiva : float;
   bVolumeAlto : boolean;
-  bMartelo, bEstrela : boolean;
+  bMartelo, bEstrela, bRejeicaoForteAlta, bRejeicaoForteBaixa : boolean;
+  fMaxAnterior, fMinAnterior : float;
   TamCorpo, TamPavioSup, TamPavioInf, Range : float;  
-  CorAbsorcaoFundo, CorAbsorcaoTopo, CorNeutra : integer;
+  CorAbsorcaoFundo, CorAbsorcaoTopo, CorNeutra, CorRejeicaoContexto : integer;
   bMesmoDia, bProximoMME20, bUsarFiltroProxEfetivo : boolean;
   iRegimeEfetivo : integer;
 
@@ -30,6 +31,7 @@ begin
   CorAbsorcaoFundo := RGB(0, 255, 0);   // Verde (Sentido de Alta)
   CorAbsorcaoTopo  := RGB(255, 0, 0);   // Vermelho (Sentido de Baixa)
   CorNeutra        := RGB(105, 105, 105); // Cinza Escuro
+  CorRejeicaoContexto := RGB(255, 140, 0); // Laranja (Rejeição forte por contexto)
 
   // --- 1.1 PRESET DE REGIME (PARTE PRINCIPAL) ---
   iRegimeEfetivo := RegimePreset;
@@ -98,6 +100,8 @@ begin
   TamCorpo := Abs(Open - Close);
   TamPavioSup := High - Max(Open, Close);
   TamPavioInf := Min(Open, Close) - Low;
+  fMaxAnterior := High[1];
+  fMinAnterior := Low[1];
   bMesmoDia := (Date = Date[1]);
 
   // Proteção contra divisão por zero
@@ -112,7 +116,29 @@ begin
       // Pavio superior dominante e pavio inferior controlado
       bEstrela := (TamPavioSup >= (TamCorpo * fMultiplicadorPavioEfetivo)) and (TamPavioInf <= (TamCorpo * fMaxPavioOpostoEfetivo));
 
+      // Rejeição forte por contexto (pinta laranja mesmo sem volume)
+      // Alta: varre mínima anterior e fecha recuperando com pavio inferior dominante
+      bRejeicaoForteAlta := (Low < fMinAnterior)
+                        and (Close > Open)
+                        and (Close >= (Low + (Range * 0.55)))
+                        and (TamPavioInf >= (TamCorpo * (fMultiplicadorPavioEfetivo + 0.3)));
+
+      // Baixa: varre máxima anterior e fecha rejeitando com pavio superior dominante
+      bRejeicaoForteBaixa := (High > fMaxAnterior)
+                          and (Close < Open)
+                          and (Close <= (High - (Range * 0.55)))
+                          and (TamPavioSup >= (TamCorpo * (fMultiplicadorPavioEfetivo + 0.3)));
+
       // --- 4. SINALIZAÇÃO ---
+
+      // 4.1 Contexto de rejeição forte (prioridade, independente de volume)
+      if (bRejeicaoForteAlta or bRejeicaoForteBaixa) then
+      begin
+        PaintBar(CorRejeicaoContexto);
+        PlotText("RJ", CorRejeicaoContexto, 8, 0, Close);
+      end
+      else
+      begin
       
       // Só sinaliza se tiver Volume Alto + Padrão de Reversão
       // e, opcionalmente, preço perto da MME20 para reduzir ruído de lateral
@@ -134,5 +160,6 @@ begin
               Alert(CorAbsorcaoTopo);
             end;
         end;
+            end;
     end;
 end;
