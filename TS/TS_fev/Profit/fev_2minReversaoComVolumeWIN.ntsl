@@ -120,14 +120,16 @@ begin
         begin
           if bMartelo then
             begin
-              PaintBar(CorAbsorcaoFundo);
+              PaintBar(CorAbsorcaoFundo);     // Pinta o candle atual
+              PaintBar(CorAbsorcaoFundo, 1);  // Pinta o candle anterior
               PlotText("ABS", CorAbsorcaoFundo, 8, 0, Low * 0.999);
               Alert(CorAbsorcaoFundo);
             end;
 
           if bEstrela then
             begin
-              PaintBar(CorAbsorcaoTopo);
+              PaintBar(CorAbsorcaoTopo);      // Pinta o candle atual
+              PaintBar(CorAbsorcaoTopo, 1);   // Pinta o candle anterior
               PlotText("ABS", CorAbsorcaoTopo, 8, 0, High * 1.001);
               Alert(CorAbsorcaoTopo);
             end;
