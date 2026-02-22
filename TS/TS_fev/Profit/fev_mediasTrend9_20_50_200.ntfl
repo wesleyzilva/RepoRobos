@@ -1,0 +1,155 @@
+{
+  Indicador: fev_mediasTrend9_20_50_200
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Cria uma "Trend Cloud" (Nuvem de Tendência) para gráfico de linha, baseada no alinhamento das médias 9, 20, 50 e 200.
+}
+
+input
+  // Períodos das Médias
+  PeriodoMME9(9);
+  PeriodoMME20(20);
+  PeriodoMMA50(50);
+  PeriodoMMA200(200);
+
+  // Distâncias mínimas em PONTOS para ativar a zona neutra (preto)
+  DistMinCruzamento9_20(50.0);   // Distância para o par 9/20
+  DistMinCruzamento20_50(50.0);  // Distância para o par 20/50
+  DistMinCruzamento50_200(100.0); // Distância para o par 50/200
+
+  // Chaves para Ligar/Desligar as Regras de Coloração
+  bUsarZonaNeutra(true);      // Liga/Desliga a cor Preta (médias próximas)
+  bUsarSuperTendencia(true);  // Liga/Desliga as cores Ciano/Fucsia (todas alinhadas)
+  bUsarTendenciaNormal(true); // Liga/Desliga as cores Verde/Vermelho (cruzamento 9/20)
+
+  // Configurações para Backtest
+  bAtivarBacktest(true);      // Liga/Desliga o modo de backtest
+  fCapitalInicial(10000.0); // Capital inicial para o backtest
+
+var
+  // Cores
+  cCompra, cCompraForte, cVenda, cVendaForte, cNeutro, cLateral, cCorAtual, cFundo : Integer;
+
+  // Médias
+  fMME9, fMME20, fMMA50, fMMA200 : Float;
+
+  // Distâncias
+  fDist9_20, fDist20_50, fDist50_200 : Float;
+
+  // Variáveis para Backtest
+  fCapitalAtual, fPrecoEntrada : Float;
+  bPosicaoAberta : Boolean;
+  iDirecao : Integer; // 1 para compra, -1 para venda
+
+begin
+  // 1. Inicialização para Backtest
+  if bAtivarBacktest then
+  begin
+    fCapitalAtual := fCapitalInicial;
+    bPosicaoAberta := false;
+    fPrecoEntrada := 0.0;
+    iDirecao := 0;
+  end;
+
+  // 2. Definição de Cores
+  cCompra      := RGB(0, 255, 0);     // Verde
+  cCompraForte := RGB(0, 255, 255);   // Ciano
+  cVenda       := RGB(255, 0, 0);     // Vermelho
+  cVendaForte  := RGB(255, 0, 255);   // Fucsia
+  cNeutro      := RGB(0, 0, 0);       // Preto
+  cLateral     := RGB(128, 128, 128); // Cinza;
+
+  // 3. Cálculo das Médias
+  fMME9   := MediaExp(PeriodoMME9, Close);
+  fMME20  := MediaExp(PeriodoMME20, Close);
+  fMMA50  := Media(PeriodoMMA50, Close);
+  fMMA200 := Media(PeriodoMMA200, Close);
+
+  // 4. Cálculo das Distâncias em Pontos
+  fDist9_20   := Abs(fMME9 - fMME20);
+  fDist20_50  := Abs(fMME20 - fMMA50);
+  fDist50_200 := Abs(fMMA50 - fMMA200);
+
+  // 5. Lógica de Coloração (do mais restrito para o mais geral)
+
+  // Prioridade 1: Zona Neutra (médias muito próximas)
+  if bUsarZonaNeutra and ((fDist9_20 < DistMinCruzamento9_20) or
+     (fDist20_50 < DistMinCruzamento20_50) or
+     (fDist50_200 < DistMinCruzamento50_200)) then
+  begin
+    cCorAtual := cNeutro;
+  end;
+  // Prioridade 2: Super Tendência (todas as médias alinhadas)
+  if bUsarSuperTendencia and (fMME9 > fMME20) and (fMME20 > fMMA50) and (fMMA50 > fMMA200) then
+  begin
+    cCorAtual := cCompraForte; // Compra Forte (Ciano)
+  end;
+  if bUsarSuperTendencia and (fMME9 < fMME20) and (fMME20 < fMMA50) and (fMMA50 < fMMA200) then
+  begin
+    cCorAtual := cVendaForte; // Venda Forte (Fucsia)
+  end;
+  // Prioridade 3: Tendência Normal (baseada no cruzamento 9/20)
+  if bUsarTendenciaNormal and (fMME9 > fMME20) then
+  begin
+    cCorAtual := cCompra; // Compra (Verde)
+  end;
+  if bUsarTendenciaNormal and (fMME9 < fMME20) then
+  begin
+    cCorAtual := cVenda; // Venda (Vermelho)
+  end;
+  // Caso Padrão: Se não houver tendência clara
+  if not (bUsarZonaNeutra or bUsarSuperTendencia) then
+  begin
+    cCorAtual := cLateral;
+  end;
+
+  // 6. Definição da Cor de Fundo com Base na Tendência Atual
+  if cCorAtual = cCompra then
+    cFundo := RGB(200, 255, 200); // Fundo Verde Claro
+  else if cCorAtual = cCompraForte then
+    cFundo := RGB(200, 255, 255); // Fundo Ciano Claro
+  else if cCorAtual = cVenda then
+    cFundo := RGB(255, 200, 200); // Fundo Vermelho Claro
+  else if cCorAtual = cVendaForte then
+    cFundo := RGB(255, 200, 255); // Fundo Fucsia Claro
+  else if cCorAtual = cNeutro then
+    cFundo := RGB(200, 200, 200); // Fundo Cinza Claro
+  else
+    cFundo := RGB(240, 240, 240); // Fundo Padrão;
+
+  // 7. Lógica de Backtest
+  if bAtivarBacktest then
+  begin
+    if not bPosicaoAberta and ((cCorAtual = cCompra) or (cCorAtual = cCompraForte)) then
+    begin
+      // Abrir posição de compra
+      bPosicaoAberta := true;
+      fPrecoEntrada := Close;
+      iDirecao := 1;
+    end;
+    if not bPosicaoAberta and ((cCorAtual = cVenda) or (cCorAtual = cVendaForte)) then
+    begin
+      // Abrir posição de venda
+      bPosicaoAberta := true;
+      fPrecoEntrada := Close;
+      iDirecao := -1;
+    end;
+    if bPosicaoAberta and ((iDirecao = 1 and ((cCorAtual = cVenda) or (cCorAtual = cVendaForte))) or
+                            (iDirecao = -1 and ((cCorAtual = cCompra) or (cCorAtual = cCompraForte)))) then
+    begin
+      // Fechar posição
+      if iDirecao = 1 then
+        fCapitalAtual := fCapitalAtual + (Close - fPrecoEntrada);
+      else
+        fCapitalAtual := fCapitalAtual + (fPrecoEntrada - Close);
+
+      bPosicaoAberta := false;
+      fPrecoEntrada := 0.0;
+      iDirecao := 0;
+    end;
+  end;
+
+  // 8. Plotagem do Gráfico de Linha com a Cor Definida
+  Plot(Close);
+  SetPlotColor(1, cCorAtual);
+  SetPlotBackgroundColor(cFundo);
+end;
