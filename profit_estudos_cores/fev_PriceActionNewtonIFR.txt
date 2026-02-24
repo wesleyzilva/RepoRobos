@@ -10,6 +10,8 @@ input
   iModoVisualizacao(0); // 0: Força, 1: Massa, 2: Aceleração
   bVisualizarAltaIntensidade(true); // true: Alta Volatilidade/Força, false: Baixa (Consolidação)
   iPeriodoSuavizacao(3); // 1 = Sem suavização (Cru). 3 a 5 = Ideal para WINFUT (Filtra ruído)
+  AtivarCorteHorarioVisual(true);
+  HoraCorteVisual(150000); // Após 15:00, pintar preto
 
   // Módulo ATR
   UsarModuloATR(true);
@@ -80,7 +82,7 @@ input
 
 var
   // Cores
-  cVerde, cVermelho, cCiano, cFucsia, cMarrom, cCinza, cBranco, cLaranja : Integer;
+  cVerde, cVermelho, cCiano, cFucsia, cMarrom, cCinza, cBranco, cLaranja, cPreto : Integer;
   nR, nG, nB, j : Integer;
 
   // Variáveis de Price Action Newton
@@ -126,6 +128,7 @@ var
   // Contexto
   bATRRegimeOK : boolean;
   bPeriodoManha : boolean;
+  iHoraAtualHHMM, iHoraFimManhaHHMM, iHoraFimMioloHHMM, iHoraCorteVisualHHMM : Integer;
 
 begin
   // 1. Definição de Cores
@@ -137,16 +140,34 @@ begin
   cCinza    := RGB(169, 169, 169);
   cBranco   := RGB(255, 255, 255);
   cLaranja  := RGB(255, 140, 0);
+  cPreto    := RGB(0, 0, 0);
 
   // 2. Identificação do Período (Manhã ou Tarde)
-  bPeriodoManha := (Time < 120000);
+  // Normaliza horário para HHMM (funciona se Time vier em HHMM ou HHMMSS)
+  iHoraAtualHHMM := Time;
+  if iHoraAtualHHMM > 2400 then
+    iHoraAtualHHMM := Round(iHoraAtualHHMM / 100);
+
+  iHoraFimManhaHHMM := HoraFimManha;
+  if iHoraFimManhaHHMM > 2400 then
+    iHoraFimManhaHHMM := Round(iHoraFimManhaHHMM / 100);
+
+  iHoraFimMioloHHMM := HoraFimMiolo;
+  if iHoraFimMioloHHMM > 2400 then
+    iHoraFimMioloHHMM := Round(iHoraFimMioloHHMM / 100);
+
+  iHoraCorteVisualHHMM := HoraCorteVisual;
+  if iHoraCorteVisualHHMM > 2400 then
+    iHoraCorteVisualHHMM := Round(iHoraCorteVisualHHMM / 100);
+
+  bPeriodoManha := (iHoraAtualHHMM < 1200);
 
   // 2.1 Fator dinâmico de volume por horário (curva intraday B3)
   if not UsarFatorVolumePorHorario then
     fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicao
-  else if Time <= HoraFimManha then
+  else if iHoraAtualHHMM <= iHoraFimManhaHHMM then
     fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoManha
-  else if Time <= HoraFimMiolo then
+  else if iHoraAtualHHMM <= iHoraFimMioloHHMM then
     fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoMiolo
   else
     fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoFechamento;
@@ -513,5 +534,9 @@ begin
     else
       PaintBar(cCinza);
   end;
+
+  // 8. Corte visual por horário (prioridade máxima)
+  if AtivarCorteHorarioVisual and (iHoraAtualHHMM >= iHoraCorteVisualHHMM) then
+    PaintBar(cPreto);
 
 end;

@@ -1,5 +1,7 @@
 input
   AtivarAnalisePrimeiroCandle(true);
+  AtivarCorteHorarioVisual(true);
+  HoraCorteVisual(150000); // Após 15:00, pintar preto
   AtivarRejeicaoRobustaGeral(true);
   ConfirmarRejeicaoNoCandleSeguinte(true);
   FatorVolumePrimeiroCandle(1.5);
@@ -19,7 +21,7 @@ input
 
 var
   // Cores
-  cVerde, cVermelho, cLaranja, cBranco, cCinza : Integer;
+  cVerde, cVermelho, cLaranja, cBranco, cCinza, cPreto : Integer;
   
   // Variáveis de Anatomia
   fCorpo, fPavioSup, fPavioInf, fRange : float;
@@ -56,6 +58,7 @@ begin
   cLaranja    := RGB(255, 140, 0);   // Inside Bar
   cBranco     := RGB(255, 255, 255); // Doji
   cCinza      := RGB(105, 105, 105); // Neutro
+  cPreto      := RGB(0, 0, 0);       // Bloqueio após horário de corte
 
   // 2. Cálculos do Contexto (Candle Anterior)
   bAntAlta  := Close[1] > Open[1];
@@ -266,5 +269,9 @@ begin
     else
       PaintBar(cCinza);
   end;
+
+  // Corte visual por horário (prioridade máxima)
+  if AtivarCorteHorarioVisual and (Time > HoraCorteVisual) then
+    PaintBar(cPreto);
 
 end;
