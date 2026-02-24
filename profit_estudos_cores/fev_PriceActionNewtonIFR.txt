@@ -1,0 +1,411 @@
+{
+  Indicador: fev_PriceActionNewtonIFR
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Versão do Price Action Newton com filtro de IFR para reduzir falso sinal.
+             Mantém lógica de Força/Massa/Aceleração e adiciona veto por momentum (IFR).
+}
+
+input
+  // Configuração de Visualização
+  iModoVisualizacao(0); // 0: Força, 1: Massa, 2: Aceleração
+  bVisualizarAltaIntensidade(true); // true: Alta Volatilidade/Força, false: Baixa (Consolidação)
+  iPeriodoSuavizacao(3); // 1 = Sem suavização (Cru). 3 a 5 = Ideal para WINFUT (Filtra ruído)
+
+  // Módulo ATR
+  UsarModuloATR(true);
+  NormalizarForcaPorATR(true);
+  PeriodoATR(14);
+  PeriodoMediaATR(50);
+  FatorMinATR(0.90);
+  FatorMaxATR(2.50);
+
+  // Módulo IFR (novo)
+  UsarFiltroIFR(true);
+  PeriodoIFR(14);
+  IFRMinCompra(52);   // Acima disto, compra ganha permissão
+  IFRMaxVenda(48);    // Abaixo disto, venda ganha permissão
+  UsarVetoExtremosIFR(true);
+  IFRSobrecompra(75); // Evita compra esticada
+  IFRSobrevenda(25);  // Evita venda esticada
+
+  // Zonas de atenção para sinais de rejeição (novo)
+  IFRZonaRejeicaoTopoMin(70);
+  IFRZonaRejeicaoTopoMax(80);
+  IFRZonaRejeicaoFundoMin(20);
+  IFRZonaRejeicaoFundoMax(30);
+
+  // Primeiro candle
+  AtivarAnalisePrimeiroCandle(true);
+  pFatorVolumePrimeiroCandle(1.5);
+  pCorpoMinPrimeiroCandle(0.60);
+
+  // Parâmetros configuráveis na tela
+  pFatorVelocidadeAltaManha(2.5);
+  pFatorVelocidadeBaixaManha(0.4);
+  pFatorForcaAltaManha(2.5);
+  pFatorForcaBaixaManha(0.4);
+  pFatorMassaAltaManha(2.0);
+  pFatorMassaBaixaManha(0.7);
+  pFatorConsolidacaoManha(0.4);
+
+  pFatorVelocidadeAltaTarde(1.8);
+  pFatorVelocidadeBaixaTarde(0.6);
+  pFatorForcaAltaTarde(1.8);
+  pFatorForcaBaixaTarde(0.6);
+  pFatorMassaAltaTarde(1.5);
+  pFatorMassaBaixaTarde(0.8);
+  pFatorConsolidacaoTarde(0.6);
+
+var
+  // Cores
+  cVerde, cVermelho, cCiano, cFucsia, cMarrom, cCinza, cBranco, cLaranja : Integer;
+  nR, nG, nB, j : Integer;
+
+  // Variáveis de Price Action Newton
+  fVelocidade, fAceleracao, fMassa, fForca, fMaxForca, fIntensidade : float;
+  fForcaBase, fATRAtual, fATRMedio : float;
+  fVelocidadeAnt, fAceleracaoAnt, fMassaAnt, fForcaAnt : float;
+  fPrecoBase, fPrecoBaseAnt, fPrecoBaseAnt2, fPrecoBaseAnt3 : float;
+
+  // Variáveis IFR
+  fIFR : float;
+  bIFRCompraOK, bIFRVendaOK : boolean;
+  bIFRZonaRejeicaoTopoGlobal, bIFRZonaRejeicaoFundoGlobal : boolean;
+
+  // Price Action nas zonas IFR
+  fRangeAtual, fCorpoAtual, fPavioSupAtual, fPavioInfAtual, fMediaVolumePA : float;
+  bAltaAtual, bBaixaAtual, bDojiForteZona : boolean;
+  bPinBarTopoZona, bPinBarFundoZona : boolean;
+  bEngolfoBaixaZona, bEngolfoAltaZona : boolean;
+  bInsideBarZona, bRejectionSpikeTopoZona, bRejectionSpikeFundoZona : boolean;
+  bReversaoBaixaZona, bReversaoAltaZona : boolean;
+
+  // Primeiro candle
+  fRangePrimeiro, fCorpoPrimeiro, fPavioSupPrimeiro, fPavioInfPrimeiro, fMediaVolumePrimeiro : float;
+  bPrimeiroCandleDia, bPrimeiroAlta, bPrimeiroBaixa, bDojiPrimeiro, bAbsorcaoPrimeiro : boolean;
+  bRejeicaoTopoPrimeiro, bRejeicaoFundoPrimeiro, bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
+  bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
+  bIFRZonaRejeicaoTopo, bIFRZonaRejeicaoFundo : boolean;
+
+  // Contexto
+  bATRRegimeOK : boolean;
+  bPeriodoManha : boolean;
+
+begin
+  // 1. Definição de Cores
+  cVerde    := RGB(0, 255, 0);
+  cVermelho := RGB(255, 0, 0);
+  cCiano    := RGB(0, 255, 255);
+  cFucsia   := RGB(255, 0, 255);
+  cMarrom   := RGB(139, 69, 19);
+  cCinza    := RGB(169, 169, 169);
+  cBranco   := RGB(255, 255, 255);
+  cLaranja  := RGB(255, 140, 0);
+
+  // 2. Identificação do Período (Manhã ou Tarde)
+  bPeriodoManha := (Time < 120000);
+
+  // 3. Cálculos Físicos (Newton)
+  if iPeriodoSuavizacao > 1 then
+    fPrecoBase := MediaExp(iPeriodoSuavizacao, Close)
+  else
+    fPrecoBase := Close;
+
+  fPrecoBaseAnt := fPrecoBase[1];
+  fPrecoBaseAnt2 := fPrecoBase[2];
+  fPrecoBaseAnt3 := fPrecoBase[3];
+
+  fVelocidade := fPrecoBase - fPrecoBaseAnt;
+  fVelocidadeAnt := fPrecoBaseAnt - fPrecoBaseAnt2;
+
+  fAceleracao := fVelocidade - fVelocidadeAnt;
+  fAceleracaoAnt := fVelocidadeAnt - (fPrecoBaseAnt2 - fPrecoBaseAnt3);
+
+  fMassa := Volume;
+  fMassaAnt := Volume[1];
+
+  fForca := fMassa * fAceleracao;
+  fForcaAnt := fMassaAnt * fAceleracaoAnt;
+
+  // 4. Módulo ATR
+  fATRAtual := Media(PeriodoATR, Range);
+  fATRMedio := Media(PeriodoMediaATR, fATRAtual);
+  if fATRMedio <= 0 then
+    fATRMedio := 0.01;
+
+  bATRRegimeOK := (not UsarModuloATR)
+               or ((fATRAtual >= (fATRMedio * FatorMinATR)) and (fATRAtual <= (fATRMedio * FatorMaxATR)));
+
+  fForcaBase := fForca;
+  if NormalizarForcaPorATR then
+  begin
+    if fATRAtual > 0 then
+      fForcaBase := fForca / fATRAtual
+    else
+      fForcaBase := fForca;
+  end;
+
+  // 5. Módulo IFR (veto de direção)
+  fIFR := IFR(PeriodoIFR);
+
+  bIFRCompraOK := (not UsarFiltroIFR)
+               or ((fIFR >= IFRMinCompra)
+               and ((not UsarVetoExtremosIFR) or (fIFR <= IFRSobrecompra)));
+
+  bIFRVendaOK := (not UsarFiltroIFR)
+              or ((fIFR <= IFRMaxVenda)
+              and ((not UsarVetoExtremosIFR) or (fIFR >= IFRSobrevenda)));
+
+  bIFRZonaRejeicaoTopoGlobal := (fIFR >= IFRZonaRejeicaoTopoMin) and (fIFR <= IFRZonaRejeicaoTopoMax);
+  bIFRZonaRejeicaoFundoGlobal := (fIFR >= IFRZonaRejeicaoFundoMin) and (fIFR <= IFRZonaRejeicaoFundoMax);
+
+  // 6. Lógica de Coloração Dinâmica
+  PaintBar(cCinza);
+
+  // Modo 0: FORÇA (F = M * A)
+  if iModoVisualizacao = 0 then
+  begin
+    if not bATRRegimeOK then
+      PaintBar(cCinza)
+    else
+    begin
+      fMaxForca := 0.0001;
+      for j := 0 to 20 do
+      begin
+        if Abs(fForcaBase[j]) > fMaxForca then fMaxForca := Abs(fForcaBase[j]);
+      end;
+
+      fIntensidade := Abs(fForcaBase) / fMaxForca;
+      if fIntensidade > 1.0 then fIntensidade := 1.0;
+
+      if (fForcaBase > 0) and bIFRCompraOK then
+      begin
+        nR := 255 - Round(255 * fIntensidade);
+        nG := 255;
+        nB := 255 - Round(255 * fIntensidade);
+        PaintBar(RGB(nR, nG, nB));
+      end
+      else if (fForcaBase < 0) and bIFRVendaOK then
+      begin
+        nR := 255;
+        nG := 255 - Round(255 * fIntensidade);
+        nB := 255 - Round(255 * fIntensidade);
+        PaintBar(RGB(nR, nG, nB));
+      end
+      else if fForcaBase = 0 then
+        PaintBar(cBranco)
+      else
+        PaintBar(cCinza);
+    end;
+  end
+
+  // Modo 1: MASSA (Volume)
+  else if iModoVisualizacao = 1 then
+  begin
+    if not bATRRegimeOK then
+      PaintBar(cCinza)
+    else if bVisualizarAltaIntensidade then
+    begin
+      if ((bPeriodoManha) and (fMassa > fMassaAnt * pFatorMassaAltaManha)) or
+         ((not bPeriodoManha) and (fMassa > fMassaAnt * pFatorMassaAltaTarde)) then
+      begin
+        if (Close >= Open) and bIFRCompraOK then
+          PaintBar(cCiano)
+        else if (Close < Open) and bIFRVendaOK then
+          PaintBar(cFucsia)
+        else
+          PaintBar(cCinza);
+      end;
+    end
+    else
+    begin
+      if ((bPeriodoManha) and (fMassa < fMassaAnt * pFatorMassaBaixaManha)) or
+         ((not bPeriodoManha) and (fMassa < fMassaAnt * pFatorMassaBaixaTarde)) then
+        PaintBar(cCinza);
+    end;
+  end
+
+  // Modo 2: ACELERAÇÃO
+  else if iModoVisualizacao = 2 then
+  begin
+    if not bATRRegimeOK then
+      PaintBar(cCinza)
+    else if bVisualizarAltaIntensidade then
+    begin
+      if ((bPeriodoManha) and (Abs(fAceleracao) > Abs(fAceleracaoAnt) * pFatorVelocidadeAltaManha)) or
+         ((not bPeriodoManha) and (Abs(fAceleracao) > Abs(fAceleracaoAnt) * pFatorVelocidadeAltaTarde)) then
+      begin
+        if (fAceleracao > 0) and bIFRCompraOK then
+          PaintBar(cCiano)
+        else if (fAceleracao < 0) and bIFRVendaOK then
+          PaintBar(cFucsia)
+        else
+          PaintBar(cCinza);
+      end;
+    end
+    else
+    begin
+      if ((bPeriodoManha) and (Abs(fAceleracao) < Abs(fAceleracaoAnt) * pFatorVelocidadeBaixaManha)) or
+         ((not bPeriodoManha) and (Abs(fAceleracao) < Abs(fAceleracaoAnt) * pFatorVelocidadeBaixaTarde)) then
+        PaintBar(cCinza);
+    end;
+  end;
+
+  // 6.1 Override: Price Action nas zonas IFR de rejeição (qualquer candle)
+  if bIFRZonaRejeicaoTopoGlobal or bIFRZonaRejeicaoFundoGlobal then
+  begin
+    fRangeAtual := High - Low;
+    if fRangeAtual <= 0 then
+      fRangeAtual := 0.01;
+
+    fCorpoAtual := Abs(Close - Open);
+    fMediaVolumePA := Media(20, Volume);
+    if fMediaVolumePA <= 0 then
+      fMediaVolumePA := 1;
+
+    if Close >= Open then
+    begin
+      fPavioSupAtual := High - Close;
+      fPavioInfAtual := Open - Low;
+      bAltaAtual := True;
+      bBaixaAtual := False;
+    end
+    else
+    begin
+      fPavioSupAtual := High - Open;
+      fPavioInfAtual := Close - Low;
+      bAltaAtual := False;
+      bBaixaAtual := True;
+    end;
+
+    bPinBarTopoZona := bIFRZonaRejeicaoTopoGlobal
+                    and (fPavioSupAtual > (fCorpoAtual * 2.0))
+                    and (Close <= (Low + (fRangeAtual * 0.35)));
+
+    bPinBarFundoZona := bIFRZonaRejeicaoFundoGlobal
+                     and (fPavioInfAtual > (fCorpoAtual * 2.0))
+                     and (Close >= (High - (fRangeAtual * 0.35)));
+
+    bEngolfoBaixaZona := bIFRZonaRejeicaoTopoGlobal
+                      and bBaixaAtual
+                      and (Close[1] > Open[1])
+                      and (Open >= Close[1])
+                      and (Close <= Open[1]);
+
+    bEngolfoAltaZona := bIFRZonaRejeicaoFundoGlobal
+                     and bAltaAtual
+                     and (Close[1] < Open[1])
+                     and (Open <= Close[1])
+                     and (Close >= Open[1]);
+
+    bInsideBarZona := (bIFRZonaRejeicaoTopoGlobal or bIFRZonaRejeicaoFundoGlobal)
+                   and (High < High[1])
+                   and (Low > Low[1]);
+
+    bRejectionSpikeTopoZona := bIFRZonaRejeicaoTopoGlobal
+                            and (fPavioSupAtual > (fRangeAtual * 0.60))
+                            and (fCorpoAtual < (fRangeAtual * 0.25));
+
+    bRejectionSpikeFundoZona := bIFRZonaRejeicaoFundoGlobal
+                             and (fPavioInfAtual > (fRangeAtual * 0.60))
+                             and (fCorpoAtual < (fRangeAtual * 0.25));
+
+    bReversaoBaixaZona := bIFRZonaRejeicaoTopoGlobal
+                       and bBaixaAtual
+                       and (High >= High[1])
+                       and (Close < ((Open[1] + Close[1]) * 0.5));
+
+    bReversaoAltaZona := bIFRZonaRejeicaoFundoGlobal
+                      and bAltaAtual
+                      and (Low <= Low[1])
+                      and (Close > ((Open[1] + Close[1]) * 0.5));
+
+    bDojiForteZona := (bIFRZonaRejeicaoTopoGlobal or bIFRZonaRejeicaoFundoGlobal)
+                   and (fCorpoAtual <= (fRangeAtual * 0.10))
+                   and (Volume >= (fMediaVolumePA * 1.20));
+
+    if bEngolfoBaixaZona or bPinBarTopoZona or bRejectionSpikeTopoZona or bReversaoBaixaZona then
+      PaintBar(cLaranja)
+    else if bEngolfoAltaZona or bPinBarFundoZona or bRejectionSpikeFundoZona or bReversaoAltaZona then
+      PaintBar(cLaranja)
+    else if bInsideBarZona then
+      PaintBar(cLaranja)
+    else if bDojiForteZona then
+      PaintBar(cLaranja);
+  end;
+
+  // 7. Override opcional: análise específica do primeiro candle
+  bPrimeiroCandleDia := (Date <> Date[1]);
+  if bPrimeiroCandleDia and AtivarAnalisePrimeiroCandle then
+  begin
+    fRangePrimeiro := High - Low;
+    if fRangePrimeiro <= 0 then
+      fRangePrimeiro := 0.01;
+
+    fCorpoPrimeiro := Abs(Close - Open);
+    fMediaVolumePrimeiro := Media(20, Volume);
+    if fMediaVolumePrimeiro <= 0 then
+      fMediaVolumePrimeiro := 1;
+
+    bPrimeiroAlta := (Close > Open);
+    bPrimeiroBaixa := (Close < Open);
+    bDojiPrimeiro := (fCorpoPrimeiro <= (fRangePrimeiro * 0.10));
+
+    if (Close >= Open) then
+    begin
+      fPavioSupPrimeiro := High - Close;
+      fPavioInfPrimeiro := Open - Low;
+    end
+    else
+    begin
+      fPavioSupPrimeiro := High - Open;
+      fPavioInfPrimeiro := Close - Low;
+    end;
+
+    bIFRZonaRejeicaoTopo := (fIFR >= IFRZonaRejeicaoTopoMin) and (fIFR <= IFRZonaRejeicaoTopoMax);
+    bIFRZonaRejeicaoFundo := (fIFR >= IFRZonaRejeicaoFundoMin) and (fIFR <= IFRZonaRejeicaoFundoMax);
+
+    bRejeicaoTopoPrimeiro := (fPavioSupPrimeiro > (fCorpoPrimeiro * 1.8))
+                         and (fPavioSupPrimeiro > (fRangePrimeiro * 0.45))
+                         and (Close <= (Low + (fRangePrimeiro * 0.35)))
+               and (Volume >= (fMediaVolumePrimeiro * 1.10))
+               and bIFRZonaRejeicaoTopo;
+
+    bRejeicaoFundoPrimeiro := (fPavioInfPrimeiro > (fCorpoPrimeiro * 1.8))
+                          and (fPavioInfPrimeiro > (fRangePrimeiro * 0.45))
+                          and (Close >= (High - (fRangePrimeiro * 0.35)))
+                and (Volume >= (fMediaVolumePrimeiro * 1.10))
+                and bIFRZonaRejeicaoFundo;
+
+    bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle)) and (fCorpoPrimeiro <= (fRangePrimeiro * 0.35));
+    bIniciativaAltaPrimeiro := bPrimeiroAlta and (fCorpoPrimeiro >= (fRangePrimeiro * pCorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle));
+    bIniciativaBaixaPrimeiro := bPrimeiroBaixa and (fCorpoPrimeiro >= (fRangePrimeiro * pCorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle));
+
+    bGapAltaPrimeiro := (Open > Close[1]);
+    bGapBaixaPrimeiro := (Open < Close[1]);
+    bArmadilhaPrimeiro := (bGapAltaPrimeiro and bPrimeiroBaixa and bRejeicaoTopoPrimeiro)
+                      or (bGapBaixaPrimeiro and bPrimeiroAlta and bRejeicaoFundoPrimeiro);
+
+    if bArmadilhaPrimeiro then
+      PaintBar(cMarrom)
+    else if bRejeicaoTopoPrimeiro and bIFRVendaOK then
+      PaintBar(cLaranja)
+    else if bRejeicaoFundoPrimeiro and bIFRCompraOK then
+      PaintBar(cLaranja)
+    else if bIniciativaAltaPrimeiro and bIFRCompraOK then
+      PaintBar(cCiano)
+    else if bIniciativaBaixaPrimeiro and bIFRVendaOK then
+      PaintBar(cFucsia)
+    else if bDojiPrimeiro and (bIFRZonaRejeicaoTopo or bIFRZonaRejeicaoFundo) then
+      PaintBar(cLaranja)
+    else if bAbsorcaoPrimeiro or bDojiPrimeiro then
+      PaintBar(cBranco)
+    else if bPrimeiroAlta and bIFRCompraOK then
+      PaintBar(cVerde)
+    else if bPrimeiroBaixa and bIFRVendaOK then
+      PaintBar(cVermelho)
+    else
+      PaintBar(cCinza);
+  end;
+
+end;

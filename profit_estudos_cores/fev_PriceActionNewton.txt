@@ -231,8 +231,14 @@ begin
       fPavioInfPrimeiro := Close - Low;
     end;
 
-    bRejeicaoTopoPrimeiro := (fPavioSupPrimeiro > (fCorpoPrimeiro * 1.8)) and (fPavioSupPrimeiro > fPavioInfPrimeiro);
-    bRejeicaoFundoPrimeiro := (fPavioInfPrimeiro > (fCorpoPrimeiro * 1.8)) and (fPavioInfPrimeiro > fPavioSupPrimeiro);
+    bRejeicaoTopoPrimeiro := (fPavioSupPrimeiro > (fCorpoPrimeiro * 1.8))
+               and (fPavioSupPrimeiro > (fRangePrimeiro * 0.45))
+               and (Close <= (Low + (fRangePrimeiro * 0.35)))
+               and (Volume >= (fMediaVolumePrimeiro * 1.10));
+    bRejeicaoFundoPrimeiro := (fPavioInfPrimeiro > (fCorpoPrimeiro * 1.8))
+                and (fPavioInfPrimeiro > (fRangePrimeiro * 0.45))
+                and (Close >= (High - (fRangePrimeiro * 0.35)))
+                and (Volume >= (fMediaVolumePrimeiro * 1.10));
     bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle)) and (fCorpoPrimeiro <= (fRangePrimeiro * 0.35));
     bIniciativaAltaPrimeiro := bPrimeiroAlta and (fCorpoPrimeiro >= (fRangePrimeiro * pCorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle));
     bIniciativaBaixaPrimeiro := bPrimeiroBaixa and (fCorpoPrimeiro >= (fRangePrimeiro * pCorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle));

@@ -11,7 +11,7 @@ var
   faseMercado : string;
   corFundo : integer;
   limiarFlat : float;
-
+ 
 begin
   // --- 1. CÁLCULOS ---
   mme20  := MediaExp(20, Close);

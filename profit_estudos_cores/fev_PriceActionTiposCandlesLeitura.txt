@@ -2,6 +2,12 @@ input
   AtivarAnalisePrimeiroCandle(true);
   FatorVolumePrimeiroCandle(1.5);
   CorpoMinPrimeiroCandle(0.60);
+  PeriodoATRRejeicao(14);
+  FatorRangeMinATRRejeicao(0.80);
+  FatorPavioRejeicao(2.2);
+  FracaoFechamentoRejeicao(0.35);
+  FatorVolumeMinRejeicao(1.20);
+  PeriodoExtremoRejeicao(20);
 
 var
   // Cores
@@ -25,8 +31,10 @@ var
   bPrimeiroCandle, bAbsorcaoPrimeiro : boolean;
   bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
   bRejeicaoTopoPrimeiro, bRejeicaoFundoPrimeiro : boolean;
+  bExtremoTopoPrimeiro, bExtremoFundoPrimeiro : boolean;
   bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
-  fMediaVolumePrimeiro : float;
+  fMediaVolumePrimeiro, fATRRejeicao : float;
+  fTopoExtremoRef, fFundoExtremoRef, fCloseAnteriorRef : float;
 
 begin
   // 1. Definição de Cores
@@ -106,6 +114,11 @@ begin
   bSinalCompraContextual := bEngolfoAltaValido or bMarteloConfirmado;
   bSinalVendaContextual := bEngolfoBaixaValido or bEstrelaConfirmada;
 
+  // Referências de extremos calculadas fora de escopos condicionais
+  fTopoExtremoRef := Highest(High, PeriodoExtremoRejeicao)[1];
+  fFundoExtremoRef := Lowest(Low, PeriodoExtremoRejeicao)[1];
+  fCloseAnteriorRef := Close[1];
+
   // 4. Lógica de Coloração (Hierarquia de Prioridade)
   
   // Default
@@ -133,14 +146,32 @@ begin
       if fMediaVolumePrimeiro <= 0 then
         fMediaVolumePrimeiro := 1;
 
-      bRejeicaoTopoPrimeiro := (fPavioSup > (fCorpo * 1.8)) and (fPavioSup > fPavioInf);
-      bRejeicaoFundoPrimeiro := (fPavioInf > (fCorpo * 1.8)) and (fPavioInf > fPavioSup);
+      fATRRejeicao := Media(PeriodoATRRejeicao, Range);
+      if fATRRejeicao <= 0 then
+        fATRRejeicao := 0.01;
+
+      bExtremoTopoPrimeiro := (High >= fTopoExtremoRef);
+      bExtremoFundoPrimeiro := (Low <= fFundoExtremoRef);
+
+      bRejeicaoTopoPrimeiro := (fPavioSup > (fCorpo * FatorPavioRejeicao))
+                           and (fPavioSup > fPavioInf)
+                           and (Close <= (Low + (fRange * FracaoFechamentoRejeicao)))
+                           and (fRange >= (fATRRejeicao * FatorRangeMinATRRejeicao))
+                           and (Volume >= (fMediaVolumePrimeiro * FatorVolumeMinRejeicao))
+                           and bExtremoTopoPrimeiro;
+
+      bRejeicaoFundoPrimeiro := (fPavioInf > (fCorpo * FatorPavioRejeicao))
+                            and (fPavioInf > fPavioSup)
+                            and (Close >= (High - (fRange * FracaoFechamentoRejeicao)))
+                            and (fRange >= (fATRRejeicao * FatorRangeMinATRRejeicao))
+                            and (Volume >= (fMediaVolumePrimeiro * FatorVolumeMinRejeicao))
+                            and bExtremoFundoPrimeiro;
       bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle)) and (fCorpo <= (fRange * 0.35));
       bIniciativaAltaPrimeiro := bAlta and (fCorpo >= (fRange * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));
       bIniciativaBaixaPrimeiro := bBaixa and (fCorpo >= (fRange * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));
 
-      bGapAltaPrimeiro := (Open > Close[1]);
-      bGapBaixaPrimeiro := (Open < Close[1]);
+      bGapAltaPrimeiro := (Open > fCloseAnteriorRef);
+      bGapBaixaPrimeiro := (Open < fCloseAnteriorRef);
       bArmadilhaPrimeiro := (bGapAltaPrimeiro and bBaixa and bRejeicaoTopoPrimeiro)
                         or (bGapBaixaPrimeiro and bAlta and bRejeicaoFundoPrimeiro);
 
