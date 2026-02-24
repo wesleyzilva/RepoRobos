@@ -1,5 +1,7 @@
 input
   AtivarAnalisePrimeiroCandle(true);
+  AtivarRejeicaoRobustaGeral(true);
+  ConfirmarRejeicaoNoCandleSeguinte(true);
   FatorVolumePrimeiroCandle(1.5);
   CorpoMinPrimeiroCandle(0.60);
   PeriodoATRRejeicao(14);
@@ -7,6 +9,12 @@ input
   FatorPavioRejeicao(2.2);
   FracaoFechamentoRejeicao(0.35);
   FatorVolumeMinRejeicao(1.20);
+  UsarFatorVolumePorHorario(true);
+  HoraFimManha(113000);
+  HoraFimMiolo(163000);
+  FatorVolumeMinRejeicaoManha(1.30);
+  FatorVolumeMinRejeicaoMiolo(1.00);
+  FatorVolumeMinRejeicaoFechamento(1.15);
   PeriodoExtremoRejeicao(20);
 
 var
@@ -28,13 +36,18 @@ var
   bInsideBarValido, bDojiRealValido : boolean;
   bContextoAlta, bContextoBaixa : boolean;
   bSinalCompraContextual, bSinalVendaContextual : boolean;
+  bRejeicaoTopoAtual, bRejeicaoFundoAtual : boolean;
+  bRejeicaoTopoAtualPrev, bRejeicaoFundoAtualPrev : boolean;
+  bRejeicaoTopoConfirmada, bRejeicaoFundoConfirmada : boolean;
   bPrimeiroCandle, bAbsorcaoPrimeiro : boolean;
   bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
   bRejeicaoTopoPrimeiro, bRejeicaoFundoPrimeiro : boolean;
+  bExtremoTopoAtual, bExtremoFundoAtual : boolean;
   bExtremoTopoPrimeiro, bExtremoFundoPrimeiro : boolean;
   bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
-  fMediaVolumePrimeiro, fATRRejeicao : float;
-  fTopoExtremoRef, fFundoExtremoRef, fCloseAnteriorRef : float;
+  fMediaVolumePrimeiro, fATRRejeicao, fMediaVolumeAtual, fATRRejeicaoAtual : float;
+  fTopoExtremoRef, fFundoExtremoRef, fCloseAnteriorRef, fHighAnteriorRef, fLowAnteriorRef : float;
+  fFatorVolumeMinRejeicaoDinamico : float;
 
 begin
   // 1. Definição de Cores
@@ -54,6 +67,16 @@ begin
   fAnt2Max  := High[2];
   fAnt2Min  := Low[2];
   bPrimeiroCandle := (Date <> Date[1]);
+
+  // Fator dinâmico de volume por horário (curva intraday B3)
+  if not UsarFatorVolumePorHorario then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicao
+  else if Time <= HoraFimManha then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoManha
+  else if Time <= HoraFimMiolo then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoMiolo
+  else
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoFechamento;
 
   // 3. Cálculos do Candle Atual
   fRange := Range;
@@ -118,6 +141,48 @@ begin
   fTopoExtremoRef := Highest(High, PeriodoExtremoRejeicao)[1];
   fFundoExtremoRef := Lowest(Low, PeriodoExtremoRejeicao)[1];
   fCloseAnteriorRef := Close[1];
+  fHighAnteriorRef := High[1];
+  fLowAnteriorRef := Low[1];
+
+  // Rejeição robusta para qualquer candle
+  fMediaVolumeAtual := Media(20, Volume);
+  if fMediaVolumeAtual <= 0 then
+    fMediaVolumeAtual := 1;
+
+  fATRRejeicaoAtual := Media(PeriodoATRRejeicao, Range);
+  if fATRRejeicaoAtual <= 0 then
+    fATRRejeicaoAtual := 0.01;
+
+  bExtremoTopoAtual := (High >= fTopoExtremoRef);
+  bExtremoFundoAtual := (Low <= fFundoExtremoRef);
+
+  bRejeicaoTopoAtual := (fPavioSup > (fCorpo * FatorPavioRejeicao))
+                    and (fPavioSup > fPavioInf)
+                    and (Close <= (Low + (fRange * FracaoFechamentoRejeicao)))
+                    and (fRange >= (fATRRejeicaoAtual * FatorRangeMinATRRejeicao))
+                    and (Volume >= (fMediaVolumeAtual * fFatorVolumeMinRejeicaoDinamico))
+                    and bExtremoTopoAtual;
+
+  bRejeicaoFundoAtual := (fPavioInf > (fCorpo * FatorPavioRejeicao))
+                     and (fPavioInf > fPavioSup)
+                     and (Close >= (High - (fRange * FracaoFechamentoRejeicao)))
+                     and (fRange >= (fATRRejeicaoAtual * FatorRangeMinATRRejeicao))
+                     and (Volume >= (fMediaVolumeAtual * fFatorVolumeMinRejeicaoDinamico))
+                     and bExtremoFundoAtual;
+
+  bRejeicaoTopoAtualPrev := bRejeicaoTopoAtual[1];
+  bRejeicaoFundoAtualPrev := bRejeicaoFundoAtual[1];
+
+  if ConfirmarRejeicaoNoCandleSeguinte then
+  begin
+    bRejeicaoTopoConfirmada := bRejeicaoTopoAtualPrev and (Close < fLowAnteriorRef);
+    bRejeicaoFundoConfirmada := bRejeicaoFundoAtualPrev and (Close > fHighAnteriorRef);
+  end
+  else
+  begin
+    bRejeicaoTopoConfirmada := bRejeicaoTopoAtual;
+    bRejeicaoFundoConfirmada := bRejeicaoFundoAtual;
+  end;
 
   // 4. Lógica de Coloração (Hierarquia de Prioridade)
   
@@ -126,7 +191,11 @@ begin
 
   // --- NÍVEL 3: SINAL CONTEXTUALIZADO (PRIORIDADE MÁXIMA) ---
   // Sequência: contexto validado -> padrão validado -> cor
-  if bSinalCompraContextual then
+  if AtivarRejeicaoRobustaGeral and bRejeicaoTopoConfirmada then
+    PaintBar(cVermelho)
+  else if AtivarRejeicaoRobustaGeral and bRejeicaoFundoConfirmada then
+    PaintBar(cVerde)
+  else if bSinalCompraContextual then
     PaintBar(cVerde)
   else if bSinalVendaContextual then
     PaintBar(cVermelho)
@@ -157,14 +226,14 @@ begin
                            and (fPavioSup > fPavioInf)
                            and (Close <= (Low + (fRange * FracaoFechamentoRejeicao)))
                            and (fRange >= (fATRRejeicao * FatorRangeMinATRRejeicao))
-                           and (Volume >= (fMediaVolumePrimeiro * FatorVolumeMinRejeicao))
+                           and (Volume >= (fMediaVolumePrimeiro * fFatorVolumeMinRejeicaoDinamico))
                            and bExtremoTopoPrimeiro;
 
       bRejeicaoFundoPrimeiro := (fPavioInf > (fCorpo * FatorPavioRejeicao))
                             and (fPavioInf > fPavioSup)
                             and (Close >= (High - (fRange * FracaoFechamentoRejeicao)))
                             and (fRange >= (fATRRejeicao * FatorRangeMinATRRejeicao))
-                            and (Volume >= (fMediaVolumePrimeiro * FatorVolumeMinRejeicao))
+                            and (Volume >= (fMediaVolumePrimeiro * fFatorVolumeMinRejeicaoDinamico))
                             and bExtremoFundoPrimeiro;
       bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle)) and (fCorpo <= (fRange * 0.35));
       bIniciativaAltaPrimeiro := bAlta and (fCorpo >= (fRange * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));

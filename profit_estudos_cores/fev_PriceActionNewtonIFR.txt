@@ -34,6 +34,28 @@ input
   IFRZonaRejeicaoFundoMin(20);
   IFRZonaRejeicaoFundoMax(30);
 
+  // Rejeição robusta (score + confirmação)
+  UsarScoreRejeicao(true);
+  PontuacaoMinRejeicao(70);
+  PesoPavioRejeicao(30);
+  PesoFechamentoRejeicao(25);
+  PesoVolumeRejeicao(20);
+  PesoExtremoRejeicao(15);
+  PesoRangeATRRejeicao(10);
+  PesoCansacoRejeicao(10);
+  UsarFiltroCansacoRejeicao(true);
+  PeriodoATRRejeicao(14);
+  FatorRangeMinATRRejeicao(0.80);
+  FatorVolumeMinRejeicao(1.20);
+  UsarFatorVolumePorHorario(true);
+  HoraFimManha(113000);
+  HoraFimMiolo(163000);
+  FatorVolumeMinRejeicaoManha(1.30);
+  FatorVolumeMinRejeicaoMiolo(1.00);
+  FatorVolumeMinRejeicaoFechamento(1.15);
+  PeriodoExtremoRejeicao(20);
+  ConfirmarRejeicaoNoCandleSeguinte(true);
+
   // Primeiro candle
   AtivarAnalisePrimeiroCandle(true);
   pFatorVolumePrimeiroCandle(1.5);
@@ -79,6 +101,15 @@ var
   bEngolfoBaixaZona, bEngolfoAltaZona : boolean;
   bInsideBarZona, bRejectionSpikeTopoZona, bRejectionSpikeFundoZona : boolean;
   bReversaoBaixaZona, bReversaoAltaZona : boolean;
+  bCondPavioTopo, bCondPavioFundo : boolean;
+  bCondFechamentoTopo, bCondFechamentoFundo : boolean;
+  bCondVolumeRejeicao, bCondRangeATRRejeicao : boolean;
+  bCondExtremoTopo, bCondExtremoFundo : boolean;
+  bCondCansacoTopo, bCondCansacoFundo : boolean;
+  bRejeicaoTopoScoreRaw, bRejeicaoFundoScoreRaw : boolean;
+  bRejeicaoTopoScoreRawPrev, bRejeicaoFundoScoreRawPrev : boolean;
+  bRejeicaoTopoScoreFinal, bRejeicaoFundoScoreFinal : boolean;
+  iScoreRejeicaoTopo, iScoreRejeicaoFundo : Integer;
 
   // Primeiro candle
   fRangePrimeiro, fCorpoPrimeiro, fPavioSupPrimeiro, fPavioInfPrimeiro, fMediaVolumePrimeiro : float;
@@ -86,6 +117,11 @@ var
   bRejeicaoTopoPrimeiro, bRejeicaoFundoPrimeiro, bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
   bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
   bIFRZonaRejeicaoTopo, bIFRZonaRejeicaoFundo : boolean;
+  fATRRejeicaoZona, fMediaVolumeRejeicaoZona : float;
+  fTopoExtremoRefZona, fFundoExtremoRefZona, fCloseAnteriorRefZona : float;
+  fOpenAnteriorRefZona, fHighAnteriorRefZona, fLowAnteriorRefZona : float;
+  fForcaBaseAnteriorZona : float;
+  fFatorVolumeMinRejeicaoDinamico : float;
 
   // Contexto
   bATRRegimeOK : boolean;
@@ -104,6 +140,16 @@ begin
 
   // 2. Identificação do Período (Manhã ou Tarde)
   bPeriodoManha := (Time < 120000);
+
+  // 2.1 Fator dinâmico de volume por horário (curva intraday B3)
+  if not UsarFatorVolumePorHorario then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicao
+  else if Time <= HoraFimManha then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoManha
+  else if Time <= HoraFimMiolo then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoMiolo
+  else
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoFechamento;
 
   // 3. Cálculos Físicos (Newton)
   if iPeriodoSuavizacao > 1 then
@@ -158,6 +204,25 @@ begin
 
   bIFRZonaRejeicaoTopoGlobal := (fIFR >= IFRZonaRejeicaoTopoMin) and (fIFR <= IFRZonaRejeicaoTopoMax);
   bIFRZonaRejeicaoFundoGlobal := (fIFR >= IFRZonaRejeicaoFundoMin) and (fIFR <= IFRZonaRejeicaoFundoMax);
+
+  // Referências robustas fora de escopos condicionais
+  fATRRejeicaoZona := Media(PeriodoATRRejeicao, Range);
+  if fATRRejeicaoZona <= 0 then
+    fATRRejeicaoZona := 0.01;
+
+  fMediaVolumeRejeicaoZona := Media(20, Volume);
+  if fMediaVolumeRejeicaoZona <= 0 then
+    fMediaVolumeRejeicaoZona := 1;
+
+  fTopoExtremoRefZona := Highest(High, PeriodoExtremoRejeicao)[1];
+  fFundoExtremoRefZona := Lowest(Low, PeriodoExtremoRejeicao)[1];
+  fCloseAnteriorRefZona := Close[1];
+  fOpenAnteriorRefZona := Open[1];
+  fHighAnteriorRefZona := High[1];
+  fLowAnteriorRefZona := Low[1];
+  fForcaBaseAnteriorZona := fForcaBase[1];
+  bRejeicaoTopoScoreRawPrev := bRejeicaoTopoScoreRaw[1];
+  bRejeicaoFundoScoreRawPrev := bRejeicaoFundoScoreRaw[1];
 
   // 6. Lógica de Coloração Dinâmica
   PaintBar(cCinza);
@@ -259,9 +324,7 @@ begin
       fRangeAtual := 0.01;
 
     fCorpoAtual := Abs(Close - Open);
-    fMediaVolumePA := Media(20, Volume);
-    if fMediaVolumePA <= 0 then
-      fMediaVolumePA := 1;
+    fMediaVolumePA := fMediaVolumeRejeicaoZona;
 
     if Close >= Open then
     begin
@@ -288,19 +351,19 @@ begin
 
     bEngolfoBaixaZona := bIFRZonaRejeicaoTopoGlobal
                       and bBaixaAtual
-                      and (Close[1] > Open[1])
-                      and (Open >= Close[1])
-                      and (Close <= Open[1]);
+                      and (fCloseAnteriorRefZona > fOpenAnteriorRefZona)
+                      and (Open >= fCloseAnteriorRefZona)
+                      and (Close <= fOpenAnteriorRefZona);
 
     bEngolfoAltaZona := bIFRZonaRejeicaoFundoGlobal
                      and bAltaAtual
-                     and (Close[1] < Open[1])
-                     and (Open <= Close[1])
-                     and (Close >= Open[1]);
+                     and (fCloseAnteriorRefZona < fOpenAnteriorRefZona)
+                     and (Open <= fCloseAnteriorRefZona)
+                     and (Close >= fOpenAnteriorRefZona);
 
     bInsideBarZona := (bIFRZonaRejeicaoTopoGlobal or bIFRZonaRejeicaoFundoGlobal)
-                   and (High < High[1])
-                   and (Low > Low[1]);
+                   and (High < fHighAnteriorRefZona)
+                   and (Low > fLowAnteriorRefZona);
 
     bRejectionSpikeTopoZona := bIFRZonaRejeicaoTopoGlobal
                             and (fPavioSupAtual > (fRangeAtual * 0.60))
@@ -312,25 +375,68 @@ begin
 
     bReversaoBaixaZona := bIFRZonaRejeicaoTopoGlobal
                        and bBaixaAtual
-                       and (High >= High[1])
-                       and (Close < ((Open[1] + Close[1]) * 0.5));
+                       and (High >= fHighAnteriorRefZona)
+                       and (Close < ((fOpenAnteriorRefZona + fCloseAnteriorRefZona) * 0.5));
 
     bReversaoAltaZona := bIFRZonaRejeicaoFundoGlobal
                       and bAltaAtual
-                      and (Low <= Low[1])
-                      and (Close > ((Open[1] + Close[1]) * 0.5));
+                      and (Low <= fLowAnteriorRefZona)
+                      and (Close > ((fOpenAnteriorRefZona + fCloseAnteriorRefZona) * 0.5));
 
     bDojiForteZona := (bIFRZonaRejeicaoTopoGlobal or bIFRZonaRejeicaoFundoGlobal)
                    and (fCorpoAtual <= (fRangeAtual * 0.10))
                    and (Volume >= (fMediaVolumePA * 1.20));
 
-    if bEngolfoBaixaZona or bPinBarTopoZona or bRejectionSpikeTopoZona or bReversaoBaixaZona then
+    // Score de rejeição (qualidade do sinal)
+    bCondPavioTopo := (fPavioSupAtual > (fCorpoAtual * 2.0)) and (fPavioSupAtual > fPavioInfAtual);
+    bCondPavioFundo := (fPavioInfAtual > (fCorpoAtual * 2.0)) and (fPavioInfAtual > fPavioSupAtual);
+
+    bCondFechamentoTopo := (Close <= (Low + (fRangeAtual * 0.35)));
+    bCondFechamentoFundo := (Close >= (High - (fRangeAtual * 0.35)));
+
+    bCondVolumeRejeicao := (Volume >= (fMediaVolumeRejeicaoZona * fFatorVolumeMinRejeicaoDinamico));
+    bCondRangeATRRejeicao := (fRangeAtual >= (fATRRejeicaoZona * FatorRangeMinATRRejeicao));
+    bCondExtremoTopo := (High >= fTopoExtremoRefZona);
+    bCondExtremoFundo := (Low <= fFundoExtremoRefZona);
+    bCondCansacoTopo := (fAceleracao <= 0) or (fForcaBase < 0) or (fForcaBase < fForcaBaseAnteriorZona);
+    bCondCansacoFundo := (fAceleracao >= 0) or (fForcaBase > 0) or (fForcaBase > fForcaBaseAnteriorZona);
+
+    iScoreRejeicaoTopo := 0;
+    if bCondPavioTopo then iScoreRejeicaoTopo := iScoreRejeicaoTopo + PesoPavioRejeicao;
+    if bCondFechamentoTopo then iScoreRejeicaoTopo := iScoreRejeicaoTopo + PesoFechamentoRejeicao;
+    if bCondVolumeRejeicao then iScoreRejeicaoTopo := iScoreRejeicaoTopo + PesoVolumeRejeicao;
+    if bCondExtremoTopo then iScoreRejeicaoTopo := iScoreRejeicaoTopo + PesoExtremoRejeicao;
+    if bCondRangeATRRejeicao then iScoreRejeicaoTopo := iScoreRejeicaoTopo + PesoRangeATRRejeicao;
+    if (not UsarFiltroCansacoRejeicao) or bCondCansacoTopo then iScoreRejeicaoTopo := iScoreRejeicaoTopo + PesoCansacoRejeicao;
+
+    iScoreRejeicaoFundo := 0;
+    if bCondPavioFundo then iScoreRejeicaoFundo := iScoreRejeicaoFundo + PesoPavioRejeicao;
+    if bCondFechamentoFundo then iScoreRejeicaoFundo := iScoreRejeicaoFundo + PesoFechamentoRejeicao;
+    if bCondVolumeRejeicao then iScoreRejeicaoFundo := iScoreRejeicaoFundo + PesoVolumeRejeicao;
+    if bCondExtremoFundo then iScoreRejeicaoFundo := iScoreRejeicaoFundo + PesoExtremoRejeicao;
+    if bCondRangeATRRejeicao then iScoreRejeicaoFundo := iScoreRejeicaoFundo + PesoRangeATRRejeicao;
+    if (not UsarFiltroCansacoRejeicao) or bCondCansacoFundo then iScoreRejeicaoFundo := iScoreRejeicaoFundo + PesoCansacoRejeicao;
+
+    bRejeicaoTopoScoreRaw := bIFRZonaRejeicaoTopoGlobal and ((not UsarScoreRejeicao) or (iScoreRejeicaoTopo >= PontuacaoMinRejeicao));
+    bRejeicaoFundoScoreRaw := bIFRZonaRejeicaoFundoGlobal and ((not UsarScoreRejeicao) or (iScoreRejeicaoFundo >= PontuacaoMinRejeicao));
+    if ConfirmarRejeicaoNoCandleSeguinte then
+    begin
+      bRejeicaoTopoScoreFinal := bRejeicaoTopoScoreRawPrev and (Close < fLowAnteriorRefZona);
+      bRejeicaoFundoScoreFinal := bRejeicaoFundoScoreRawPrev and (Close > fHighAnteriorRefZona);
+    end
+    else
+    begin
+      bRejeicaoTopoScoreFinal := bRejeicaoTopoScoreRaw;
+      bRejeicaoFundoScoreFinal := bRejeicaoFundoScoreRaw;
+    end;
+
+    if (bEngolfoBaixaZona or bPinBarTopoZona or bRejectionSpikeTopoZona or bReversaoBaixaZona) and bRejeicaoTopoScoreFinal then
       PaintBar(cLaranja)
-    else if bEngolfoAltaZona or bPinBarFundoZona or bRejectionSpikeFundoZona or bReversaoAltaZona then
+    else if (bEngolfoAltaZona or bPinBarFundoZona or bRejectionSpikeFundoZona or bReversaoAltaZona) and bRejeicaoFundoScoreFinal then
       PaintBar(cLaranja)
-    else if bInsideBarZona then
+    else if bInsideBarZona and (bRejeicaoTopoScoreFinal or bRejeicaoFundoScoreFinal) then
       PaintBar(cLaranja)
-    else if bDojiForteZona then
+    else if bDojiForteZona and (bRejeicaoTopoScoreFinal or bRejeicaoFundoScoreFinal) then
       PaintBar(cLaranja);
   end;
 
@@ -368,21 +474,21 @@ begin
     bRejeicaoTopoPrimeiro := (fPavioSupPrimeiro > (fCorpoPrimeiro * 1.8))
                          and (fPavioSupPrimeiro > (fRangePrimeiro * 0.45))
                          and (Close <= (Low + (fRangePrimeiro * 0.35)))
-               and (Volume >= (fMediaVolumePrimeiro * 1.10))
+               and (Volume >= (fMediaVolumePrimeiro * fFatorVolumeMinRejeicaoDinamico))
                and bIFRZonaRejeicaoTopo;
 
     bRejeicaoFundoPrimeiro := (fPavioInfPrimeiro > (fCorpoPrimeiro * 1.8))
                           and (fPavioInfPrimeiro > (fRangePrimeiro * 0.45))
                           and (Close >= (High - (fRangePrimeiro * 0.35)))
-                and (Volume >= (fMediaVolumePrimeiro * 1.10))
+                and (Volume >= (fMediaVolumePrimeiro * fFatorVolumeMinRejeicaoDinamico))
                 and bIFRZonaRejeicaoFundo;
 
     bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle)) and (fCorpoPrimeiro <= (fRangePrimeiro * 0.35));
     bIniciativaAltaPrimeiro := bPrimeiroAlta and (fCorpoPrimeiro >= (fRangePrimeiro * pCorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle));
     bIniciativaBaixaPrimeiro := bPrimeiroBaixa and (fCorpoPrimeiro >= (fRangePrimeiro * pCorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle));
 
-    bGapAltaPrimeiro := (Open > Close[1]);
-    bGapBaixaPrimeiro := (Open < Close[1]);
+    bGapAltaPrimeiro := (Open > fCloseAnteriorRefZona);
+    bGapBaixaPrimeiro := (Open < fCloseAnteriorRefZona);
     bArmadilhaPrimeiro := (bGapAltaPrimeiro and bPrimeiroBaixa and bRejeicaoTopoPrimeiro)
                       or (bGapBaixaPrimeiro and bPrimeiroAlta and bRejeicaoFundoPrimeiro);
 
