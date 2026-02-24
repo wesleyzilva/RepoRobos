@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^git pull origin main$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
