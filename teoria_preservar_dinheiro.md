@@ -16,7 +16,7 @@ Preservar o dinheiro é uma das habilidades mais importantes para qualquer trade
 - Considere o uso de hedge para proteger posições importantes.
 - Mantenha uma reserva de emergência fora do mercado para situações imprevistas.
 - Reavalie periodicamente suas estratégias e ajuste conforme necessário.
-
+   
 ## 4. Educação Contínua
 - Estude constantemente o mercado e aprenda com seus erros.
 - Participe de cursos, leia livros e acompanhe especialistas confiáveis.
