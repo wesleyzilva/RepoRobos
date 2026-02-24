@@ -1,0 +1,265 @@
+{
+  Indicador: fev_PriceActionNewton
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Implementa a Teoria Price Action Newton com cálculos de Velocidade, Aceleração, Massa e Força.
+             Identifica padrões de alta força, alta velocidade e consolidação, com coloração dinâmica no gráfico.
+}
+
+input
+  // Configuração de Visualização
+  iModoVisualizacao(0); // 0: Força, 1: Massa, 2: Aceleração
+  bVisualizarAltaIntensidade(true); // true: Alta Volatilidade/Força, false: Baixa (Consolidação)
+  iPeriodoSuavizacao(3); // 1 = Sem suavização (Cru). 3 a 5 = Ideal para WINFUT (Filtra ruído)
+  UsarModuloATR(true);
+  NormalizarForcaPorATR(true);
+  PeriodoATR(14);
+  PeriodoMediaATR(50);
+  FatorMinATR(0.90);
+  FatorMaxATR(2.50);
+  AtivarAnalisePrimeiroCandle(true);
+  pFatorVolumePrimeiroCandle(1.5);
+  pCorpoMinPrimeiroCandle(0.60);
+
+  // Parâmetros configuráveis na tela
+  pFatorVelocidadeAltaManha(2.5); // WINFUT: Manhã é mais volátil, exige fator maior
+  pFatorVelocidadeBaixaManha(0.4);
+  pFatorForcaAltaManha(2.5);      // WINFUT: Fator maior para filtrar ruído da manhã
+  pFatorForcaBaixaManha(0.4);
+  pFatorMassaAltaManha(2.0);      // WINFUT: Volume precisa ser significativamente maior
+  pFatorMassaBaixaManha(0.7);
+  pFatorConsolidacaoManha(0.4);
+
+  pFatorVelocidadeAltaTarde(1.8); // WINFUT: Tarde tem volatilidade menor que a manhã, mas ainda relevante
+  pFatorVelocidadeBaixaTarde(0.6);
+  pFatorForcaAltaTarde(1.8);
+  pFatorForcaBaixaTarde(0.6);
+  pFatorMassaAltaTarde(1.5);
+  pFatorMassaBaixaTarde(0.8);
+  pFatorConsolidacaoTarde(0.6);
+
+var
+  // Cores
+  cVerde, cVermelho, cCiano, cFucsia, cMarrom, cCinza, cBranco : Integer;
+  nR, nG, nB, j : Integer;
+
+  // Variáveis de Price Action Newton
+  fVelocidade, fAceleracao, fMassa, fForca, fMaxForca, fIntensidade : float;
+  fForcaBase, fATRAtual, fATRMedio : float;
+  fVelocidadeAnt, fAceleracaoAnt, fMassaAnt, fForcaAnt : float;
+  fPrecoBase, fPrecoBaseAnt, fPrecoBaseAnt2, fPrecoBaseAnt3 : float;
+  fRangePrimeiro, fCorpoPrimeiro, fPavioSupPrimeiro, fPavioInfPrimeiro, fMediaVolumePrimeiro : float;
+  bAltaVelocidade, bBaixaVelocidade, bConsolidacao, bAltaForca : boolean;
+  bPrimeiroCandleDia, bPrimeiroAlta, bPrimeiroBaixa, bDojiPrimeiro, bAbsorcaoPrimeiro : boolean;
+  bRejeicaoTopoPrimeiro, bRejeicaoFundoPrimeiro, bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
+  bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
+  bATRRegimeOK : boolean;
+
+  bPeriodoManha : boolean;
+
+begin
+  // 1. Definição de Cores
+  cVerde    := RGB(0, 255, 0);     // Alta Força de Alta
+  cVermelho := RGB(255, 0, 0);     // Alta Força de Baixa
+  cCiano    := RGB(0, 255, 255);   // Velocidade Alta
+  cFucsia   := RGB(255, 0, 255);   // Velocidade Baixa
+  cMarrom   := RGB(139, 69, 19);   // Consolidação
+  cCinza    := RGB(169, 169, 169); // Neutro
+  cBranco   := RGB(255, 255, 255); // Reversão/Neutro
+
+  // 2. Identificação do Período (Manhã ou Tarde)
+  bPeriodoManha := (Time < 120000); // Antes de 12:00 é manhã
+
+  // 3. Cálculos Físicos (Newton)
+  
+  // Define a base de cálculo (Preço Puro ou Suavizado)
+  // Usar MediaExp(3) aumenta drasticamente a assertividade no WINFUT
+  if iPeriodoSuavizacao > 1 then
+    fPrecoBase := MediaExp(iPeriodoSuavizacao, Close)
+  else
+    fPrecoBase := Close;
+
+  fPrecoBaseAnt := fPrecoBase[1];
+  fPrecoBaseAnt2 := fPrecoBase[2];
+  fPrecoBaseAnt3 := fPrecoBase[3];
+
+  // Velocidade (v) = Variação do Preço Base
+  fVelocidade := fPrecoBase - fPrecoBaseAnt;
+  fVelocidadeAnt := fPrecoBaseAnt - fPrecoBaseAnt2;
+
+  // Aceleração (a) = Variação da Velocidade
+  fAceleracao := fVelocidade - fVelocidadeAnt;
+  fAceleracaoAnt := fVelocidadeAnt - (fPrecoBaseAnt2 - fPrecoBaseAnt3);
+
+  // Massa (m) = Volume
+  fMassa := Volume;
+  fMassaAnt := Volume[1];
+
+  // Força (F) = Massa * Aceleração (2ª Lei de Newton)
+  fForca := fMassa * fAceleracao;
+  fForcaAnt := fMassaAnt * fAceleracaoAnt;
+
+  // Módulo ATR: regime de volatilidade + normalização opcional
+  fATRAtual := Media(PeriodoATR, Range);
+  fATRMedio := Media(PeriodoMediaATR, fATRAtual);
+  if fATRMedio <= 0 then
+    fATRMedio := 0.01;
+
+  bATRRegimeOK := (not UsarModuloATR)
+               or ((fATRAtual >= (fATRMedio * FatorMinATR)) and (fATRAtual <= (fATRMedio * FatorMaxATR)));
+
+  fForcaBase := fForca;
+  if NormalizarForcaPorATR then
+  begin
+    if fATRAtual > 0 then
+      fForcaBase := fForca / fATRAtual
+    else
+      fForcaBase := fForca;
+  end;
+
+  // 4. Lógica de Coloração Dinâmica
+
+  // Default
+  PaintBar(cCinza);
+
+  // Modo 0: FORÇA (F = M * A)
+  if iModoVisualizacao = 0 then
+  begin
+    if not bATRRegimeOK then
+    begin
+      PaintBar(cCinza);
+    end
+    else
+    begin
+    // Cálculo da Força Máxima recente para normalização (Escala de Cor)
+    fMaxForca := 0.0001;
+    for j := 0 to 20 do
+    begin
+      if Abs(fForcaBase[j]) > fMaxForca then fMaxForca := Abs(fForcaBase[j]);
+    end;
+
+    fIntensidade := Abs(fForcaBase) / fMaxForca;
+    if fIntensidade > 1.0 then fIntensidade := 1.0;
+
+    if fForcaBase > 0 then
+    begin
+      // Escala de Verde (Branco -> Verde)
+      nR := 255 - Round(255 * fIntensidade);
+      nG := 255;
+      nB := 255 - Round(255 * fIntensidade);
+      PaintBar(RGB(nR, nG, nB));
+    end
+    else if fForcaBase < 0 then
+    begin
+      // Escala de Vermelho (Branco -> Vermelho)
+      nR := 255;
+      nG := 255 - Round(255 * fIntensidade);
+      nB := 255 - Round(255 * fIntensidade);
+      PaintBar(RGB(nR, nG, nB));
+    end;
+    if fForcaBase = 0 then PaintBar(cBranco);
+    end;
+  end
+  // Modo 1: MASSA (Volume)
+  else if iModoVisualizacao = 1 then
+  begin
+    if not bATRRegimeOK then
+    begin
+      PaintBar(cCinza);
+    end
+    else if bVisualizarAltaIntensidade then
+    begin
+      if ((bPeriodoManha) and (fMassa > fMassaAnt * pFatorMassaAltaManha)) or
+         ((not bPeriodoManha) and (fMassa > fMassaAnt * pFatorMassaAltaTarde)) then
+        PaintBar(cCiano); // Massa Alta
+    end
+    else
+    begin
+      if ((bPeriodoManha) and (fMassa < fMassaAnt * pFatorMassaBaixaManha)) or
+         ((not bPeriodoManha) and (fMassa < fMassaAnt * pFatorMassaBaixaTarde)) then
+        PaintBar(cFucsia); // Massa Baixa
+    end;
+  end
+  // Modo 2: ACELERAÇÃO (Mudança de Velocidade)
+  else if iModoVisualizacao = 2 then
+  begin
+    if not bATRRegimeOK then
+    begin
+      PaintBar(cCinza);
+    end
+    else if bVisualizarAltaIntensidade then
+    begin
+      if ((bPeriodoManha) and (Abs(fAceleracao) > Abs(fAceleracaoAnt) * pFatorVelocidadeAltaManha)) or
+         ((not bPeriodoManha) and (Abs(fAceleracao) > Abs(fAceleracaoAnt) * pFatorVelocidadeAltaTarde)) then
+      begin
+        // Aceleração > 0 (Compra) -> Ciano; Aceleração < 0 (Venda) -> Fucsia
+        if fAceleracao > 0 then PaintBar(cCiano) else if fAceleracao < 0 then PaintBar(cFucsia);
+      end;
+    end
+    else
+    begin
+      if ((bPeriodoManha) and (Abs(fAceleracao) < Abs(fAceleracaoAnt) * pFatorVelocidadeBaixaManha)) or
+         ((not bPeriodoManha) and (Abs(fAceleracao) < Abs(fAceleracaoAnt) * pFatorVelocidadeBaixaTarde)) then
+        PaintBar(cCinza); // Baixa aceleração/Consolidação
+    end;
+  end;
+
+  // 5. Override opcional: análise específica do primeiro candle
+  bPrimeiroCandleDia := (Date <> Date[1]);
+  if bPrimeiroCandleDia and AtivarAnalisePrimeiroCandle then
+  begin
+    fRangePrimeiro := High - Low;
+    if fRangePrimeiro <= 0 then
+      fRangePrimeiro := 0.01;
+
+    fCorpoPrimeiro := Abs(Close - Open);
+    fMediaVolumePrimeiro := Media(20, Volume);
+    if fMediaVolumePrimeiro <= 0 then
+      fMediaVolumePrimeiro := 1;
+
+    bPrimeiroAlta := (Close > Open);
+    bPrimeiroBaixa := (Close < Open);
+    bDojiPrimeiro := (fCorpoPrimeiro <= (fRangePrimeiro * 0.10));
+
+    if (Close >= Open) then
+    begin
+      fPavioSupPrimeiro := High - Close;
+      fPavioInfPrimeiro := Open - Low;
+    end
+    else
+    begin
+      fPavioSupPrimeiro := High - Open;
+      fPavioInfPrimeiro := Close - Low;
+    end;
+
+    bRejeicaoTopoPrimeiro := (fPavioSupPrimeiro > (fCorpoPrimeiro * 1.8)) and (fPavioSupPrimeiro > fPavioInfPrimeiro);
+    bRejeicaoFundoPrimeiro := (fPavioInfPrimeiro > (fCorpoPrimeiro * 1.8)) and (fPavioInfPrimeiro > fPavioSupPrimeiro);
+    bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle)) and (fCorpoPrimeiro <= (fRangePrimeiro * 0.35));
+    bIniciativaAltaPrimeiro := bPrimeiroAlta and (fCorpoPrimeiro >= (fRangePrimeiro * pCorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle));
+    bIniciativaBaixaPrimeiro := bPrimeiroBaixa and (fCorpoPrimeiro >= (fRangePrimeiro * pCorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * pFatorVolumePrimeiroCandle));
+
+    bGapAltaPrimeiro := (Open > Close[1]);
+    bGapBaixaPrimeiro := (Open < Close[1]);
+    bArmadilhaPrimeiro := (bGapAltaPrimeiro and bPrimeiroBaixa and bRejeicaoTopoPrimeiro)
+                      or (bGapBaixaPrimeiro and bPrimeiroAlta and bRejeicaoFundoPrimeiro);
+
+    if bArmadilhaPrimeiro then
+      PaintBar(cMarrom)
+    else if bRejeicaoTopoPrimeiro then
+      PaintBar(cVermelho)
+    else if bRejeicaoFundoPrimeiro then
+      PaintBar(cVerde)
+    else if bIniciativaAltaPrimeiro then
+      PaintBar(cCiano)
+    else if bIniciativaBaixaPrimeiro then
+      PaintBar(cFucsia)
+    else if bAbsorcaoPrimeiro or bDojiPrimeiro then
+      PaintBar(cBranco)
+    else if bPrimeiroAlta then
+      PaintBar(cVerde)
+    else if bPrimeiroBaixa then
+      PaintBar(cVermelho)
+    else
+      PaintBar(cBranco);
+  end;
+
+end;

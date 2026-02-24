@@ -1,0 +1,44 @@
+// {
+//   Indicador: fev_HorarioTurbulencia
+//   Descrição: Pinta o fundo do gráfico em horários de alta volatilidade/risco.
+//              Baseado nas regras do OperacionalSetupTrader.md
+//   Autor: Wesley
+// }
+
+var
+  iHora, iMinuto : Integer;
+  cCorPerigo, cCorAlerta : Integer;
+
+begin
+  iHora := Time / 100;
+  iMinuto := Time mod 100;
+  
+  cCorPerigo := RGB(255, 230, 230); // Vermelho Claro (Zona Proibida)
+  cCorAlerta := RGB(255, 255, 224); // Amarelo Claro (Atenção)
+
+  // --- ZONA 1: Abertura das Ações BR + Ptax (10:00 - 10:15) ---
+  // O "Samba do Crioulo Doido"
+  if (iHora = 10) and (iMinuto >= 00) and (iMinuto <= 15) then
+  begin
+    SetChartColor(cCorPerigo);
+  end
+  
+  // --- ZONA 2: Abertura NYSE (10:30 - 10:45 ou 11:30 dependendo do horário verão) ---
+  // Ajuste conforme horário de verão. Aqui configurado para 10:30 padrão.
+  else if (iHora = 10) and (iMinuto >= 30) and (iMinuto <= 45) then
+  begin
+    SetChartColor(cCorAlerta);
+  end
+  
+  // --- ZONA 3: Fechamento / Leilão (17:50+) ---
+  else if (iHora >= 17) and (iMinuto >= 50) then
+  begin
+    SetChartColor(cCorPerigo);
+  end
+  
+  // --- Horário Normal ---
+  else
+  begin
+    // Mantém a cor padrão do fundo (não faz nada)
+  end;
+end;

@@ -1,0 +1,170 @@
+input
+  AtivarAnalisePrimeiroCandle(true);
+  FatorVolumePrimeiroCandle(1.5);
+  CorpoMinPrimeiroCandle(0.60);
+
+var
+  // Cores
+  cVerde, cVermelho, cLaranja, cBranco, cCinza : Integer;
+  
+  // Variáveis de Anatomia
+  fCorpo, fPavioSup, fPavioInf, fRange : float;
+  fCorpoAnt, fPavioSupAnt, fPavioInfAnt, fRangeAnt : float;
+  bAlta, bBaixa : boolean;
+  
+  // Variáveis de Contexto (Candle Anterior)
+  bAntAlta, bAntBaixa, bAnt2Alta, bAnt2Baixa : boolean;
+  bMarteloAnterior, bEstrelaAnterior, bMarteloConfirmado, bEstrelaConfirmada : boolean;
+  fAntMax, fAntMin, fAnt2Max, fAnt2Min : float;
+
+  // Padrões válidos (contexto + anatomia)
+  bEngolfoAltaValido, bEngolfoBaixaValido : boolean;
+  bInsideBarValido, bDojiRealValido : boolean;
+  bContextoAlta, bContextoBaixa : boolean;
+  bSinalCompraContextual, bSinalVendaContextual : boolean;
+  bPrimeiroCandle, bAbsorcaoPrimeiro : boolean;
+  bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
+  bRejeicaoTopoPrimeiro, bRejeicaoFundoPrimeiro : boolean;
+  bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
+  fMediaVolumePrimeiro : float;
+
+begin
+  // 1. Definição de Cores
+  cVerde      := RGB(0, 255, 0);     // Compra contextualizada
+  cVermelho   := RGB(255, 0, 0);     // Venda contextualizada
+  cLaranja    := RGB(255, 140, 0);   // Inside Bar
+  cBranco     := RGB(255, 255, 255); // Doji
+  cCinza      := RGB(105, 105, 105); // Neutro
+
+  // 2. Cálculos do Contexto (Candle Anterior)
+  bAntAlta  := Close[1] > Open[1];
+  bAntBaixa := Close[1] < Open[1];
+  bAnt2Alta  := Close[2] > Open[2];
+  bAnt2Baixa := Close[2] < Open[2];
+  fAntMax   := High[1];
+  fAntMin   := Low[1];
+  fAnt2Max  := High[2];
+  fAnt2Min  := Low[2];
+  bPrimeiroCandle := (Date <> Date[1]);
+
+  // 3. Cálculos do Candle Atual
+  fRange := Range;
+  fCorpo := Abs(Close - Open);
+  
+  if (Close >= Open) then
+    begin
+      fPavioSup := High - Close;
+      fPavioInf := Open - Low;
+      bAlta := True;
+      bBaixa := False;
+    end
+  else
+    begin
+      fPavioSup := High - Open;
+      fPavioInf := Close - Low;
+      bAlta := False;
+      bBaixa := True;
+    end;
+
+  // 3.1 Cálculos do candle anterior (para confirmação de reversão)
+  fRangeAnt := fAntMax - fAntMin;
+  fCorpoAnt := Abs(Close[1] - Open[1]);
+
+  if (Close[1] >= Open[1]) then
+    begin
+      fPavioSupAnt := fAntMax - Close[1];
+      fPavioInfAnt := Open[1] - fAntMin;
+    end
+  else
+    begin
+      fPavioSupAnt := fAntMax - Open[1];
+      fPavioInfAnt := Close[1] - fAntMin;
+    end;
+
+  // Reversão confirmada: candle de reversão [1] + confirmação no candle atual
+  bMarteloAnterior := (fRangeAnt > 0) and (fPavioInfAnt > (fCorpoAnt * 2)) and (fPavioSupAnt < fCorpoAnt);
+  bEstrelaAnterior := (fRangeAnt > 0) and (fPavioSupAnt > (fCorpoAnt * 2)) and (fPavioInfAnt < fCorpoAnt);
+
+  bMarteloConfirmado := bMarteloAnterior and bAnt2Baixa and (fAntMin <= fAnt2Min) and (Close > fAntMax);
+  bEstrelaConfirmada := bEstrelaAnterior and bAnt2Alta and (fAntMax >= fAnt2Max) and (Close < fAntMin);
+
+  // 3.2 Validação de contexto antes da cor
+  bContextoAlta := bAntBaixa or bAnt2Baixa;
+  bContextoBaixa := bAntAlta or bAnt2Alta;
+
+  // Engolfo real = anatomia + contexto
+  bEngolfoAltaValido := bAlta and bContextoAlta and bAntBaixa and (Close > fAntMax) and (Open <= Close[1]);
+  bEngolfoBaixaValido := bBaixa and bContextoBaixa and bAntAlta and (Close < fAntMin) and (Open >= Close[1]);
+
+  // Inside bar real = candle dentro do anterior + contração de range
+  bInsideBarValido := (High < fAntMax) and (Low > fAntMin) and (fRangeAnt > 0) and (fRange < (fRangeAnt * 0.85));
+
+  // Doji real = corpo muito pequeno + sombras relevantes
+  bDojiRealValido := (fRange > 0) and (fCorpo <= (fRange * 0.10)) and (fPavioSup >= (fRange * 0.25)) and (fPavioInf >= (fRange * 0.25));
+
+  // Sinal final contextualizado: contexto primeiro, padrão depois
+  bSinalCompraContextual := bEngolfoAltaValido or bMarteloConfirmado;
+  bSinalVendaContextual := bEngolfoBaixaValido or bEstrelaConfirmada;
+
+  // 4. Lógica de Coloração (Hierarquia de Prioridade)
+  
+  // Default
+  PaintBar(cCinza);
+
+  // --- NÍVEL 3: SINAL CONTEXTUALIZADO (PRIORIDADE MÁXIMA) ---
+  // Sequência: contexto validado -> padrão validado -> cor
+  if bSinalCompraContextual then
+    PaintBar(cVerde)
+  else if bSinalVendaContextual then
+    PaintBar(cVermelho)
+
+  // --- NÍVEL 2: INDECISÃO ---
+  else if bInsideBarValido then
+    PaintBar(cLaranja) // Inside Bar
+  else if bDojiRealValido then
+    PaintBar(cBranco); // Doji
+
+  // Análise dedicada do primeiro candle
+  if bPrimeiroCandle then
+  begin
+    if AtivarAnalisePrimeiroCandle then
+    begin
+      fMediaVolumePrimeiro := Media(20, Volume);
+      if fMediaVolumePrimeiro <= 0 then
+        fMediaVolumePrimeiro := 1;
+
+      bRejeicaoTopoPrimeiro := (fPavioSup > (fCorpo * 1.8)) and (fPavioSup > fPavioInf);
+      bRejeicaoFundoPrimeiro := (fPavioInf > (fCorpo * 1.8)) and (fPavioInf > fPavioSup);
+      bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle)) and (fCorpo <= (fRange * 0.35));
+      bIniciativaAltaPrimeiro := bAlta and (fCorpo >= (fRange * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));
+      bIniciativaBaixaPrimeiro := bBaixa and (fCorpo >= (fRange * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));
+
+      bGapAltaPrimeiro := (Open > Close[1]);
+      bGapBaixaPrimeiro := (Open < Close[1]);
+      bArmadilhaPrimeiro := (bGapAltaPrimeiro and bBaixa and bRejeicaoTopoPrimeiro)
+                        or (bGapBaixaPrimeiro and bAlta and bRejeicaoFundoPrimeiro);
+
+      if bArmadilhaPrimeiro then
+        PaintBar(cLaranja)
+      else if bRejeicaoTopoPrimeiro then
+        PaintBar(cVermelho)
+      else if bRejeicaoFundoPrimeiro then
+        PaintBar(cVerde)
+      else if bIniciativaAltaPrimeiro then
+        PaintBar(cVerde)
+      else if bIniciativaBaixaPrimeiro then
+        PaintBar(cVermelho)
+      else if bAbsorcaoPrimeiro or bDojiRealValido then
+        PaintBar(cBranco)
+      else if bAlta then
+        PaintBar(cVerde)
+      else if bBaixa then
+        PaintBar(cVermelho)
+      else
+        PaintBar(cBranco);
+    end
+    else
+      PaintBar(cCinza);
+  end;
+
+end;

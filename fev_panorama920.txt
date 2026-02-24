@@ -1,0 +1,107 @@
+{
+  Indicador: fev_panorama920
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Panorama operacional com MME 9 e MME 20 para day trade.
+             Habilita compra, venda ou lateralização com filtros de validação.
+}
+
+input
+  PeriodoMME9(9);
+  PeriodoMME20(20);
+  PeriodoEstrutura(5);
+  MinInclinacao20Perc(0.02);
+  MinSeparacaoMMEPerc(0.02);
+  MaxDistanciaPreco20Perc(1.20);
+  IgnorarPrimeirosCandles(3);
+  UsarFiltroEstrutura(false);
+  UsarFiltroDistancia(false);
+  UsarFiltroAbertura(true);
+
+var
+  cCompra, cVenda, cLateral : Integer;
+  fMME9, fMME20, fMME20_1 : Float;
+  fDistanciaPreco20Perc, fInclinacao20Perc, fSeparacaoMMEPerc : Float;
+  fMaxEstrutura, fMinEstrutura : Float;
+  iCandlesDia, iPeriodoEstrutura : Integer;
+  bEstruturaAlta, bEstruturaBaixa : Boolean;
+  bInclinacaoAltaOK, bInclinacaoBaixaOK : Boolean;
+  bSeparacaoOK, bDistanciaOK, bAberturaOK : Boolean;
+  bCompraBase, bVendaBase : Boolean;
+  bCompraHabilitada, bVendaHabilitada : Boolean;
+
+begin
+  // Cores do panorama 9/20
+  cCompra  := RGB(0, 255, 0);     // Verde: compra habilitada
+  cVenda   := RGB(255, 0, 0);     // Vermelho: venda habilitada
+  cLateral := RGB(105, 105, 105); // Cinza: lateralização / indefinição
+
+  // Médias
+  fMME9 := MediaExp(PeriodoMME9, Close);
+  fMME20 := MediaExp(PeriodoMME20, Close);
+  fMME20_1 := fMME20[1];
+
+  iPeriodoEstrutura := PeriodoEstrutura;
+  if (iPeriodoEstrutura < 3) then
+    iPeriodoEstrutura := 3;
+
+  // Contador de candles do dia (filtro de abertura)
+  if (Date <> Date[1]) then
+    iCandlesDia := 1
+  else
+    iCandlesDia := iCandlesDia + 1;
+
+  // Métricas de qualidade dos sinais
+  fDistanciaPreco20Perc := (Abs(Close - fMME20) / fMME20) * 100;
+  fInclinacao20Perc := (Abs(fMME20 - fMME20_1) / fMME20) * 100;
+  fSeparacaoMMEPerc := (Abs(fMME9 - fMME20) / fMME20) * 100;
+
+  // Estrutura (rompimento/pivô simplificado)
+  fMaxEstrutura := Highest(High[1], iPeriodoEstrutura);
+  fMinEstrutura := Lowest(Low[1], iPeriodoEstrutura);
+  bEstruturaAlta := (Close > fMaxEstrutura);
+  bEstruturaBaixa := (Close < fMinEstrutura);
+
+  // Filtros para evitar sinais ruins
+  bInclinacaoAltaOK := (fMME20 > fMME20_1) and (fInclinacao20Perc >= MinInclinacao20Perc);
+  bInclinacaoBaixaOK := (fMME20 < fMME20_1) and (fInclinacao20Perc >= MinInclinacao20Perc);
+  bSeparacaoOK := (fSeparacaoMMEPerc >= MinSeparacaoMMEPerc);
+  bDistanciaOK := (fDistanciaPreco20Perc <= MaxDistanciaPreco20Perc);
+  bAberturaOK := (iCandlesDia > IgnorarPrimeirosCandles);
+
+  // Regra base de compra (confluência 9/20)
+  // 1) 9 acima da 20
+  // 2) 20 inclinada para cima com força mínima
+  // 3) preço acima das duas
+  bCompraBase := (fMME9 > fMME20) and bInclinacaoAltaOK and (Close > fMME9) and (Close > fMME20);
+
+  // Regra base de venda (confluência 9/20)
+  // 1) 9 abaixo da 20
+  // 2) 20 inclinada para baixo com força mínima
+  // 3) preço abaixo das duas
+  bVendaBase := (fMME9 < fMME20) and bInclinacaoBaixaOK and (Close < fMME9) and (Close < fMME20);
+
+  // Habilitação final com filtros opcionais para não "matar" os sinais
+  bCompraHabilitada := bCompraBase and bSeparacaoOK
+                    and ((not UsarFiltroEstrutura) or bEstruturaAlta)
+                    and ((not UsarFiltroDistancia) or bDistanciaOK)
+                    and ((not UsarFiltroAbertura) or bAberturaOK);
+
+  bVendaHabilitada := bVendaBase and bSeparacaoOK
+                   and ((not UsarFiltroEstrutura) or bEstruturaBaixa)
+                   and ((not UsarFiltroDistancia) or bDistanciaOK)
+                   and ((not UsarFiltroAbertura) or bAberturaOK);
+
+  // Padrão: lateral
+  PaintBar(cLateral);
+
+  // Habilitação de compra/venda
+  if bCompraHabilitada then
+    PaintBar(cCompra);
+
+  if bVendaHabilitada then
+    PaintBar(cVenda);
+
+  // Primeiro candle do dia fica neutro
+  if (Date <> Date[1]) then
+    PaintBar(cLateral);
+end;

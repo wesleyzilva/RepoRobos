@@ -1,0 +1,342 @@
+{
+  Indicador: fev_panoramaMedias9_20_50_200
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Panorama com médias 9/20/50/200 e decisão por peso.
+             Permite ligar/desligar cada média; sem médias ativas fica neutro (cinza).
+}
+
+input
+  AtivarPanorama(true);
+  AtivarAnalisePrimeiroCandle(true);
+  FatorVolumePrimeiroCandle(1.5);
+  CorpoMinPrimeiroCandle(0.60);
+  PeriodoMME9(9);
+  PeriodoMME20(20);
+  PeriodoMMA50(50);
+  PeriodoMMA200(200);
+  UsarMME9(true);
+  UsarMME20(true);
+  UsarMMA50(true);
+  UsarMMA200(false);
+  AtivarFaixaSeguranca(true);
+  HoraInicioFaixa1(855);
+  HoraFimFaixa1(915);
+  HoraInicioFaixa2(920);
+  HoraFimFaixa2(950);
+  PesoMME9(1.5);
+  PesoMME20(3.5);
+  PesoMMA50(4.0);
+  PesoMMA200(1.0);
+  PercentualMinConfluencia(72.0);
+  UsarProtecaoErros(true);
+  MinInclinacaoMME20Perc(0.03);
+  MinInclinacaoMMA50Perc(0.015);
+  MinInclinacaoMMA200Perc(0.005);
+  MinSeparacao9_20Perc(0.03);
+  MinSeparacao50_200Perc(0.02);
+  MinDist20_50Perc(0.08);
+  DistMinCruzamento9_20(25.0); // Distância mínima em pontos entre MME9 e MME20 para habilitar sinal
+  MaxDist20_50Perc(0.45);
+  MaxDistanciaMME20Perc(0.55);
+  UsarFiltroATR(true);
+  PeriodoATR(14);
+  PeriodoMediaATR(50);
+  FatorMinATR(0.90);
+  FatorMaxATR(2.50);
+  ExigirAlinhamentoMMA200(false);
+
+var
+  cCompra, cVenda, cLateral, cSeguranca, cBranco : Integer;
+  fMME9, fMME20, fMMA50, fMMA200 : Float;
+  fMME20_1, fMMA50_1, fMMA200_1 : Float;
+  fInclinacaoMME20Perc, fInclinacaoMMA50Perc, fInclinacaoMMA200Perc : Float;
+  fSeparacao9_20Perc, fSeparacao50_200Perc, fDistanciaMME20Perc, fDist20_50Perc : Float;
+  fDistancia9_20Pontos : Float;
+  fATRAtual, fATRMedio : Float;
+  fRangePrimeiro, fCorpoPrimeiro, fPavioSupPrimeiro, fPavioInfPrimeiro, fMediaVolumePrimeiro : Float;
+  fPesoAlta, fPesoBaixa, fPesoTotal, fPesoMinimo : Float;
+  iDataAnterior, iHoraAtual, iHoraHHMM : Integer;
+  bAlta9, bBaixa9 : Boolean;
+  bAlta20, bBaixa20 : Boolean;
+  bAlta50, bBaixa50 : Boolean;
+  bAlta200, bBaixa200 : Boolean;
+  bInclinacaoAltaOK, bInclinacaoBaixaOK : Boolean;
+  bSeparacaoOK, bDistanciaOK : Boolean;
+  bDist20_50OK : Boolean;
+  bATRRegimeOK : Boolean;
+  bRegime200AltaOK, bRegime200BaixaOK : Boolean;
+  bMedias9_20ProximasCruzar : Boolean;
+  bFaixa1Ativa, bFaixa2Ativa : Boolean;
+  bDentroFaixa1, bDentroFaixa2 : Boolean;
+  bFaixaSeguranca : Boolean;
+  bPrimeiroCandleDia : Boolean;
+  bPrimeiroAlta, bPrimeiroBaixa, bDojiPrimeiro, bAbsorcaoPrimeiro : Boolean;
+  bRejeicaoTopoPrimeiro, bRejeicaoFundoPrimeiro, bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : Boolean;
+  bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : Boolean;
+  bCompraHabilitada, bVendaHabilitada : Boolean;
+
+begin
+  // Cores
+  cCompra  := RGB(0, 255, 0);     // Verde
+  cVenda   := RGB(255, 0, 0);     // Vermelho
+  cLateral := RGB(105, 105, 105); // Cinza
+  cSeguranca := RGB(0, 0, 0); // Preto
+  cBranco := RGB(255, 255, 255); // Branco
+
+  // Estado padrão
+  PaintBar(cLateral);
+
+  // Pré-cálculo seguro para evitar acesso posicional dentro de if
+  iDataAnterior := Date[1];
+  bPrimeiroCandleDia := (Date <> iDataAnterior);
+  iHoraAtual := Time;
+  if (iHoraAtual > 2359) then
+    iHoraHHMM := iHoraAtual / 100
+  else
+    iHoraHHMM := iHoraAtual;
+
+  // Faixas de segurança parametrizáveis (se início/fim = 0, a faixa é ignorada)
+  bFaixa1Ativa := (HoraInicioFaixa1 > 0) and (HoraFimFaixa1 > 0);
+  bFaixa2Ativa := (HoraInicioFaixa2 > 0) and (HoraFimFaixa2 > 0);
+
+  bDentroFaixa1 := bFaixa1Ativa and (iHoraHHMM >= HoraInicioFaixa1) and (iHoraHHMM <= HoraFimFaixa1);
+  bDentroFaixa2 := bFaixa2Ativa and (iHoraHHMM >= HoraInicioFaixa2) and (iHoraHHMM <= HoraFimFaixa2);
+
+  bFaixaSeguranca := AtivarFaixaSeguranca and (bDentroFaixa1 or bDentroFaixa2);
+
+  // Chave global desligada: tudo cinza
+  if (not AtivarPanorama) then
+  begin
+    if bPrimeiroCandleDia then
+      PaintBar(cLateral);
+  end
+  else
+  begin
+    // Cálculo das médias
+    fMME9 := MediaExp(PeriodoMME9, Close);
+    fMME20 := MediaExp(PeriodoMME20, Close);
+    fMMA50 := Media(PeriodoMMA50, Close);
+    fMMA200 := Media(PeriodoMMA200, Close);
+    fMME20_1 := fMME20[1];
+    fMMA50_1 := fMMA50[1];
+    fMMA200_1 := fMMA200[1];
+
+    // Métricas para travas anti-erro
+    if (fMME20 > 0) then
+      fInclinacaoMME20Perc := (Abs(fMME20 - fMME20_1) / fMME20) * 100
+    else
+      fInclinacaoMME20Perc := 0;
+
+    if (fMMA50 > 0) then
+      fInclinacaoMMA50Perc := (Abs(fMMA50 - fMMA50_1) / fMMA50) * 100
+    else
+      fInclinacaoMMA50Perc := 0;
+
+    if (fMMA200 > 0) then
+      fInclinacaoMMA200Perc := (Abs(fMMA200 - fMMA200_1) / fMMA200) * 100
+    else
+      fInclinacaoMMA200Perc := 0;
+
+    if (fMME20 > 0) then
+      fSeparacao9_20Perc := (Abs(fMME9 - fMME20) / fMME20) * 100
+    else
+      fSeparacao9_20Perc := 0;
+
+    if (fMMA200 > 0) then
+      fSeparacao50_200Perc := (Abs(fMMA50 - fMMA200) / fMMA200) * 100
+    else
+      fSeparacao50_200Perc := 0;
+
+    if (fMME20 > 0) then
+      fDistanciaMME20Perc := (Abs(Close - fMME20) / fMME20) * 100
+    else
+      fDistanciaMME20Perc := 999;
+
+    if (fMME20 > 0) then
+      fDist20_50Perc := (Abs(fMME20 - fMMA50) / fMME20) * 100
+    else
+      fDist20_50Perc := 0;
+
+    // Regime de volatilidade (ATR)
+    fATRAtual := Media(PeriodoATR, Range);
+    fATRMedio := Media(PeriodoMediaATR, fATRAtual);
+    if (fATRMedio <= 0) then
+      fATRMedio := 0.01;
+
+    bATRRegimeOK := (not UsarFiltroATR)
+                or ((fATRAtual >= (fATRMedio * FatorMinATR)) and (fATRAtual <= (fATRMedio * FatorMaxATR)));
+
+    // Distância em pontos entre MME9 e MME20 (para detectar proximidade de cruzamento)
+    fDistancia9_20Pontos := Abs(fMME9 - fMME20);
+    bMedias9_20ProximasCruzar := (fDistancia9_20Pontos < DistMinCruzamento9_20);
+
+    // Sinais individuais por média
+    bAlta9 := (Close > fMME9);
+    bBaixa9 := (Close < fMME9);
+
+    bAlta20 := (Close > fMME20) and (fMME20 > fMME20_1);
+    bBaixa20 := (Close < fMME20) and (fMME20 < fMME20_1);
+
+    bAlta50 := (Close > fMMA50) and (fMMA50 > fMMA50_1);
+    bBaixa50 := (Close < fMMA50) and (fMMA50 < fMMA50_1);
+
+    bAlta200 := (Close > fMMA200) and (fMMA200 > fMMA200_1);
+    bBaixa200 := (Close < fMMA200) and (fMMA200 < fMMA200_1);
+
+    // Travas para evitar erros comuns de operação
+    bInclinacaoAltaOK := ((not UsarMME20) or ((fMME20 > fMME20_1) and (fInclinacaoMME20Perc >= MinInclinacaoMME20Perc)))
+              and ((not UsarMMA50) or ((fMMA50 > fMMA50_1) and (fInclinacaoMMA50Perc >= MinInclinacaoMMA50Perc)))
+              and ((not UsarMMA200) or ((fMMA200 > fMMA200_1) and (fInclinacaoMMA200Perc >= MinInclinacaoMMA200Perc)));
+
+    bInclinacaoBaixaOK := ((not UsarMME20) or ((fMME20 < fMME20_1) and (fInclinacaoMME20Perc >= MinInclinacaoMME20Perc)))
+               and ((not UsarMMA50) or ((fMMA50 < fMMA50_1) and (fInclinacaoMMA50Perc >= MinInclinacaoMMA50Perc)))
+               and ((not UsarMMA200) or ((fMMA200 < fMMA200_1) and (fInclinacaoMMA200Perc >= MinInclinacaoMMA200Perc)));
+
+    bSeparacaoOK := ((not (UsarMME9 and UsarMME20)) or (fSeparacao9_20Perc >= MinSeparacao9_20Perc))
+           and ((not (UsarMMA50 and UsarMMA200)) or (fSeparacao50_200Perc >= MinSeparacao50_200Perc));
+
+    bDistanciaOK := (not UsarMME20) or (fDistanciaMME20Perc <= MaxDistanciaMME20Perc);
+
+    bDist20_50OK := (not (UsarMME20 and UsarMMA50))
+           or ((fDist20_50Perc >= MinDist20_50Perc) and (fDist20_50Perc <= MaxDist20_50Perc));
+
+    bRegime200AltaOK := (not ExigirAlinhamentoMMA200) or (not UsarMMA200) or ((Close > fMMA200) and (fMMA200 > fMMA200_1));
+    bRegime200BaixaOK := (not ExigirAlinhamentoMMA200) or (not UsarMMA200) or ((Close < fMMA200) and (fMMA200 < fMMA200_1));
+
+    // Acumuladores de peso
+    fPesoAlta := 0;
+    fPesoBaixa := 0;
+    fPesoTotal := 0;
+
+    if UsarMME9 then
+    begin
+      fPesoTotal := fPesoTotal + PesoMME9;
+      if bAlta9 then
+        fPesoAlta := fPesoAlta + PesoMME9;
+      if bBaixa9 then
+        fPesoBaixa := fPesoBaixa + PesoMME9;
+    end;
+
+    if UsarMME20 then
+    begin
+      fPesoTotal := fPesoTotal + PesoMME20;
+      if bAlta20 then
+        fPesoAlta := fPesoAlta + PesoMME20;
+      if bBaixa20 then
+        fPesoBaixa := fPesoBaixa + PesoMME20;
+    end;
+
+    if UsarMMA50 then
+    begin
+      fPesoTotal := fPesoTotal + PesoMMA50;
+      if bAlta50 then
+        fPesoAlta := fPesoAlta + PesoMMA50;
+      if bBaixa50 then
+        fPesoBaixa := fPesoBaixa + PesoMMA50;
+    end;
+
+    if UsarMMA200 then
+    begin
+      fPesoTotal := fPesoTotal + PesoMMA200;
+      if bAlta200 then
+        fPesoAlta := fPesoAlta + PesoMMA200;
+      if bBaixa200 then
+        fPesoBaixa := fPesoBaixa + PesoMMA200;
+    end;
+
+    // Sem médias ativas => cinza
+    if (fPesoTotal <= 0) then
+    begin
+      PaintBar(cLateral);
+    end
+    else
+    begin
+      fPesoMinimo := fPesoTotal * (PercentualMinConfluencia / 100);
+
+      bCompraHabilitada := (fPesoAlta >= fPesoMinimo) and (fPesoAlta > fPesoBaixa);
+      bVendaHabilitada := (fPesoBaixa >= fPesoMinimo) and (fPesoBaixa > fPesoAlta);
+
+      if UsarProtecaoErros then
+      begin
+        bCompraHabilitada := bCompraHabilitada and bInclinacaoAltaOK and bSeparacaoOK and bDistanciaOK and bDist20_50OK and bRegime200AltaOK and bATRRegimeOK;
+        bVendaHabilitada := bVendaHabilitada and bInclinacaoBaixaOK and bSeparacaoOK and bDistanciaOK and bDist20_50OK and bRegime200BaixaOK and bATRRegimeOK;
+      end;
+
+      // Se médias 9/20 estiverem próximas de cruzar (< 50 pts), pinta preto
+      if bMedias9_20ProximasCruzar then
+        PaintBar(cSeguranca)
+      else if bCompraHabilitada then
+        PaintBar(cCompra)
+      else if bVendaHabilitada then
+        PaintBar(cVenda)
+      else
+        PaintBar(cLateral);
+    end;
+
+    // Primeiro candle do dia neutro (apenas se análise específica estiver desligada)
+    if bPrimeiroCandleDia and (not AtivarAnalisePrimeiroCandle) then
+      PaintBar(cLateral);
+  end;
+
+  // Análise dedicada do primeiro candle (prioridade sobre o panorama)
+  if bPrimeiroCandleDia and AtivarAnalisePrimeiroCandle then
+  begin
+    fRangePrimeiro := High - Low;
+    if fRangePrimeiro <= 0 then
+      fRangePrimeiro := 0.01;
+
+    fCorpoPrimeiro := Abs(Close - Open);
+    fMediaVolumePrimeiro := Media(20, Volume);
+    if fMediaVolumePrimeiro <= 0 then
+      fMediaVolumePrimeiro := 1;
+
+    bPrimeiroAlta := (Close > Open);
+    bPrimeiroBaixa := (Close < Open);
+    bDojiPrimeiro := (fCorpoPrimeiro <= (fRangePrimeiro * 0.10));
+
+    if (Close >= Open) then
+    begin
+      fPavioSupPrimeiro := High - Close;
+      fPavioInfPrimeiro := Open - Low;
+    end
+    else
+    begin
+      fPavioSupPrimeiro := High - Open;
+      fPavioInfPrimeiro := Close - Low;
+    end;
+
+    bRejeicaoTopoPrimeiro := (fPavioSupPrimeiro > (fCorpoPrimeiro * 1.8)) and (fPavioSupPrimeiro > fPavioInfPrimeiro);
+    bRejeicaoFundoPrimeiro := (fPavioInfPrimeiro > (fCorpoPrimeiro * 1.8)) and (fPavioInfPrimeiro > fPavioSupPrimeiro);
+    bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle)) and (fCorpoPrimeiro <= (fRangePrimeiro * 0.35));
+    bIniciativaAltaPrimeiro := bPrimeiroAlta and (fCorpoPrimeiro >= (fRangePrimeiro * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));
+    bIniciativaBaixaPrimeiro := bPrimeiroBaixa and (fCorpoPrimeiro >= (fRangePrimeiro * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));
+
+    bGapAltaPrimeiro := (Open > Close[1]);
+    bGapBaixaPrimeiro := (Open < Close[1]);
+    bArmadilhaPrimeiro := (bGapAltaPrimeiro and bPrimeiroBaixa and bRejeicaoTopoPrimeiro)
+                      or (bGapBaixaPrimeiro and bPrimeiroAlta and bRejeicaoFundoPrimeiro);
+
+    if bArmadilhaPrimeiro then
+      PaintBar(cSeguranca)
+    else if bRejeicaoTopoPrimeiro then
+      PaintBar(cVenda)
+    else if bRejeicaoFundoPrimeiro then
+      PaintBar(cCompra)
+    else if bIniciativaAltaPrimeiro then
+      PaintBar(cCompra)
+    else if bIniciativaBaixaPrimeiro then
+      PaintBar(cVenda)
+    else if bAbsorcaoPrimeiro or bDojiPrimeiro then
+      PaintBar(cBranco)
+    else if bPrimeiroAlta then
+      PaintBar(cCompra)
+    else if bPrimeiroBaixa then
+      PaintBar(cVenda)
+    else
+      PaintBar(cBranco);
+  end;
+
+  // Faixa de segurança tem prioridade máxima (sobrescreve qualquer sinal)
+  if bFaixaSeguranca then
+    PaintBar(cSeguranca);
+end;
