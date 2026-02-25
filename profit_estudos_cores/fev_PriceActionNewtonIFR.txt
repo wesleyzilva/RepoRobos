@@ -29,12 +29,14 @@ input
   UsarVetoExtremosIFR(true);
   IFRSobrecompra(75); // Evita compra esticada
   IFRSobrevenda(25);  // Evita venda esticada
+  IFRFaixaNeutraMin(30); // Entre 30 e 70 prioriza sinais de Força/Massa/Aceleração
+  IFRFaixaNeutraMax(70);
 
   // Zonas de atenção para sinais de rejeição (novo)
-  IFRZonaRejeicaoTopoMin(70);
+  IFRZonaRejeicaoTopoMin(60);
   IFRZonaRejeicaoTopoMax(80);
   IFRZonaRejeicaoFundoMin(20);
-  IFRZonaRejeicaoFundoMax(30);
+  IFRZonaRejeicaoFundoMax(40);
 
   // Rejeição robusta (score + confirmação)
   UsarScoreRejeicao(true);
@@ -93,7 +95,7 @@ var
 
   // Variáveis IFR
   fIFR : float;
-  bIFRCompraOK, bIFRVendaOK : boolean;
+  bIFRCompraOK, bIFRVendaOK, bIFRFaixaNeutraGlobal : boolean;
   bIFRZonaRejeicaoTopoGlobal, bIFRZonaRejeicaoFundoGlobal : boolean;
 
   // Price Action nas zonas IFR
@@ -215,13 +217,24 @@ begin
   // 5. Módulo IFR (veto de direção)
   fIFR := IFR(PeriodoIFR);
 
-  bIFRCompraOK := (not UsarFiltroIFR)
-               or ((fIFR >= IFRMinCompra)
-               and ((not UsarVetoExtremosIFR) or (fIFR <= IFRSobrecompra)));
+  bIFRFaixaNeutraGlobal := (fIFR >= IFRFaixaNeutraMin) and (fIFR <= IFRFaixaNeutraMax);
 
-  bIFRVendaOK := (not UsarFiltroIFR)
-              or ((fIFR <= IFRMaxVenda)
-              and ((not UsarVetoExtremosIFR) or (fIFR >= IFRSobrevenda)));
+  if bIFRFaixaNeutraGlobal then
+  begin
+    bIFRCompraOK := True;
+    bIFRVendaOK := True;
+    bATRRegimeOK := True;
+  end
+  else
+  begin
+    bIFRCompraOK := (not UsarFiltroIFR)
+                 or ((fIFR >= IFRMinCompra)
+                 and ((not UsarVetoExtremosIFR) or (fIFR <= IFRSobrecompra)));
+
+    bIFRVendaOK := (not UsarFiltroIFR)
+                or ((fIFR <= IFRMaxVenda)
+                and ((not UsarVetoExtremosIFR) or (fIFR >= IFRSobrevenda)));
+  end;
 
   bIFRZonaRejeicaoTopoGlobal := (fIFR >= IFRZonaRejeicaoTopoMin) and (fIFR <= IFRZonaRejeicaoTopoMax);
   bIFRZonaRejeicaoFundoGlobal := (fIFR >= IFRZonaRejeicaoFundoMin) and (fIFR <= IFRZonaRejeicaoFundoMax);
