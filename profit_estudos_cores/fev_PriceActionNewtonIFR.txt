@@ -30,7 +30,7 @@ input
   IFRSobrecompra(75); // Evita compra esticada
   IFRSobrevenda(25);  // Evita venda esticada
   IFRFaixaNeutraMin(35); // Faixa neutra do IFR para bloquear sinais de Força
-  IFRFaixaNeutraMax(65);
+  IFRFaixaNeutraMax(60);
 
   // Zonas de atenção para sinais de rejeição (novo)
   IFRZonaRejeicaoTopoMin(60);
@@ -279,14 +279,14 @@ begin
 
       if bIFRFaixaNeutraGlobal then
         PaintBar(cCinza)
-      else if (fForcaBase > 0) and bIFRCompraOK then
+      else if (fForcaBase > 0) then
       begin
         nR := 255 - Round(255 * fIntensidade);
         nG := 255;
         nB := 255 - Round(255 * fIntensidade);
         PaintBar(RGB(nR, nG, nB));
       end
-      else if (fForcaBase < 0) and bIFRVendaOK then
+      else if (fForcaBase < 0) then
       begin
         nR := 255;
         nG := 255 - Round(255 * fIntensidade);
