@@ -29,8 +29,8 @@ input
   UsarVetoExtremosIFR(true);
   IFRSobrecompra(75); // Evita compra esticada
   IFRSobrevenda(25);  // Evita venda esticada
-  IFRFaixaNeutraMin(30); // Entre 30 e 70 prioriza sinais de Força/Massa/Aceleração
-  IFRFaixaNeutraMax(70);
+  IFRFaixaNeutraMin(35); // Faixa neutra do IFR para bloquear sinais de Força
+  IFRFaixaNeutraMax(65);
 
   // Zonas de atenção para sinais de rejeição (novo)
   IFRZonaRejeicaoTopoMin(60);
@@ -277,7 +277,9 @@ begin
       fIntensidade := Abs(fForcaBase) / fMaxForca;
       if fIntensidade > 1.0 then fIntensidade := 1.0;
 
-      if (fForcaBase > 0) and bIFRCompraOK then
+      if bIFRFaixaNeutraGlobal then
+        PaintBar(cCinza)
+      else if (fForcaBase > 0) and bIFRCompraOK then
       begin
         nR := 255 - Round(255 * fIntensidade);
         nG := 255;
@@ -302,6 +304,8 @@ begin
   else if iModoVisualizacao = 1 then
   begin
     if not bATRRegimeOK then
+      PaintBar(cCinza)
+    else if bIFRFaixaNeutraGlobal then
       PaintBar(cCinza)
     else if bVisualizarAltaIntensidade then
     begin
@@ -328,6 +332,8 @@ begin
   else if iModoVisualizacao = 2 then
   begin
     if not bATRRegimeOK then
+      PaintBar(cCinza)
+    else if bIFRFaixaNeutraGlobal then
       PaintBar(cCinza)
     else if bVisualizarAltaIntensidade then
     begin
