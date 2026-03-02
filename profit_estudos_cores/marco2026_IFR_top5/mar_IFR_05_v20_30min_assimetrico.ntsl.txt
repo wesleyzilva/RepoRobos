@@ -1,0 +1,43 @@
+{
+  Indicador: mar_IFR_05_v20_30min_assimetrico
+  Descricao: Leitura visual do robô v20 (30min) com níveis assimétricos. Prioridade #5.
+}
+
+input
+  PeriodoIFR(9);
+  IFRCompraExtremo(32);
+  IFRCompraRetorno(38);
+  IFRVendaExtremo(68);
+  IFRVendaRetorno(62);
+  PeriodoMediaLonga(200);
+  MostrarTexto(true);
+
+var
+  fIFR, fMME200 : float;
+  bCompra, bVenda : boolean;
+  cCompra, cVenda, cNeutro : Integer;
+
+begin
+  cCompra := RGB(0, 255, 127);
+  cVenda := RGB(255, 69, 0);
+  cNeutro := RGB(120, 120, 120);
+
+  fIFR := IFR(PeriodoIFR);
+  fMME200 := MediaExp(PeriodoMediaLonga, Close);
+
+  bCompra := (fIFR[1] <= IFRCompraExtremo) and (fIFR >= IFRCompraRetorno) and (Close > fMME200);
+  bVenda := (fIFR[1] >= IFRVendaExtremo) and (fIFR <= IFRVendaRetorno) and (Close < fMME200);
+
+  if bCompra then
+  begin
+    PaintBar(cCompra);
+    if MostrarTexto then PlotText("V20 30 COMPRA", cCompra, 0, Low - (Range * 0.30));
+  end
+  else if bVenda then
+  begin
+    PaintBar(cVenda);
+    if MostrarTexto then PlotText("V20 30 VENDA", cVenda, 0, High + (Range * 0.30));
+  end
+  else
+    PaintBar(cNeutro);
+end;
