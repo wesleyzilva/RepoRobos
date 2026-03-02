@@ -1,0 +1,54 @@
+{
+  Estrategia: robo_ifr_v23_dupla_confirmacao
+  Autor: Wesley
+  Descricao: IFR com zona neutra (no-trade zone) e confirmacao por 2 candles.
+             Objetivo: reduzir falsos sinais de retorno sem continuidade.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(36);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(64);
+  ZonaNeutraMin(45);
+  ZonaNeutraMax(55);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(13);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR : float;
+  bConfirmacaoCompra, bConfirmacaoVenda, bForaZonaNeutra : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  bConfirmacaoCompra := (Close > Close[1]) and (Close[1] > Close[2]);
+  bConfirmacaoVenda := (Close < Close[1]) and (Close[1] < Close[2]);
+  bForaZonaNeutra := (fIFR < ZonaNeutraMin) or (fIFR > ZonaNeutraMax);
+
+  if (not IsBought) and (not IsSold) and bForaZonaNeutra then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) and bConfirmacaoCompra then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) and bConfirmacaoVenda then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

@@ -1,0 +1,78 @@
+{
+  Estrategia: robo_ifr_v5_regime_volatilidade
+  Autor: Wesley
+  Descricao: Ajusta extremos de IFR por regime de volatilidade (ATR relativo).
+             Alta volatilidade usa extremos mais amplos; baixa volatilidade mais estreitos.
+}
+
+input
+  PeriodoIFR(9);
+  PeriodoATR(14);
+  PeriodoATRMedia(50);
+  IFREntradaCompraAltaVol(20);
+  IFREntradaVendaAltaVol(80);
+  IFREntradaCompraBaixaVol(35);
+  IFREntradaVendaBaixaVol(65);
+  PeriodoMediaVolume(20);
+  FatorVolume(1.1);
+  UsarFiltroVolume(false);
+  MultiplicadorPavio(1.5);
+  MaxPavioOpostoCorpo(1.2);
+
+var
+  fIFR, vMediaVol, fATR, fATRMedio : float;
+  fCompraNivel, fVendaNivel : float;
+  Range, TamCorpo, TamPavioSup, TamPavioInf : float;
+  bVolumeAlto, bAltaVolatilidade : boolean;
+  bMartelo, bEstrela : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fATR := Media(PeriodoATR, Range);
+  fATRMedio := Media(PeriodoATRMedia, fATR);
+  if fATRMedio <= 0 then
+    fATRMedio := 0.01;
+
+  bAltaVolatilidade := (fATR >= fATRMedio);
+
+  if bAltaVolatilidade then
+  begin
+    fCompraNivel := IFREntradaCompraAltaVol;
+    fVendaNivel := IFREntradaVendaAltaVol;
+  end
+  else
+  begin
+    fCompraNivel := IFREntradaCompraBaixaVol;
+    fVendaNivel := IFREntradaVendaBaixaVol;
+  end;
+
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+  bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
+
+  Range := High - Low;
+  TamCorpo := Abs(Open - Close);
+  TamPavioSup := High - Max(Open, Close);
+  TamPavioInf := Min(Open, Close) - Low;
+
+  bMartelo := (Range > 0)
+           and (TamPavioInf >= (TamCorpo * MultiplicadorPavio))
+           and (TamPavioSup <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  bEstrela := (Range > 0)
+           and (TamPavioSup >= (TamCorpo * MultiplicadorPavio))
+           and (TamPavioInf <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR <= fCompraNivel) and bMartelo and bVolumeAlto then
+      BuyAtMarket
+    else if (fIFR >= fVendaNivel) and bEstrela and bVolumeAlto then
+      SellShortAtMarket;
+  end;
+
+  if IsBought and (fIFR >= 50) then
+    ClosePosition;
+
+  if IsSold and (fIFR <= 50) then
+    ClosePosition;
+end;

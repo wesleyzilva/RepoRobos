@@ -1,0 +1,52 @@
+{
+  Estrategia: robo_ifr_v43_vwap_direcional
+  Autor: Wesley
+  Descricao: IFR com direcao obrigatoria pela VWAP aproximada.
+             Compra acima da VWAP e venda abaixo.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoVWAP(30);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(14);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fVWAPAprox : float;
+  bCompraContexto, bVendaContexto : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fVWAPAprox := Media(PeriodoVWAP, Close * Volume) / Media(PeriodoVWAP, Volume);
+  bCompraContexto := (Close > fVWAPAprox);
+  bVendaContexto := (Close < fVWAPAprox);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bCompraContexto and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if bVendaContexto and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

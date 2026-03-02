@@ -1,0 +1,54 @@
+ANÁLISE - ROBO IFR V1 REVERSAO EXTREMOS
+
+Período analisado
+- 02/03/2025 a 02/03/2026
+
+Resumo por timeframe
+1) 2min
+- Arquivo: robo_ifr_v1_reversao_extremos02min64%.csv
+- % vencedoras (nome): 64%
+- Número de operações: 76
+- Resultado final acumulado: 612
+- Status: APROVADO (meta >= 60% e resultado positivo)
+
+2) 5min
+- Arquivo: robo_ifr_v1_reversao_extremos05min47%.csv
+- % vencedoras (nome): 47%
+- Número de operações: 48
+- Resultado final acumulado: -3.787
+- Status: REPROVADO (abaixo de 60% e resultado negativo)
+
+3) 15min
+- Arquivo: robo_ifr_v1_reversao_extremos15min68%.csv
+- % vencedoras (nome): 68%
+- Número de operações: 29
+- Resultado final acumulado: -1.157
+- Status: EM ALERTA (acerto alto, mas resultado negativo)
+
+4) 30min
+- Arquivo: robo_ifr_v1_reversao_extremos30min81%.csv
+- % vencedoras (nome): 81%
+- Número de operações: 16
+- Resultado final acumulado: 512
+- Status: APROVADO
+
+5) 60min
+- Arquivo: robo_ifr_v1_reversao_extremos60min71%.csv
+- % vencedoras (nome): 71%
+- Número de operações: 10
+- Resultado final acumulado: 1.304
+- Status: APROVADO (com amostra ainda pequena)
+
+Diagnóstico rápido de erro (principal)
+- Há operações muito longas para alguns timeframes (manutenção por muitas horas/dias), o que amplia perdas pontuais e pode destruir a curva mesmo com taxa de acerto alta.
+- O caso mais claro é 15min: % vencedoras alta, porém payoff assimétrico negativo (perdas maiores que ganhos).
+
+Ajustes recomendados para próxima iteração do v1
+- Adicionar limite de tempo de posição por timeframe (hard stop temporal).
+- Incluir stop estrutural (perda de pivô ou máxima/mínima anterior) para cortar cauda de perda.
+- Separar parâmetros de saída por timeframe (2/5/15/30/60), evitando usar mesma lógica para todos.
+
+Decisão atual do v1
+- Manter em carteira: 2min, 30min, 60min.
+- Revisar com prioridade: 15min.
+- Reprovar no estado atual: 5min.

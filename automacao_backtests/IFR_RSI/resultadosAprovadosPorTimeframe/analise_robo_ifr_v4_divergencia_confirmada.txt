@@ -1,0 +1,50 @@
+ANÁLISE - ROBO IFR V4 DIVERGENCIA CONFIRMADA
+
+Período analisado
+- 02/03/2025 a 02/03/2026
+
+Resumo por timeframe
+1) 2min
+- Arquivo: robo_ifr_v4_divergencia_confirmada02min64%.csv
+- % vencedoras (nome): 64%
+- Número de operações: 184
+- Resultado final acumulado: -2.223
+- Status: EM ALERTA (acerto > 60, porém resultado líquido negativo)
+
+2) 5min
+- Arquivo: robo_ifr_v4_divergencia_confirmada05min.csv
+- Número de operações: 48
+- Resultado final acumulado: -3.787
+- Status: REPROVADO
+
+3) 15min
+- Arquivo: robo_ifr_v4_divergencia_confirmada15min.csv
+- Número de operações: 97
+- Resultado final acumulado: -1.813
+- Status: REPROVADO
+
+4) 30min
+- Arquivo: robo_ifr_v4_divergencia_confirmada30min.csv
+- Número de operações: 31
+- Resultado final acumulado: -1.144
+- Status: REPROVADO
+
+5) 60min
+- Arquivo: robo_ifr_v4_divergencia_confirmada60min.csv
+- Número de operações: 10
+- Resultado final acumulado: 988
+- Status: APROVADO (amostra menor)
+
+Diagnóstico rápido
+- O v4 apresenta forte assimetria de payoff fora do 60min: várias perdas grandes e operações longas derrubam o resultado total.
+- Em 2min, mesmo com 64% de vencedoras, o saldo final ficou negativo: indica que perda média está maior que ganho médio.
+
+Ajustes recomendados para manter >60% e saldo positivo
+- Adicionar stop estrutural obrigatório (não depender só de IFR50/tempo).
+- Limitar tempo máximo de posição por timeframe (especialmente 2/5/15).
+- Reduzir exposição em dias de alta volatilidade adversa (circuit breaker por perda/tempo).
+
+Decisão atual do v4
+- Manter em carteira: 60min.
+- Revisar com prioridade: 2min (boa taxa de acerto, porém payoff ruim).
+- Reprovar no estado atual: 5min, 15min e 30min.

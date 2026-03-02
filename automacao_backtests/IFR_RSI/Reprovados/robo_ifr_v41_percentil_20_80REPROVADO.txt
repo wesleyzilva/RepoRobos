@@ -1,0 +1,52 @@
+{
+  Estrategia: robo_ifr_v41_percentil_20_80
+  Autor: Wesley
+  Descricao: IFR com bandas dinamicas por percentis 20/80 no lookback.
+             Retorno para dentro da banda aciona entrada.
+}
+
+input
+  PeriodoIFR(9);
+  LookbackBandas(50);
+  PercentilCompra(0.20);
+  PercentilVenda(0.80);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(15);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fMinIFR, fMaxIFR, fRangeIFR, fNivelCompra, fNivelVenda : float;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fMinIFR := Lowest(IFR(PeriodoIFR), LookbackBandas);
+  fMaxIFR := Highest(IFR(PeriodoIFR), LookbackBandas);
+  fRangeIFR := fMaxIFR - fMinIFR;
+
+  fNivelCompra := fMinIFR + (fRangeIFR * PercentilCompra);
+  fNivelVenda := fMinIFR + (fRangeIFR * PercentilVenda);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR[1] <= fNivelCompra) and (fIFR > fNivelCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= fNivelVenda) and (fIFR < fNivelVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

@@ -1,0 +1,60 @@
+{
+  Estrategia: robo_ifr_v49_limite_trades_progressivo
+  Autor: Wesley
+  Descricao: IFR com limite progressivo de trades diarios.
+             Ao atingir metade do limite, exige filtro extra por volume.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  MaxTradesDia(8);
+  PeriodoMediaVolume(20);
+  FatorVolumeExtra(1.2);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao, iTradesDia : integer;
+  fIFR, vMediaVol : float;
+  bBloqueadoDia, bFiltroExtra : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+
+  if Date <> Date[1] then
+    iTradesDia := 0;
+
+  bBloqueadoDia := (iTradesDia >= MaxTradesDia);
+  bFiltroExtra := (iTradesDia < (MaxTradesDia / 2)) or (Volume >= (vMediaVol * FatorVolumeExtra));
+
+  if (not IsBought) and (not IsSold) and (not bBloqueadoDia) and bFiltroExtra then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+      iTradesDia := iTradesDia + 1;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+      iTradesDia := iTradesDia + 1;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

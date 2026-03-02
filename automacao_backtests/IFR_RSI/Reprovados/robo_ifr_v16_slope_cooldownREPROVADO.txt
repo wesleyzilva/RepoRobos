@@ -1,0 +1,62 @@
+{
+  Estrategia: robo_ifr_v16_slope_cooldown
+  Autor: Wesley
+  Descricao: IFR com filtro de inclinacao (slope) e cooldown pos-stop/saida.
+             Objetivo: reduzir entradas em ruido e evitar overtrade sequencial.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(36);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(64);
+  SlopeMinimo(1.5);
+  CooldownBarras(3);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao, iCooldown : integer;
+  fIFR, fSlope : float;
+  bPodeEntrar : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fSlope := fIFR - fIFR[1];
+
+  if iCooldown > 0 then
+    iCooldown := iCooldown - 1;
+
+  bPodeEntrar := (iCooldown = 0);
+
+  if (not IsBought) and (not IsSold) and bPodeEntrar then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) and (fSlope >= SlopeMinimo) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) and (fSlope <= -SlopeMinimo) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+  begin
+    ClosePosition;
+    iCooldown := CooldownBarras;
+  end;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+  begin
+    ClosePosition;
+    iCooldown := CooldownBarras;
+  end;
+end;

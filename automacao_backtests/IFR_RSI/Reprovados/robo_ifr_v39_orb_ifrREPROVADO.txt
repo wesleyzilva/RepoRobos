@@ -1,0 +1,66 @@
+{
+  Estrategia: robo_ifr_v39_orb_ifr
+  Autor: Wesley
+  Descricao: IFR com confirmacao por rompimento de Opening Range (ORB).
+             Opera retorno de IFR apenas com quebra da faixa inicial do dia.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  HoraFimORB(930);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fORBHigh, fORBLow : float;
+  bORBCompra, bORBVenda : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  if Date <> Date[1] then
+  begin
+    fORBHigh := High;
+    fORBLow := Low;
+  end;
+
+  if Time <= HoraFimORB then
+  begin
+    if High > fORBHigh then
+      fORBHigh := High;
+    if Low < fORBLow then
+      fORBLow := Low;
+  end;
+
+  bORBCompra := (Close > fORBHigh);
+  bORBVenda := (Close < fORBLow);
+
+  if (not IsBought) and (not IsSold) and (Time > HoraFimORB) then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) and bORBCompra then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) and bORBVenda then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

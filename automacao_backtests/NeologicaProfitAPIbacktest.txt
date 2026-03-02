@@ -1,0 +1,1 @@
+da para eu usar uma API para buscar os resultados de operação da neologica para o Profit? queria também os dados do price action historico para estudos dos ultimos 3 anos.

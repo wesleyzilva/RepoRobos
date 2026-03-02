@@ -1,0 +1,74 @@
+CATÁLOGO - 50 OPÇÕES DE ESTRATÉGIAS IFR (RSI)
+
+Objetivo
+- Listar 50 variações de estratégia com IFR para priorização antes da fase de otimização.
+- Estrutura: ideia -> gatilho base -> filtro opcional -> saída padrão (IFR50/tempo/estrutura).
+
+1) REVERSÃO CLÁSSICA (1-10)
+1. Extremo 30/70 + retorno 35/65.
+2. Extremo 25/75 + retorno 32/68.
+3. Extremo 20/80 + retorno 30/70.
+4. Extremo 15/85 + retorno 25/75.
+5. Reversão 30/70 com confirmação de candle (close > high[1] / < low[1]).
+6. Reversão 30/70 com filtro de volume acima da média.
+7. Reversão 30/70 com cooldown de 2 barras após saída.
+8. Reversão 30/70 com no-trade-zone 45-55.
+9. Reversão assimétrica (compra 32->38, venda 68->62).
+10. Reversão com 1 reentrada por direção.
+
+2) RETORNO DE ZONA E CRUZAMENTOS (11-20)
+11. Compra quando IFR cruza 40 para cima após sobrevendido.
+12. Venda quando IFR cruza 60 para baixo após sobrecomprado.
+13. Compra em sequência: IFR < 30 e depois 2 closes crescentes.
+14. Venda em sequência: IFR > 70 e depois 2 closes decrescentes.
+15. Retorno 35/65 com confirmação por rompimento de pivô 3 barras.
+16. Retorno 35/65 com confirmação por pivô 5 barras.
+17. Cruzamento de IFR50 com filtro de tendência por MME9.
+18. Cruzamento de IFR50 com filtro de tendência por MME21.
+19. Cruzamento IFR45/55 em regime lateral detectado.
+20. Cruzamento IFR45/55 em regime de tendência detectado.
+
+3) TENDÊNCIA E PULLBACK (21-30)
+21. Pullback IFR para 45 em tendência de alta (MME9>MME21).
+22. Pullback IFR para 55 em tendência de baixa (MME9<MME21).
+23. Pullback IFR com contexto MME200.
+24. Pullback IFR com ADX mínimo.
+25. Pullback IFR com slope mínimo da MME21.
+26. Pullback IFR com filtro de distância máxima da VWAP.
+27. Pullback IFR com stop técnico em pivô anterior.
+28. Pullback IFR com saída parcial simulada (estágio + trailing).
+29. Pullback IFR sem operar quando IFR entra em 45-55 por muito tempo.
+30. Pullback IFR com limite de 1 trade por direção por sessão.
+
+4) DIVERGÊNCIA E ESTRUTURA (31-36)
+31. Divergência regular de compra + quebra de máxima do candle gatilho.
+32. Divergência regular de venda + quebra de mínima do candle gatilho.
+33. Divergência oculta em tendência de alta (continuação).
+34. Divergência oculta em tendência de baixa (continuação).
+35. Divergência com volume relativo acima de 1.2x média.
+36. Divergência com confirmação por candle de rejeição (pavio dominante).
+
+5) REGIME E VOLATILIDADE (37-42)
+37. IFR ativo apenas com ADX > 20.
+38. IFR ativo apenas com ADX entre 18 e 35.
+39. IFR ativo apenas com range médio em faixa mínima/máxima.
+40. IFR com bandas dinâmicas por percentil (25/75 do lookback).
+41. IFR com bandas dinâmicas por percentil (20/80 do lookback).
+42. IFR por sessão: parâmetros diferentes abertura/meio/fim.
+
+6) CONTEXTO DE PREÇO E VOLUME (43-47)
+43. IFR + VWAP (só compra acima, só venda abaixo).
+44. IFR + VWAP com filtro de distância máxima (evitar esticamento).
+45. IFR + volume relativo por horário (comparar com mesma faixa horária).
+46. IFR + direção da abertura do dia (viés inicial).
+47. IFR + rompimento de ORB (opening range breakout) com gatilho IFR.
+
+7) GESTÃO E CONTROLE DE RISCO (48-50)
+48. IFR com circuit breaker diário (limite de saídas por tempo).
+49. IFR com limite diário de trades e bloqueio progressivo.
+50. IFR com meta diária/limite de perda diária e pausa automática.
+
+Próxima etapa recomendada
+- Escolher 10 opções do catálogo (misturando 4 reversão, 3 tendência, 2 regime, 1 gestão).
+- Implementar em lotes de 3-5 robôs por rodada para evitar dispersão.
+- Só depois partir para otimização dos vencedores.

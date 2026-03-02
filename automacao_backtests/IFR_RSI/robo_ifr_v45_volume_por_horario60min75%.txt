@@ -1,0 +1,60 @@
+{
+  Estrategia: robo_ifr_v45_volume_por_horario
+  Autor: Wesley
+  Descricao: IFR com filtro de volume relativo por janela horaria simples.
+             Na abertura exige volume maior; depois exige volume moderado.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoMediaVolume(20);
+  HoraAberturaFim(1030);
+  FatorVolumeAbertura(1.3);
+  FatorVolumeMeio(1.0);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, vMediaVol, fFatorAtual : float;
+  bVolumeOk : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+
+  if Time <= HoraAberturaFim then
+    fFatorAtual := FatorVolumeAbertura
+  else
+    fFatorAtual := FatorVolumeMeio;
+
+  bVolumeOk := (Volume >= (vMediaVol * fFatorAtual));
+
+  if (not IsBought) and (not IsSold) and bVolumeOk then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

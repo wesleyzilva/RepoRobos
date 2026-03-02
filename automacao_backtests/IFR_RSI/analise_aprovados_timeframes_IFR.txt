@@ -1,0 +1,110 @@
+ANÁLISE DOS APROVADOS IFR POR TIMEFRAME (META >= 60% VENCEDORAS)
+
+Objetivo
+- Priorizar robôs aprovados por timeframe em 60, 30, 15, 5 e 2 minutos.
+- Manter foco em estratégias com percentual de operações vencedoras >= 60%.
+
+Regras de filtro (triagem rápida)
+1) Aprovado para carteira: % vencedoras >= 60.
+2) Em observação: % vencedoras entre 58 e 59 (retestar com ajuste leve).
+3) Rebaixar para revisão: % vencedoras < 58.
+4) Exigir amostra mínima de trades antes da decisão final.
+
+----------------------------------------
+TIMEFRAME 60 MIN
+----------------------------------------
+Aprovados >= 60%
+- robo_ifr_v1_reversao_extremos60min71%.txt
+- robo_ifr_v4_divergencia_confirmada60min90%.txt
+- robo_ifr_v5_regime_volatilidade60min90%.txt
+- robo_ifr_v6_saida_hibrida60min77%.txt
+- robo_ifr_v10_balanceado_regime60min63%.txt
+- robo_ifr_v18_bandas_dinamicas60min60%.txt
+- robo_ifr_v31_reversao_volume_relativo60min72%.txt
+- robo_ifr_v33_pullback_mme20060min67%.txt
+- robo_ifr_v36_divergencia_regular_pivo60min62%.txt
+- robo_ifr_v45_volume_por_horario60min75%.txt
+- robo_ifr_v47_orb_confirmacao_dupla60min66%.txt
+
+Abaixo da meta
+- robo_ifr_v27_um_trade_por_direcao60min54%.txt
+
+Resumo 60m
+- 11 de 12 acima ou igual a 60%.
+
+----------------------------------------
+TIMEFRAME 30 MIN
+----------------------------------------
+Aprovados >= 60%
+- robo_ifr_v7_resgate_contexto30min84%.txt
+- robo_ifr_v20_ifr_assimetrico_lado30min62%.txt
+
+Abaixo da meta
+- robo_ifr_v11_agressivo_reentrada30min58%.txt
+- robo_ifr_v28_ifr_adx_filtro30min57%.txt
+
+Resumo 30m
+- 2 de 4 acima ou igual a 60%.
+
+----------------------------------------
+TIMEFRAME 15 MIN
+----------------------------------------
+Aprovados >= 60%
+- robo_ifr_v23_dupla_confirmacao15min87%.txt
+
+Resumo 15m
+- 1 de 1 acima ou igual a 60%.
+
+----------------------------------------
+TIMEFRAME 5 MIN
+----------------------------------------
+- Sem aprovados catalogados no nome de arquivo até o momento.
+
+Ação
+- Rodar os melhores de 30m/15m também em 5m para preencher a lacuna.
+
+----------------------------------------
+TIMEFRAME 2 MIN
+----------------------------------------
+Aprovados >= 60%
+- robo_ifr_v25_ifr_mme200_contexto2min69%.txt
+
+Resumo 2m
+- 1 de 1 acima ou igual a 60%.
+
+----------------------------------------
+OBSERVAÇÃO EXTRA (fora do escopo pedido)
+----------------------------------------
+- 1m: robo_ifr_v24_controle_risco_diario1min67%.txt
+
+----------------------------------------
+TOP LISTA INICIAL PARA ANÁLISE PROFUNDA
+----------------------------------------
+Carteira principal (meta >=60 atendida e boa leitura)
+- 60m: v4, v5, v45, v31
+- 30m: v7, v20
+- 15m: v23
+- 2m: v25
+
+Em observação (próximos da meta)
+- v11 (58%), v28 (57%)
+
+Rebaixar/revisar
+- v27 (54%)
+
+----------------------------------------
+CHECKLIST DE ERROS QUE DERRUBAM % VENCEDORAS
+----------------------------------------
+1) Overtrade em lateralização (falta filtro de regime).
+2) Entrada sem confirmação de candle/pivô.
+3) Saída por tempo curta demais em tendência limpa.
+4) Timeframe incompatível com a lógica (ex.: setup de tendência em 1m sem filtro).
+5) Falta de filtro de volume em horários fracos.
+6) Janelas de horário sem liquidez misturadas com horários fortes.
+7) Assimetria compra/venda ignorada.
+8) Excesso de filtros (poucos trades, resultado instável).
+
+Próximo passo sugerido
+- Rodar nova bateria apenas nos aprovados >=60 em 60/30/15/2.
+- Replicar top 4 em 5m para fechar todos os timeframes alvo.
+- Aplicar decisão final por: % vencedoras, fator de lucro, drawdown e número de trades.

@@ -1,0 +1,59 @@
+{
+  Estrategia: robo_ifr_v22_tendencia_forte
+  Autor: Wesley
+  Descricao: IFR operando apenas com tendencia forte de medias.
+             Busca reduzir sinais em lateralizacao e priorizar continuidade.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(36);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(64);
+  PeriodoMMECurta(9);
+  PeriodoMMELonga(21);
+  SlopeMMELongaMin(2.0);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fMME9, fMME9Ant, fMME21, fMME21Ant, fSlopeMME21 : float;
+  bTendenciaForteCompra, bTendenciaForteVenda : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fMME9 := MediaExp(PeriodoMMECurta, Close);
+  fMME9Ant := MediaExp(PeriodoMMECurta, Close)[1];
+  fMME21 := MediaExp(PeriodoMMELonga, Close);
+  fMME21Ant := MediaExp(PeriodoMMELonga, Close)[1];
+  fSlopeMME21 := fMME21 - fMME21Ant;
+
+  bTendenciaForteCompra := (Close > fMME9) and (fMME9 > fMME21) and (fMME9 > fMME9Ant) and (fSlopeMME21 >= SlopeMMELongaMin);
+  bTendenciaForteVenda := (Close < fMME9) and (fMME9 < fMME21) and (fMME9 < fMME9Ant) and (fSlopeMME21 <= -SlopeMMELongaMin);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bTendenciaForteCompra and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if bTendenciaForteVenda and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

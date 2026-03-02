@@ -1,0 +1,53 @@
+{
+  Estrategia: robo_ifr_v37_adx_faixa_operavel
+  Autor: Wesley
+  Descricao: IFR operando apenas quando ADX estiver dentro de faixa operavel.
+             Evita tendencia fraca e tambem extremo de ruido.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoADX(14);
+  ADXMin(18);
+  ADXMax(35);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(14);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fADX : float;
+  bRegimeValido : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fADX := ADX(PeriodoADX, PeriodoADX);
+  bRegimeValido := (fADX >= ADXMin) and (fADX <= ADXMax);
+
+  if (not IsBought) and (not IsSold) and bRegimeValido then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;
