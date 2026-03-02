@@ -1,0 +1,47 @@
+{
+  Estrategia: robo_ifr_v20_ifr_assimetrico_lado
+  Autor: Wesley
+  Descricao: IFR com niveis assimetricos para compra e venda.
+             Ajusta sensibilidade por lado para refletir comportamento diferente do mercado.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(32);
+  IFREtornoCompra(38);
+  IFRExtremoVenda(68);
+  IFREtornoVenda(62);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(15);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR : float;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 52)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 48)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;
