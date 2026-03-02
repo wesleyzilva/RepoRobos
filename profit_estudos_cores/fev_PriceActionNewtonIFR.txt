@@ -32,6 +32,12 @@ input
   IFRFaixaNeutraMin(35); // Faixa neutra do IFR para bloquear sinais de Força
   IFRFaixaNeutraMax(60);
 
+  // Alarmes IFR (pontos de atuação e saída)
+  AtivarAlarmeIFR(true);
+  IFRAlvoCompra(10);
+  IFRAlvoSaida(50);
+  IFRAlvoVenda(90);
+
   // Zonas de atenção para sinais de rejeição (novo)
   IFRZonaRejeicaoTopoMin(60);
   IFRZonaRejeicaoTopoMax(80);
@@ -97,6 +103,7 @@ var
   fIFR : float;
   bIFRCompraOK, bIFRVendaOK, bIFRFaixaNeutraGlobal : boolean;
   bIFRZonaRejeicaoTopoGlobal, bIFRZonaRejeicaoFundoGlobal : boolean;
+  bAlertaIFRCompra, bAlertaIFRSaida, bAlertaIFRVenda : boolean;
 
   // Price Action nas zonas IFR
   fRangeAtual, fCorpoAtual, fPavioSupAtual, fPavioInfAtual, fMediaVolumePA : float;
@@ -238,6 +245,26 @@ begin
 
   bIFRZonaRejeicaoTopoGlobal := (fIFR >= IFRZonaRejeicaoTopoMin) and (fIFR <= IFRZonaRejeicaoTopoMax);
   bIFRZonaRejeicaoFundoGlobal := (fIFR >= IFRZonaRejeicaoFundoMin) and (fIFR <= IFRZonaRejeicaoFundoMax);
+
+  // 5.1 Alarmes IFR (disparo por cruzamento dos níveis)
+  bAlertaIFRCompra := ((fIFR[1] > IFRAlvoCompra) and (fIFR <= IFRAlvoCompra))
+                   or ((fIFR[1] < IFRAlvoCompra) and (fIFR >= IFRAlvoCompra));
+
+  bAlertaIFRSaida := ((fIFR[1] > IFRAlvoSaida) and (fIFR <= IFRAlvoSaida))
+                  or ((fIFR[1] < IFRAlvoSaida) and (fIFR >= IFRAlvoSaida));
+
+  bAlertaIFRVenda := ((fIFR[1] > IFRAlvoVenda) and (fIFR <= IFRAlvoVenda))
+                  or ((fIFR[1] < IFRAlvoVenda) and (fIFR >= IFRAlvoVenda));
+
+  if AtivarAlarmeIFR then
+  begin
+    if bAlertaIFRCompra then
+      Alert(cCiano)
+    else if bAlertaIFRSaida then
+      Alert(cLaranja)
+    else if bAlertaIFRVenda then
+      Alert(cFucsia);
+  end;
 
   // Referências robustas fora de escopos condicionais
   fATRRejeicaoZona := Media(PeriodoATRRejeicao, Range);
