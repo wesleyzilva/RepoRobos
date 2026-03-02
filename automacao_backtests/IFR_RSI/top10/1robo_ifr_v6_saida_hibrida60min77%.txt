@@ -18,8 +18,15 @@ input
   UsarSaidaPorSinalContrario(true);
   UsarSaidaIFR50(true);
   UsarSaidaTempo(true);
+  UsarOCO(false);
+  StopLossPontos(100.0);
+  TakeProfitPontos(150.0);
+  UsarBreakEven(false);
+  BreakEvenTriggerPontos(80.0);
+  BreakEvenOffsetPontos(5.0);
   MaxBarrasPosicao(12);
   UsarGestaoRisco(true);
+  UsarHardLock(true);
   SaldoConta(3500.0);
   RiscoDiaPct(1.0);
   RiscoSemanaPct(3.0);
@@ -34,8 +41,10 @@ var
   Range, TamCorpo, TamPavioSup, TamPavioInf, fFechamentoPosicao : float;
   fLimiteDia, fLimiteSemana, fResultadoDia, fResultadoSemana : float;
   fPrecoEntrada, fResultadoTradePontos, fResultadoTradeReais : float;
+  fStopAtual, fAlvoAtual : float;
   bVolumeAlto : boolean;
   bBloqueioDia, bBloqueioSemana, bEstavaPosicionado : boolean;
+  bBreakEvenAtivo, bSaidaOCOCompra, bSaidaOCOVenda : boolean;
   bMartelo, bEstrela, bDojiAlta, bDojiBaixa : boolean;
   bSinalCompra, bSinalVenda : boolean;
   bForcaContrariaCompra, bForcaContrariaVenda : boolean;
@@ -85,6 +94,9 @@ begin
   if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then
     bBloqueioSemana := true;
 
+  if UsarGestaoRisco and UsarHardLock and (bBloqueioDia or bBloqueioSemana) and (IsBought or IsSold) then
+    ClosePosition;
+
   fIFR := IFR(PeriodoIFR);
   vMediaVol := Media(PeriodoMediaVolume, Volume);
   bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
@@ -124,7 +136,39 @@ begin
   if IsBought or IsSold then
     iBarrasEmPosicao := iBarrasEmPosicao + 1
   else
+  begin
     iBarrasEmPosicao := 0;
+    bBreakEvenAtivo := false;
+  end;
+
+  bSaidaOCOCompra := false;
+  bSaidaOCOVenda := false;
+
+  if IsBought and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((High - fPrecoEntrada) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+
+    fStopAtual := fPrecoEntrada - StopLossPontos;
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Max(fStopAtual, fPrecoEntrada + BreakEvenOffsetPontos);
+
+    fAlvoAtual := fPrecoEntrada + TakeProfitPontos;
+    bSaidaOCOCompra := UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual));
+  end;
+
+  if IsSold and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((fPrecoEntrada - Low) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+
+    fStopAtual := fPrecoEntrada + StopLossPontos;
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Min(fStopAtual, fPrecoEntrada - BreakEvenOffsetPontos);
+
+    fAlvoAtual := fPrecoEntrada - TakeProfitPontos;
+    bSaidaOCOVenda := UsarOCO and ((High >= fStopAtual) or (Low <= fAlvoAtual));
+  end;
 
   if (not IsBought) and (not IsSold) and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
   begin
@@ -138,6 +182,7 @@ begin
       (UsarSaidaPorSinalContrario and bForcaContrariaCompra)
       or (UsarSaidaIFR50 and (fIFR >= 50))
       or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))
+      or bSaidaOCOCompra
      ) then
     ClosePosition;
 
@@ -145,6 +190,7 @@ begin
       (UsarSaidaPorSinalContrario and bForcaContrariaVenda)
       or (UsarSaidaIFR50 and (fIFR <= 50))
       or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))
+      or bSaidaOCOVenda
      ) then
     ClosePosition;
 
@@ -152,12 +198,14 @@ begin
   begin
     fPrecoEntrada := Close;
     iDirecaoPosicao := 1;
+    bBreakEvenAtivo := false;
   end;
 
   if (not bEstavaPosicionado) and IsSold then
   begin
     fPrecoEntrada := Close;
     iDirecaoPosicao := -1;
+    bBreakEvenAtivo := false;
   end;
 
   bEstavaPosicionado := IsBought or IsSold;
