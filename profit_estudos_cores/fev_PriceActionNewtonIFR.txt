@@ -35,7 +35,6 @@ input
   // Alarmes IFR (pontos de atuação e saída)
   AtivarAlarmeIFR(true);
   IFRAlvoCompra(10);
-  IFRAlvoSaida(50);
   IFRAlvoVenda(90);
 
   // Zonas de atenção para sinais de rejeição (novo)
@@ -103,7 +102,7 @@ var
   fIFR : float;
   bIFRCompraOK, bIFRVendaOK, bIFRFaixaNeutraGlobal : boolean;
   bIFRZonaRejeicaoTopoGlobal, bIFRZonaRejeicaoFundoGlobal : boolean;
-  bAlertaIFRCompra, bAlertaIFRSaida, bAlertaIFRVenda : boolean;
+  bAlertaIFRCompra, bAlertaIFRVenda : boolean;
 
   // Price Action nas zonas IFR
   fRangeAtual, fCorpoAtual, fPavioSupAtual, fPavioInfAtual, fMediaVolumePA : float;
@@ -250,9 +249,6 @@ begin
   bAlertaIFRCompra := ((fIFR[1] > IFRAlvoCompra) and (fIFR <= IFRAlvoCompra))
                    or ((fIFR[1] < IFRAlvoCompra) and (fIFR >= IFRAlvoCompra));
 
-  bAlertaIFRSaida := ((fIFR[1] > IFRAlvoSaida) and (fIFR <= IFRAlvoSaida))
-                  or ((fIFR[1] < IFRAlvoSaida) and (fIFR >= IFRAlvoSaida));
-
   bAlertaIFRVenda := ((fIFR[1] > IFRAlvoVenda) and (fIFR <= IFRAlvoVenda))
                   or ((fIFR[1] < IFRAlvoVenda) and (fIFR >= IFRAlvoVenda));
 
@@ -260,8 +256,6 @@ begin
   begin
     if bAlertaIFRCompra then
       Alert(cCiano)
-    else if bAlertaIFRSaida then
-      Alert(cLaranja)
     else if bAlertaIFRVenda then
       Alert(cFucsia);
   end;

@@ -23,7 +23,6 @@ input
   AtivarAlarmeIFR(true);
   IFRAlvoCompra(10);
   IFRAlvoCompra2(20);
-  IFRAlvoSaida(50);
   IFRAlvoVenda2(80);
   IFRAlvoVenda(90);
 
@@ -35,7 +34,7 @@ var
   bMartelo, bEstrela, bRejeicaoForteAlta, bRejeicaoForteBaixa : boolean;
   bDojiPrimeiro, bAbsorcaoPrimeiro, bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
   bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
-  bAlertaIFRCompra, bAlertaIFRCompra2, bAlertaIFRSaida, bAlertaIFRVenda2, bAlertaIFRVenda : boolean;
+  bAlertaIFRCompra, bAlertaIFRCompra2, bAlertaIFRVenda2, bAlertaIFRVenda : boolean;
   fMaxAnterior, fMinAnterior : float;
   TamCorpo, TamPavioSup, TamPavioInf, Range, fFechamentoPosicao : float;  
   CorAbsorcaoFundo, CorAbsorcaoTopo, CorNeutra, CorRejeicaoContexto, CorIndefinicao : integer;
@@ -124,9 +123,6 @@ begin
   bAlertaIFRCompra2 := ((fIFR[1] > IFRAlvoCompra2) and (fIFR <= IFRAlvoCompra2))
                     or ((fIFR[1] < IFRAlvoCompra2) and (fIFR >= IFRAlvoCompra2));
 
-  bAlertaIFRSaida := ((fIFR[1] > IFRAlvoSaida) and (fIFR <= IFRAlvoSaida))
-                  or ((fIFR[1] < IFRAlvoSaida) and (fIFR >= IFRAlvoSaida));
-
   bAlertaIFRVenda2 := ((fIFR[1] > IFRAlvoVenda2) and (fIFR <= IFRAlvoVenda2))
                    or ((fIFR[1] < IFRAlvoVenda2) and (fIFR >= IFRAlvoVenda2));
 
@@ -137,8 +133,6 @@ begin
   begin
     if bAlertaIFRCompra or bAlertaIFRCompra2 then
       Alert(CorAbsorcaoFundo)
-    else if bAlertaIFRSaida then
-      Alert(CorRejeicaoContexto)
     else if bAlertaIFRVenda2 or bAlertaIFRVenda then
       Alert(CorAbsorcaoTopo);
   end;
