@@ -14,15 +14,71 @@ input
   UsarSaidaIFR50(true);
   UsarSaidaTempo(true);
   MaxBarrasPosicao(15);
+  UsarGestaoRisco(true);
+  SaldoConta(1500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  QuantidadeContratos(1);
+  DiasParaResetSemanal(5);
+  UsarResetSemanalPorDiaFixo(true);
+  DiaSemanaReset(2);
 
 var
   iBarrasEmPosicao : integer;
   fIFR : float;
+  fLimiteDia, fLimiteSemana, fResultadoDia, fResultadoSemana : float;
+  fPrecoEntrada, fResultadoTradePontos, fResultadoTradeReais : float;
+  bBloqueioDia, bBloqueioSemana, bEstavaPosicionado : boolean;
+  iDirecaoPosicao, iDiasSemana, iDiaSemanaAtual : integer;
 
 begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0;
+    bBloqueioDia := false;
+
+    if UsarResetSemanalPorDiaFixo then
+    begin
+      iDiaSemanaAtual := DayOfWeek(Date);
+      if iDiaSemanaAtual = DiaSemanaReset then
+      begin
+        fResultadoSemana := 0;
+        bBloqueioSemana := false;
+      end;
+    end
+    else
+    begin
+      iDiasSemana := iDiasSemana + 1;
+      if iDiasSemana > DiasParaResetSemanal then
+      begin
+        iDiasSemana := 1;
+        fResultadoSemana := 0;
+        bBloqueioSemana := false;
+      end;
+    end;
+  end;
+
+  fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+  fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+  if bEstavaPosicionado and (not IsBought) and (not IsSold) then
+  begin
+    fResultadoTradePontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
+    fResultadoTradeReais := fResultadoTradePontos * ValorPorPonto * QuantidadeContratos;
+    fResultadoDia := fResultadoDia + fResultadoTradeReais;
+    fResultadoSemana := fResultadoSemana + fResultadoTradeReais;
+  end;
+
+  if UsarGestaoRisco and (fResultadoDia <= -fLimiteDia) then
+    bBloqueioDia := true;
+
+  if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then
+    bBloqueioSemana := true;
+
   fIFR := IFR(PeriodoIFR);
 
-  if (not IsBought) and (not IsSold) then
+  if (not IsBought) and (not IsSold) and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
   begin
     if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
     begin
@@ -44,4 +100,18 @@ begin
 
   if IsSold and ((UsarSaidaIFR50 and (fIFR <= 48)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
     ClosePosition;
+
+  if (not bEstavaPosicionado) and IsBought then
+  begin
+    fPrecoEntrada := Close;
+    iDirecaoPosicao := 1;
+  end;
+
+  if (not bEstavaPosicionado) and IsSold then
+  begin
+    fPrecoEntrada := Close;
+    iDirecaoPosicao := -1;
+  end;
+
+  bEstavaPosicionado := IsBought or IsSold;
 end;

@@ -18,15 +18,71 @@ input
   UsarFiltroVolume(false);
   MultiplicadorPavio(1.5);
   MaxPavioOpostoCorpo(1.2);
+  UsarGestaoRisco(true);
+  SaldoConta(2500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  QuantidadeContratos(1);
+  DiasParaResetSemanal(5);
+  UsarResetSemanalPorDiaFixo(true);
+  DiaSemanaReset(2);
 
 var
   fIFR, vMediaVol, fATR, fATRMedio : float;
   fCompraNivel, fVendaNivel : float;
   Range, TamCorpo, TamPavioSup, TamPavioInf : float;
+  fLimiteDia, fLimiteSemana, fResultadoDia, fResultadoSemana : float;
+  fPrecoEntrada, fResultadoTradePontos, fResultadoTradeReais : float;
   bVolumeAlto, bAltaVolatilidade : boolean;
+  bBloqueioDia, bBloqueioSemana, bEstavaPosicionado : boolean;
   bMartelo, bEstrela : boolean;
+  iDirecaoPosicao, iDiasSemana, iDiaSemanaAtual : integer;
 
 begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0;
+    bBloqueioDia := false;
+
+    if UsarResetSemanalPorDiaFixo then
+    begin
+      iDiaSemanaAtual := DayOfWeek(Date);
+      if iDiaSemanaAtual = DiaSemanaReset then
+      begin
+        fResultadoSemana := 0;
+        bBloqueioSemana := false;
+      end;
+    end
+    else
+    begin
+      iDiasSemana := iDiasSemana + 1;
+      if iDiasSemana > DiasParaResetSemanal then
+      begin
+        iDiasSemana := 1;
+        fResultadoSemana := 0;
+        bBloqueioSemana := false;
+      end;
+    end;
+  end;
+
+  fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+  fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+  if bEstavaPosicionado and (not IsBought) and (not IsSold) then
+  begin
+    fResultadoTradePontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
+    fResultadoTradeReais := fResultadoTradePontos * ValorPorPonto * QuantidadeContratos;
+    fResultadoDia := fResultadoDia + fResultadoTradeReais;
+    fResultadoSemana := fResultadoSemana + fResultadoTradeReais;
+  end;
+
+  if UsarGestaoRisco and (fResultadoDia <= -fLimiteDia) then
+    bBloqueioDia := true;
+
+  if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then
+    bBloqueioSemana := true;
+
   fIFR := IFR(PeriodoIFR);
   fATR := Media(PeriodoATR, Range);
   fATRMedio := Media(PeriodoATRMedia, fATR);
@@ -62,7 +118,7 @@ begin
            and (TamPavioSup >= (TamCorpo * MultiplicadorPavio))
            and (TamPavioInf <= (TamCorpo * MaxPavioOpostoCorpo));
 
-  if (not IsBought) and (not IsSold) then
+  if (not IsBought) and (not IsSold) and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
   begin
     if (fIFR <= fCompraNivel) and bMartelo and bVolumeAlto then
       BuyAtMarket
@@ -75,4 +131,18 @@ begin
 
   if IsSold and (fIFR <= 50) then
     ClosePosition;
+
+  if (not bEstavaPosicionado) and IsBought then
+  begin
+    fPrecoEntrada := Close;
+    iDirecaoPosicao := 1;
+  end;
+
+  if (not bEstavaPosicionado) and IsSold then
+  begin
+    fPrecoEntrada := Close;
+    iDirecaoPosicao := -1;
+  end;
+
+  bEstavaPosicionado := IsBought or IsSold;
 end;

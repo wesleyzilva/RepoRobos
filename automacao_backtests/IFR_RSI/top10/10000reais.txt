@@ -1,0 +1,154 @@
+PLANO DE CONTAS - 4 ROBÔS IFR (CAPITAL R$10.000)
+
+Base dos robôs (resultado anual histórico do estudo)
+1) v6_60min = +2.315
+2) v5_60min = +1.563
+3) v45_60min = +1.643
+4) v20_30min = +1.393
+
+Soma histórica dos 4 = +6.914
+Capital base = R$10.000
+Retorno simples estimado = +69,14% (sem alavancagem adicional)
+
+==================================================
+COMO SEPARAR POR CONTAS (RECOMENDAÇÃO)
+==================================================
+
+Estrutura recomendada: 4 contas, 1 robô por conta
+
+Conta_A (35% = R$3.500)
+- Robô: v6_60min
+- Peso do lucro esperado: 2.315 / 6.914 = 33,48%
+- Lucro anual proporcional estimado: R$2.315
+- Capital final estimado da conta: R$5.815
+
+Conta_B (25% = R$2.500)
+- Robô: v5_60min
+- Peso do lucro esperado: 1.563 / 6.914 = 22,61%
+- Lucro anual proporcional estimado: R$1.563
+- Capital final estimado da conta: R$4.063
+
+Conta_C (25% = R$2.500)
+- Robô: v45_60min
+- Peso do lucro esperado: 1.643 / 6.914 = 23,76%
+- Lucro anual proporcional estimado: R$1.643
+- Capital final estimado da conta: R$4.143
+
+Conta_D (15% = R$1.500)
+- Robô: v20_30min
+- Peso do lucro esperado: 1.393 / 6.914 = 20,15%
+- Lucro anual proporcional estimado: R$1.393
+- Capital final estimado da conta: R$2.893
+
+Total consolidado (4 contas)
+- Lucro estimado: R$6.914
+- Capital final estimado: R$16.914
+
+==================================================
+CONTROLE DE RISCO POR CONTA
+==================================================
+
+Limites sugeridos
+- Perda diária por conta: 1,0% do saldo da conta
+- Perda semanal por conta: 3,0% do saldo da conta
+- Ao bater limite semanal: pausar a conta até semana seguinte
+
+Observação operacional
+- Você pode rodar no máximo 2 robôs simultâneos no início.
+- Ordem prática de ativação:
+	1) v6_60min
+	2) v5_60min
+	3) v45_60min
+	4) v20_30min
+
+==================================================
+CENÁRIOS DE RESULTADO (ANUAL)
+==================================================
+
+Cenário Base (100% do histórico)
+- Lucro: +R$6.914
+- Final: R$16.914
+
+Cenário Conservador (75% do histórico, custos/slippage)
+- Lucro: +R$5.185,50
+- Final: R$15.185,50
+
+Cenário Estressado (50% do histórico)
+- Lucro: +R$3.457
+- Final: R$13.457
+
+Nota importante
+- Isso é projeção baseada no histórico analisado, não garantia de resultado futuro.
+
+==================================================
+CONFIGURAÇÃO PRONTA PARA COLOCAR NOS ROBÔS
+==================================================
+
+1) LIMITES EM R$ POR CONTA (usar no setup de cada robô)
+
+Conta_A (v6_60min | saldo R$3.500)
+- Limite diário (1%): R$35,00
+- Limite semanal (3%): R$105,00
+
+Conta_B (v5_60min | saldo R$2.500)
+- Limite diário (1%): R$25,00
+- Limite semanal (3%): R$75,00
+
+Conta_C (v45_60min | saldo R$2.500)
+- Limite diário (1%): R$25,00
+- Limite semanal (3%): R$75,00
+
+Conta_D (v20_30min | saldo R$1.500)
+- Limite diário (1%): R$15,00
+- Limite semanal (3%): R$45,00
+
+2) LÓGICA DE TRAVA (copiar para todos os robôs)
+
+Passo a passo operacional
+- No início de cada dia: recalcular limite diário pelo saldo atual da conta.
+- No início de cada semana: zerar acumulador semanal.
+- Se resultado do dia <= -limite diário: bloquear novas entradas até o próximo dia.
+- Se resultado da semana <= -limite semanal: bloquear novas entradas até a próxima semana.
+
+Template (adaptar nomes de variáveis à sua estratégia)
+
+input
+	SaldoConta(3500.0);
+	RiscoDiaPct(1.0);
+	RiscoSemanaPct(3.0);
+
+var
+	LimiteDia, LimiteSemana : float;
+	ResultadoDia, ResultadoSemana : float;
+	BloqueioDia, BloqueioSemana : boolean;
+
+begin
+	LimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+	LimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+	// Atualizar ResultadoDia e ResultadoSemana com o PnL da sua lógica
+
+	if ResultadoDia <= -LimiteDia then
+		BloqueioDia := true;
+
+	if ResultadoSemana <= -LimiteSemana then
+		BloqueioSemana := true;
+
+	if BloqueioDia or BloqueioSemana then
+	begin
+		// Não abrir novas posições
+		// Exemplo: pular bloco de entrada
+	end;
+end;
+
+3) PARÂMETRO SaldoConta EM CADA ROBÔ
+
+- No robô da Conta_A (v6_60min), usar SaldoConta(3500.0)
+- No robô da Conta_B (v5_60min), usar SaldoConta(2500.0)
+- No robô da Conta_C (v45_60min), usar SaldoConta(2500.0)
+- No robô da Conta_D (v20_30min), usar SaldoConta(1500.0)
+
+4) REGRA DE REATIVAÇÃO
+
+- Bloqueio diário: reativar no próximo pregão.
+- Bloqueio semanal: reativar na segunda-feira seguinte.
