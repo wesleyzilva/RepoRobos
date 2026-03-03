@@ -68,3 +68,17 @@ CONCLUSÃO PRÁTICA
 - Melhor período operacional geral: 60min e 30min (únicos com saldo total positivo forte).
 - Timeframe mais fraco no período analisado: 5min (maior saldo agregado negativo).
 - Próximo foco: priorizar carteira em 60min/30min e revalidar regras de 5min antes de usar em produção.
+
+Divisão prática da carteira
+
+Núcleo (70%): v6 60min, v5 60min, v45 60min.
+Satélite (30%): v6 30min e v20 30min.
+Evite começar com 2min/5min agora, porque o agregado desses períodos ficou fraco no seu consolidado.
+
+Ordem de uso (prática)
+
+1º: v6 60min (melhor saldo absoluto).
+2º: v5 60min (winrate muito alto, complementar).
+3º: v45 60min (reserva/substituição).
+4º: v6 30min (quando quiser aumentar frequência).
+5º: v20 30min (opção secundária de 30min).
