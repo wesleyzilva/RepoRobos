@@ -272,3 +272,102 @@ Checklist de validação antes de conta real
 3) Comparar: lucro líquido, drawdown, fator de lucro, sequência máxima de perdas.
 4) Forward test por 2 semanas com 1 contrato.
 5) Só escalar após manter disciplina de limite diário/semanal.
+
+==================================================
+DIFERENÇA ENTRE OS TOP4 (PONTOS POSITIVOS E NEGATIVOS)
+==================================================
+
+1) v6_60min (saída híbrida)
+- Lógica principal:
+	- Entrada por extremo de IFR com confirmação de candle (martelo/estrela/doji) + volume.
+	- Saída híbrida: IFR50, tempo em posição, sinal contrário forte e OCO opcional.
+- Pontos positivos:
+	- Mais completo em filtros de entrada (qualidade de sinal).
+	- Saídas diversificadas ajudam a reduzir permanência em cenário ruim.
+	- Boa adaptação a diferentes fases (com OCO e breakeven parametrizáveis).
+- Pontos negativos:
+	- Mais complexo (mais parâmetros para calibrar).
+	- Pode perder entradas rápidas por exigir mais confirmação.
+	- Maior risco de sobreajuste se otimizar parâmetros em excesso.
+
+2) v5_60min (regime de volatilidade)
+- Lógica principal:
+	- Ajusta níveis de entrada do IFR conforme volatilidade (ATR atual versus ATR médio).
+	- Usa candle de reversão e filtro de volume.
+- Pontos positivos:
+	- Ajuste dinâmico ao regime de mercado (alta/baixa volatilidade).
+	- Pode melhorar robustez em períodos de mudança de ritmo.
+	- Estrutura objetiva para evitar operar extremo igual em todo contexto.
+- Pontos negativos:
+	- Dependência forte da leitura de ATR (pode alternar regime perto da fronteira).
+	- Em mercado “morno”, pode gerar menos operações.
+	- Necessita boa calibração dos níveis de alta e baixa volatilidade.
+
+3) v45_60min (volume por horário)
+- Lógica principal:
+	- Só libera entrada quando volume da barra supera média de volume ajustada por fator horário.
+	- Exige mais volume na abertura e filtro moderado depois.
+- Pontos positivos:
+	- Bom filtro contra operações em barras fracas (sem participação).
+	- Favorece entradas quando há fluxo mais consistente.
+	- Simples de interpretar e validar operacionalmente.
+- Pontos negativos:
+	- Pode ficar “travado” em dias de volume abaixo da média (menos trades).
+	- Sensível à configuração de horário e fator da abertura.
+	- Pode filtrar demais em ativos/sessões com volume irregular.
+
+4) v20_30min (IFR assimétrico por lado)
+- Lógica principal:
+	- Níveis diferentes para compra e venda (assimetria de IFR), sem filtro de candle/volume.
+	- Saída por IFR50 (faixa 48/52), tempo e OCO opcional.
+- Pontos positivos:
+	- Estrutura simples e direta (fácil de operar e testar).
+	- Assimetria de níveis pode capturar melhor diferença entre lado comprador e vendedor.
+	- Timeframe 30min tende a dar mais frequência que os de 60min.
+- Pontos negativos:
+	- Menos filtros de qualidade de entrada (pode aumentar ruído).
+	- Mais suscetível a falso sinal em lateralidade.
+	- Em tendência forte, reversão por IFR pode entrar cedo contra fluxo.
+
+Resumo prático de diferença
+- v6_60min: mais completo e defensivo em filtro/saída.
+- v5_60min: melhor adaptação por regime de volatilidade.
+- v45_60min: melhor controle por participação de volume/horário.
+- v20_30min: mais simples e frequente, porém mais sensível a ruído.
+
+Ordem sugerida por robustez operacional (qualidade de sinal)
+1) v6_60min
+2) v5_60min
+3) v45_60min
+4) v20_30min
+
+Ordem sugerida por simplicidade e frequência
+1) v20_30min
+2) v45_60min
+3) v5_60min
+4) v6_60min
+
+==================================================
+CONSOLIDAÇÃO DE OPERAÇÕES (TOP4)
+==================================================
+
+Período analisado
+- 02/03/2025 a 02/03/2026 (conforme CSVs de resultados aprovados).
+
+Top4 nos timeframes principais do plano
+- v6_60min: 18 operações
+- v5_60min: 11 operações
+- v45_60min: 12 operações
+- v20_30min: 40 operações
+- Total (timeframes principais): 81 operações no ano
+
+Top4 somando todos os timeframes disponíveis em CSV
+- v6 (02/05/15/30/60): 358 operações
+- v5 (02/05/15/30/60): 238 operações
+- v45 (02/05/15/30/60): 273 operações
+- v20 (02/05/15/30/60): 609 operações
+- Total geral (todos os timeframes): 1.478 operações
+
+Leitura correta
+- Sim: no recorte operacional principal (v6 60m, v5 60m, v45 60m e v20 30m), foram 81 operações em 1 ano.
+- O número 1.478 representa a soma de todos os testes de timeframe desses mesmos 4 robôs.

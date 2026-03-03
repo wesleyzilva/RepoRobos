@@ -18,8 +18,8 @@ var
   cCompra, cVenda, cNeutro : Integer;
 
 begin
-  cCompra := RGB(0, 255, 127);
-  cVenda := RGB(255, 69, 0);
+  cCompra := RGB(0, 220, 0);
+  cVenda := RGB(220, 0, 0);
   cNeutro := RGB(120, 120, 120);
 
   fIFR := IFR(PeriodoIFR);

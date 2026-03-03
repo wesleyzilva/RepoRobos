@@ -1,0 +1,117 @@
+{
+  Estrategia: robo_medias_v4_filtro_compressao_direcional
+  Autor: Wesley
+  Descricao: Bloqueia operacao quando MME20 e MMA200 estao comprimidas e libera apenas com direcionalidade.
+}
+
+input
+  DistanciaCompressao20x200(90.0);
+  DistanciaMinimaLequePontos(35.0);
+  MinBarrasDirecional(2);
+  UsarOCO(true);
+  StopLossPontos(150.0);
+  TakeProfitPontos(300.0);
+  UsarSaidaPorTempo(true);
+  MaxBarrasPosicao(10);
+
+var
+  mme9, mme20, mma50, mma200 : float;
+  dist20200, dist920, dist2050 : float;
+  slope20, slope50, slope200 : float;
+  iBarrasAlta, iBarrasBaixa, iBarrasPosicao : integer;
+  bCompressao, bDirecionalAlta, bDirecionalBaixa : boolean;
+  bEstavaPosicionado, bSaidaOCOCompra, bSaidaOCOVenda : boolean;
+  fPrecoEntrada, fStopAtual, fAlvoAtual : float;
+
+begin
+  mme9 := MediaExp(9, Close);
+  mme20 := MediaExp(20, Close);
+  mma50 := Media(50, Close);
+  mma200 := Media(200, Close);
+
+  dist20200 := Abs(mme20 - mma200);
+  dist920 := Abs(mme9 - mme20);
+  dist2050 := Abs(mme20 - mma50);
+
+  slope20 := mme20 - mme20[1];
+  slope50 := mma50 - mma50[1];
+  slope200 := mma200 - mma200[1];
+
+  bCompressao := dist20200 <= DistanciaCompressao20x200;
+
+  bDirecionalAlta := (not bCompressao)
+                    and (Close > mme20) and (mme20 > mma50) and (mma50 > mma200)
+                    and (slope20 > 0) and (slope50 > 0) and (slope200 >= 0)
+                    and (dist920 >= DistanciaMinimaLequePontos)
+                    and (dist2050 >= DistanciaMinimaLequePontos);
+
+  bDirecionalBaixa := (not bCompressao)
+                     and (Close < mme20) and (mme20 < mma50) and (mma50 < mma200)
+                     and (slope20 < 0) and (slope50 < 0) and (slope200 <= 0)
+                     and (dist920 >= DistanciaMinimaLequePontos)
+                     and (dist2050 >= DistanciaMinimaLequePontos);
+
+  if bDirecionalAlta then
+    iBarrasAlta := iBarrasAlta + 1
+  else
+    iBarrasAlta := 0;
+
+  if bDirecionalBaixa then
+    iBarrasBaixa := iBarrasBaixa + 1
+  else
+    iBarrasBaixa := 0;
+
+  if IsBought or IsSold then
+    iBarrasPosicao := iBarrasPosicao + 1
+  else
+    iBarrasPosicao := 0;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if iBarrasAlta >= MinBarrasDirecional then
+      BuyAtMarket
+    else if iBarrasBaixa >= MinBarrasDirecional then
+      SellShortAtMarket;
+  end;
+
+  bSaidaOCOCompra := false;
+  bSaidaOCOVenda := false;
+
+  if IsBought and bEstavaPosicionado then
+  begin
+    fStopAtual := fPrecoEntrada - StopLossPontos;
+    fAlvoAtual := fPrecoEntrada + TakeProfitPontos;
+    bSaidaOCOCompra := UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual));
+  end;
+
+  if IsSold and bEstavaPosicionado then
+  begin
+    fStopAtual := fPrecoEntrada + StopLossPontos;
+    fAlvoAtual := fPrecoEntrada - TakeProfitPontos;
+    bSaidaOCOVenda := UsarOCO and ((High >= fStopAtual) or (Low <= fAlvoAtual));
+  end;
+
+  if IsBought and (
+      bCompressao
+      or (Close < mme20)
+      or (UsarSaidaPorTempo and (iBarrasPosicao >= MaxBarrasPosicao))
+      or bSaidaOCOCompra
+     ) then
+    ClosePosition;
+
+  if IsSold and (
+      bCompressao
+      or (Close > mme20)
+      or (UsarSaidaPorTempo and (iBarrasPosicao >= MaxBarrasPosicao))
+      or bSaidaOCOVenda
+     ) then
+    ClosePosition;
+
+  if (not bEstavaPosicionado) and IsBought then
+    fPrecoEntrada := Close;
+
+  if (not bEstavaPosicionado) and IsSold then
+    fPrecoEntrada := Close;
+
+  bEstavaPosicionado := IsBought or IsSold;
+end;
