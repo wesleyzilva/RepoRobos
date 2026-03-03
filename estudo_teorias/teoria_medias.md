@@ -35,6 +35,7 @@ A dupla 50/200 é filtro de contexto, não gatilho de entrada curto.
 
 ---
 
+
 ## 4. Estado de COMPRA (viés macro comprador)
 Confluência de compra:
 
@@ -140,6 +141,7 @@ A lógica central: a média 20 mostra a direção operacional e a média 50 most
 - Reage mais rápido e mostra aceleração/desaceleração.
 - Serve como referência para pullback no intraday.
 
+A media de 20 é utlizada para validar a probabilidade de rompimento quando ela estiver mais proxima.
 ### Média 50 (MMA ou MME)
 - É a média de defesa institucional.
 - Filtra ruído de curto prazo.
@@ -752,3 +754,23 @@ Embora o "olhômetro" funcione bem, existem ferramentas para medir isso:
 | **Esticado** | Grande espaço vazio | **Realizar Lucro / Não Entrar** |
 | **No Valor** | Tocando ou próximo | **Procurar Entrada (Gatilho)** |
 | **Cruzando** | Cruzando com força | **Atenção (Possível Reversão)** |
+
+Pivot de alta na 20 pode ocorrer um rompimento
+
+
+## 6. Regras rápidas de leitura das médias
+
+Ao analisar médias móveis, priorize estes pontos:
+
+1. **Saída da média ou retorno à média:**
+    - Observe se o preço está se afastando da média (expansão) ou voltando para ela (pullback/retorno ao valor).
+
+2. **Rompimento da média longa em relação à média curta:**
+    - Quando a média curta ganha inclinação e rompe a média longa em região de suporte/resistência dinâmica, há sinal de possível mudança de fluxo.
+
+3. **Rompimento de resistência horizontal com confluência de médias:**
+    - O rompimento de uma resistência horizontal tem mais qualidade quando a distância da média de 20 para a média longa indica expansão favorável (evitando cenário de médias comprimidas).
+
+4. **Cruzamento da média de 200 com a média de 20 próxima:**
+    - Se o preço cruzou a média de 200 e a média de 20 está próxima, aceite operar contra a média curta quando houver estrutura confirmando.
+    - A leitura principal deve seguir o cenário do timeframe maior, que tem prioridade sobre o ruído do gráfico menor.
