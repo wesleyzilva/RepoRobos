@@ -89,21 +89,24 @@ end;
 ```
 
 #### Tipos de dados
-| Tipo | Uso |
-|------|-----|
-| `float` | Preços, percentuais, valores financeiros |
-| `integer` | Contadores, períodos, índices |
-| `boolean` | Flags true/false |
+
+| Tipo      | Uso                                      |
+| --------- | ---------------------------------------- |
+| `float`   | Preços, percentuais, valores financeiros |
+| `integer` | Contadores, períodos, índices            |
+| `boolean` | Flags true/false                         |
 
 #### Séries nativas (barra atual = `[0]`, barra anterior = `[1]`)
-| Série | Significado |
-|-------|-------------|
-| `Open` / `Open[1]` | Abertura da barra atual / anterior |
-| `High`, `Low`, `Close` | Máxima, mínima, fechamento |
-| `Volume` | Volume da barra |
-| `Date` | Data da barra (`Date <> Date[1]` = nova sessão) |
+
+| Série                  | Significado                                     |
+| ---------------------- | ----------------------------------------------- |
+| `Open` / `Open[1]`     | Abertura da barra atual / anterior              |
+| `High`, `Low`, `Close` | Máxima, mínima, fechamento                      |
+| `Volume`               | Volume da barra                                 |
+| `Date`                 | Data da barra (`Date <> Date[1]` = nova sessão) |
 
 #### Funções nativas mais usadas
+
 ```ntsl
 IFR(periodo)                    { Índice de Força Relativa }
 Media(periodo, serie)           { Média aritmética simples }
@@ -117,6 +120,7 @@ DayOfWeek(Date)                 { Dia da semana: 1=Dom 2=Seg ... 7=Sab }
 ```
 
 #### Funções de posição
+
 ```ntsl
 IsBought                        { true se posicionado comprado }
 IsSold                          { true se posicionado vendido }
@@ -130,6 +134,7 @@ SellStop(preco, qtd)            { ordem de venda stop }
 ```
 
 #### Operadores
+
 ```ntsl
 and  or  not               { booleanos }
 =  <>  <  >  <=  >=        { comparação }
@@ -137,9 +142,11 @@ and  or  not               { booleanos }
 ```
 
 #### Comentários
+
 ```ntsl
 { isto e um comentario de bloco }
 ```
+
 > NTSL usa `{ }` para comentários — **não** usa `//` nem `/* */`
 
 ### Scripts MQL5 (MetaTrader 5)
