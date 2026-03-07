@@ -81,10 +81,7 @@ begin
 
   if bEstavaPosicionado and (not IsBought) and (not IsSold) then
   begin
-    if iDirecaoPosicao = 1 then
-      fResultadoPontos := (Close - fPrecoEntrada)
-    else
-      fResultadoPontos := (fPrecoEntrada - Close);
+    fResultadoPontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
     fResultadoReais  := fResultadoPontos * ValorPorPonto;
     fResultadoDia    := fResultadoDia    + fResultadoReais;
     fResultadoSemana := fResultadoSemana + fResultadoReais;
@@ -106,7 +103,8 @@ begin
     fVolC1   := Volume;
   end;
 
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
   begin
     // Volume de iniciativa: >3x a média
     bVolIniciativa := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeIniciativa);

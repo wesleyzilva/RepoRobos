@@ -125,7 +125,8 @@ begin
   end;
 
   // ── LÓGICA DE SINAL (apenas no 2o candle em diante) ─────────
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
   begin
     // Gap externo para cima: abertura acima da máxima do dia anterior
     // High[2] = máxima de D-1 quando estamos no candle 2 (High[1] = 1o candle hoje)

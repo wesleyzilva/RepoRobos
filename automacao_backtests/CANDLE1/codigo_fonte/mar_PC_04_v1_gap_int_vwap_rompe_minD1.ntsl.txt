@@ -83,7 +83,7 @@ begin
 
   if bEstavaPosicionado and (not IsBought) and (not IsSold) then
   begin
-    fResultadoPontos := (fPrecoEntrada - Close) * Abs(iDirecaoPosicao);
+    fResultadoPontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
     fResultadoReais  := fResultadoPontos * ValorPorPonto;
     fResultadoDia    := fResultadoDia    + fResultadoReais;
     fResultadoSemana := fResultadoSemana + fResultadoReais;
@@ -107,7 +107,8 @@ begin
     fMinD1   := Low[1];
   end;
 
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
   begin
     bGapInterno  := (fAberDia >= fMinD1) and (fAberDia <= fMaxD1);
     bCorpoBaixa  := (fFechC1 < fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
@@ -131,7 +132,10 @@ begin
   if IsBought or IsSold then
     iBarrasEmPosicao := iBarrasEmPosicao + 1
   else
+  begin
     iBarrasEmPosicao := 0;
+    bBreakEvenAtivo  := false;
+  end;
 
   if IsSold and bEstavaPosicionado then
   begin

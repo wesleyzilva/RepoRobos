@@ -84,7 +84,7 @@ begin
 
   if bEstavaPosicionado and (not IsBought) and (not IsSold) then
   begin
-    fResultadoPontos := (fPrecoEntrada - Close) * Abs(iDirecaoPosicao);
+    fResultadoPontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
     fResultadoReais  := fResultadoPontos * ValorPorPonto;
     fResultadoDia    := fResultadoDia    + fResultadoReais;
     fResultadoSemana := fResultadoSemana + fResultadoReais;
@@ -109,7 +109,8 @@ begin
     fRangeD1 := fMaxD1 - fMinD1;
   end;
 
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
   begin
     bAberAbaixoMinD1 := fAberDia < fMinD1;
     bCorpoBaixa      := (fFechC1 < fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);

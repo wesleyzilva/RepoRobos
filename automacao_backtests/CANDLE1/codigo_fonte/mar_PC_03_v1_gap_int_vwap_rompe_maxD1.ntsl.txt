@@ -108,7 +108,8 @@ begin
     fMinD1   := Low[1];
   end;
 
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
   begin
     // Gap interno: abertura dentro do range do dia anterior
     bGapInterno  := (fAberDia >= fMinD1) and (fAberDia <= fMaxD1);
@@ -137,7 +138,10 @@ begin
   if IsBought or IsSold then
     iBarrasEmPosicao := iBarrasEmPosicao + 1
   else
+  begin
     iBarrasEmPosicao := 0;
+    bBreakEvenAtivo  := false;
+  end;
 
   if IsBought and bEstavaPosicionado then
   begin

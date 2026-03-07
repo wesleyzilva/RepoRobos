@@ -104,7 +104,8 @@ begin
     fVolC1   := Volume;
   end;
 
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
   begin
     // Marubozu de alta: corpo >90% do range + fechamento na máxima
     bMarubozu    := (fFechC1 > fAberDia)

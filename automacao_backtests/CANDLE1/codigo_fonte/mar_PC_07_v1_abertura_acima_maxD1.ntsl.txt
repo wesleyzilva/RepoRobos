@@ -110,7 +110,8 @@ begin
     fRangeD1 := fMaxD1 - fMinD1;
   end;
 
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
   begin
     // Abertura acima da máxima do dia anterior
     bAberAcimaMaxD1 := fAberDia > fMaxD1;

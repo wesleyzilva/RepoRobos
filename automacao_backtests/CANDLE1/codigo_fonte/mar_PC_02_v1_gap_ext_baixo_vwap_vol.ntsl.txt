@@ -82,7 +82,7 @@ begin
 
   if bEstavaPosicionado and (not IsBought) and (not IsSold) then
   begin
-    fResultadoPontos := (fPrecoEntrada - Close) * iDirecaoPosicao;
+    fResultadoPontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
     fResultadoReais  := fResultadoPontos * ValorPorPonto;
     fResultadoDia    := fResultadoDia    + fResultadoReais;
     fResultadoSemana := fResultadoSemana + fResultadoReais;
@@ -104,7 +104,8 @@ begin
     fVolC1   := Volume;
   end;
 
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
   begin
     // Gap externo para baixo: abertura abaixo da mínima do dia anterior
     bGapExtBaixo   := fAberDia < Low[2];
