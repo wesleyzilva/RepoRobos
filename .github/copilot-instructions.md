@@ -50,10 +50,12 @@ WorkspaceRobosTrade/                   → Orientações e documentação do wor
 ### Scripts NTSL (Neologica Profit)
 
 - Extensão: `.txt` ou `.ntsl.txt`
-- Nomenclatura robôs março/2026: `mar_IFR_NN_vX_TIMEFRAME_descricao.ntsl.txt`
+- Nomenclatura robôs março/2026: `mar_GRUPO_NN_vX_descricao.ntsl.txt`
 - Nomenclatura indicadores/cores: `mar_NomeDoEstudo.ntsl.txt`
 - Sempre incluir comentário de cabeçalho com: versão, timeframe, descrição, taxa de acerto se disponível
 - Respeitar a sintaxe NTSL da plataforma Profit (variáveis, séries, funções nativas)
+- **OBRIGATÓRIO:** todos os parâmetros de risco declarados como `input` (ver bloco padrão na seção Gerenciamento de Risco)
+- Nunca usar `UsarGestaoRisco(true)` hardcoded — sempre `input UsarGestaoRisco = true`
 
 ### Scripts Python (Backtest)
 
@@ -87,6 +89,29 @@ Ao sugerir melhorias em estratégias, respeitar esta prioridade:
 - Relação risco/retorno mínima: **1:2**
 - WIN: stop baseado em **estrutura técnica** (suporte/resistência/pivô)
 - Nunca sugerir estratégias sem stop definido
+
+### Regra Obrigatória — Gestão Sempre Parametrizável
+
+**TODOS os parâmetros de risco devem ser declarados como `input`**, nunca hardcoded no corpo do código. Isso permite alterá-los na tela de configuração do Profit sem editar o código-fonte.
+
+Bloco padrão obrigatório em todo robô NTSL:
+
+```ntsl
+input UsarGestaoRisco      = true;   // false = backtest puro da lógica
+input UsarHardLock         = true;   // false = não fecha posição ao atingir limite
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;    // % do saldo — limite de perda diária
+input RiscoSemanaPct       = 3.0;    // % do saldo — limite de perda semanal
+input MaxStopsConsecutivos = 2;      // stops em sequência antes de bloquear
+input ValorPorPonto        = 0.2;    // 1 contrato WIN mini = R$0,20/ponto
+input DiaSemanaReset       = 2;      // 2 = segunda-feira
+```
+
+Regras de uso:
+- `UsarGestaoRisco = false` → desativa todos os limites (uso em backtest para testar a lógica pura)
+- `UsarHardLock = false` → monitora os limites mas não força fechamento (apenas bloqueia novas entradas)
+- `UsarHardLock = true` → fecha posição aberta imediatamente ao atingir o limite (uso operacional)
+- O bloco de verificação dos limites deve ser executado **antes de qualquer sinal de entrada**
 
 ---
 
