@@ -190,17 +190,37 @@ Critério WFT (Walk-Forward Threshold):
 - Verificar stop configurado corretamente
 - **NÃO** interferir nas operações do robô durante o pregão
 
-### 8.3 Gestão de risco operacional
-```
-Regra da semana:
-  Perda de 3% da conta em 1 semana → Desligar robô + revisar
-  
-Regra do dia:
-  2 stops consecutivos → Encerrar operações do dia
-  
-Regra do mês:
-  Drawdown > 10% → Reduzir para 1 contrato mínimo
-```
+### 8.3 Gestão de risco operacional — 1 contrato WIN
+
+> **Sempre operar com 1 contrato.** O robô executa sozinho via simulador.  
+> Monitoramento é **externo** — você observa e decide quando desligar manualmente.
+
+#### Como acompanhar os stops no Profit
+1. Aba **"Terminal → Histórico de Ordens"**: cada ordem encerrada com prejuízo = 1 stop
+2. Aba **"Operações"** no resultado do dia: coluna "Resultado" com valor negativo
+3. O robô já imprime no log: `[LOCK] Risco diário atingido` quando trava sozinho
+
+#### Tabela de critérios de desligamento manual
+
+| Horizonte | Gatilho | Ação |
+|-----------|---------|------|
+| **No dia** | 2 stops consecutivos com perda | Observar 3º operação; se stop → desligar o dia |
+| **No dia** | Risco diário atingido (log do robô) | Robô já bloqueia — confirmar que parou |
+| **Na semana** | 5 stops no total (win ou loss) com saldo negativo | Desligar robô na sexta, revisar parâmetros |
+| **Na semana** | Perda acumulada > R$ 150 na semana | Desligar e avaliar |
+| **No mês** | 15 stops no mês com resultado negativo | Pausar 1 semana, rever filtros |
+| **No mês** | Drawdown do mês > R$ 500 | Pausar robô, não re-otimizar no mesmo mês |
+
+#### Referência de valores com 1 contrato WIN (R$ 0,20/ponto)
+
+| Stop típico | Pontos | Perda em R$ |
+|-------------|--------|-------------|
+| Stop curto | 100 pts | R$ 20 |
+| Stop médio | 200 pts | R$ 40 |
+| Stop largo | 400 pts | R$ 80 |
+| Stop grande | 600 pts | R$ 120 |
+
+> **Dica:** Configure `RiscoDiaPct = 1.5` com `SaldoConta = 5000` → o robô trava sozinho ao atingir **R$ 75 de perda no dia**. Você só precisa checar se ele travou corretamente.
 
 ---
 
@@ -217,15 +237,28 @@ Regra do mês:
 | PC_17 | Martelo — compra | Média-alta | 3º |
 | PC_18 | Estrela cadente — venda | Média-alta | 3º |
 
-### 9.2 Configuração inicial conservadora
+### 9.2 Configuração inicial conservadora — 1 contrato
 ```
-SaldoConta:         5000          (capital alocado ao robô)
-RiscoDiaPct:        1.0           (R$50 de risco máximo/dia)
+SaldoConta:         5000          (capital de referência)
+Quantidade:         1             (FIXO — sempre 1 contrato)
+RiscoDiaPct:        1.5           (R$75 de perda máxima/dia)
 RiscoSemanaPct:     3.0           (R$150 máximo/semana)
-UsarHardLock:       true
+UsarHardLock:       true          (trava automática ao atingir limite)
 MultiplicadorAlvo:  1.5           (padrão)
 MaxBarrasPosicao:   8
 ```
+
+**O que acontece quando o HardLock dispara:**
+- O robô encerra a posição aberta imediatamente
+- Bloqueia novas entradas pelo restante do dia
+- Imprime no log: `[LOCK] Risco diário atingido — bloqueando entradas`
+- Você **não precisa fazer nada** — apenas verificar no final do pregão que o log está correto
+
+**Verificação rápida diária (2 minutos às 18h):**
+1. Abrir Profit → aba Terminal → Histórico
+2. Contar operações do dia: quantas positivas, quantas negativas
+3. Checar resultado líquido do dia (coluna Total)
+4. Se > 3 stops no dia → anotar no diário de bordo para análise semanal
 
 ---
 
