@@ -88,6 +88,87 @@
 | `Undeclared identifier` | Função não existe nessa versão | Verificar versão do Profit |
 | `Expected ;` | Falta ponto e vírgula | Revisar linha indicada |
 
+### 4.4 Referência de Sintaxe NTSL
+
+#### Estrutura completa de um robô
+
+```ntsl
+{
+  Estrategia: nome_do_robo
+  Descricao:  o que faz, timeframe, taxa de acerto
+}
+
+input
+  Parametro1(valorPadrao);    { descricao }
+  FlagBooleana(true);
+  ValorFloat(100.0);
+  ValorInteiro(9);
+
+var
+  fPreco      : float;
+  bSinal      : boolean;
+  iContador   : integer;
+
+begin
+  { logica principal }
+end;
+```
+
+#### Tipos de dados
+| Tipo | Uso |
+|------|-----|
+| `float` | Preços, percentuais, valores financeiros |
+| `integer` | Contadores, períodos, índices |
+| `boolean` | Flags `true` / `false` |
+
+#### Séries nativas — barra atual `[0]`, barra anterior `[1]`
+| Série | Significado |
+|-------|-------------|
+| `Open` / `Open[1]` | Abertura barra atual / anterior |
+| `High`, `Low`, `Close` | Máxima, mínima, fechamento |
+| `Volume` | Volume da barra |
+| `Date` | Data (`Date <> Date[1]` = nova sessão) |
+
+#### Funções nativas
+```ntsl
+IFR(periodo)               { Indice de Forca Relativa }
+Media(periodo, serie)      { Media aritmetica simples }
+MME(periodo)               { Media Movel Exponencial }
+MMS(periodo)               { Media Movel Simples }
+Max(a, b)                  { Maior valor }
+Min(a, b)                  { Menor valor }
+Abs(valor)                 { Valor absoluto }
+Round(valor)               { Arredondamento }
+DayOfWeek(Date)            { Dia da semana: 1=Dom 2=Seg ... 7=Sab }
+```
+
+#### Funções de posição
+```ntsl
+IsBought                   { true se posicionado comprado }
+IsSold                     { true se posicionado vendido }
+BuyAtMarket                { compra a mercado }
+SellShortAtMarket          { venda a mercado }
+ClosePosition              { fecha posicao aberta }
+BuyLimit(preco, qtd)       { ordem limitada de compra }
+SellLimit(preco, qtd)      { ordem limitada de venda }
+BuyStop(preco, qtd)        { ordem stop de compra }
+SellStop(preco, qtd)       { ordem stop de venda }
+```
+
+#### Operadores e comentários
+```ntsl
+and  or  not               { booleanos }
+=  <>  <  >  <=  >=        { comparacao }
++  -  *  /                 { aritmeticos }
+{ isto e um comentario }   { NTSL usa { } - nunca // nem /* */ }
+```
+
+> **ATENÇÃO — armadilhas de sintaxe:**
+> - `input` usa `NomeParam(valor);` com **parênteses** — não `=`
+> - Comentários usam `{ }` — não `//`
+> - Não há tipo explícito no `input` (ao contrário do MQL5)
+> - `var` usa `nome : tipo;` com **dois pontos** antes do tipo
+
 ---
 
 ## 5. Executando Backtest de 5 Anos

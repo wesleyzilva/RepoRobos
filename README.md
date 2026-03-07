@@ -81,14 +81,15 @@ Todo robô deve ter **gestão de risco 100% parametrizável via `input`**, nunca
 #### Profit (NTSL)
 
 ```ntsl
-input UsarGestaoRisco      = true;   // false = backtest puro da lógica
-input UsarHardLock         = true;   // false = monitora mas não fecha
-input SaldoConta           = 10000.0;
-input RiscoDiaPct          = 1.5;    // R$150/dia
-input RiscoSemanaPct       = 3.0;    // R$300/semana
-input MaxStopsConsecutivos = 2;
-input ValorPorPonto        = 0.2;    // 1 contrato WIN mini
-input DiaSemanaReset       = 2;      // 2 = segunda-feira
+input
+  UsarGestaoRisco(true);      { false = backtest puro da logica }
+  UsarHardLock(true);         { false = monitora mas nao fecha }
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);           { R$150/dia }
+  RiscoSemanaPct(3.0);        { R$300/semana }
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);         { 1 contrato WIN mini }
+  DiaSemanaReset(2);          { 2 = segunda-feira }
 ```
 
 #### MetaTrader 5 (MQL5 / Internacional)

@@ -63,9 +63,84 @@ WorkspaceRobosTrade/         → Orientações e documentação do workspace
 - Extensão: **`.ntsl`** (nunca `.txt` nem `.ntsl.txt`)
 - Nomenclatura: `mar_GRUPO_NN_descricao_timeframe.ntsl`
 - Sempre incluir comentário de cabeçalho com: timeframe, descrição, taxa de acerto se disponível
-- Respeitar a sintaxe NTSL da plataforma Profit (variáveis, séries, funções nativas)
 - **OBRIGATÓRIO:** todos os parâmetros de risco declarados como `input` (ver bloco padrão na seção Gerenciamento de Risco)
-- Nunca usar `UsarGestaoRisco(true)` hardcoded — sempre `input UsarGestaoRisco = true`
+
+#### Sintaxe NTSL — Estrutura obrigatória
+
+```ntsl
+{
+  Estrategia: nome_do_robo
+  Descricao:  o que faz, timeframe, taxa de acerto
+}
+
+input
+  Parametro1(valorPadrao);    { descricao do parametro }
+  Parametro2(100.0);
+  FlagBooleana(true);
+
+var
+  fVariavelFloat   : float;
+  bVariavelBool    : boolean;
+  iVariavelInteira : integer;
+
+begin
+  { logica aqui }
+end;
+```
+
+#### Tipos de dados
+| Tipo | Uso |
+|------|-----|
+| `float` | Preços, percentuais, valores financeiros |
+| `integer` | Contadores, períodos, índices |
+| `boolean` | Flags true/false |
+
+#### Séries nativas (barra atual = `[0]`, barra anterior = `[1]`)
+| Série | Significado |
+|-------|-------------|
+| `Open` / `Open[1]` | Abertura da barra atual / anterior |
+| `High`, `Low`, `Close` | Máxima, mínima, fechamento |
+| `Volume` | Volume da barra |
+| `Date` | Data da barra (`Date <> Date[1]` = nova sessão) |
+
+#### Funções nativas mais usadas
+```ntsl
+IFR(periodo)                    { Índice de Força Relativa }
+Media(periodo, serie)           { Média aritmética simples }
+MME(periodo)                    { Média Móvel Exponencial }
+MMS(periodo)                    { Média Móvel Simples }
+Max(a, b)                       { Maior entre dois valores }
+Min(a, b)                       { Menor entre dois valores }
+Abs(valor)                      { Valor absoluto }
+Round(valor)                    { Arredondamento }
+DayOfWeek(Date)                 { Dia da semana: 1=Dom 2=Seg ... 7=Sab }
+```
+
+#### Funções de posição
+```ntsl
+IsBought                        { true se posicionado comprado }
+IsSold                          { true se posicionado vendido }
+BuyAtMarket                     { compra a mercado }
+SellShortAtMarket               { venda a mercado }
+ClosePosition                   { fecha posição aberta }
+BuyLimit(preco, qtd)            { ordem de compra limitada }
+SellLimit(preco, qtd)           { ordem de venda limitada }
+BuyStop(preco, qtd)             { ordem de compra stop }
+SellStop(preco, qtd)            { ordem de venda stop }
+```
+
+#### Operadores
+```ntsl
+and  or  not               { booleanos }
+=  <>  <  >  <=  >=        { comparação }
++  -  *  /                 { aritméticos }
+```
+
+#### Comentários
+```ntsl
+{ isto e um comentario de bloco }
+```
+> NTSL usa `{ }` para comentários — **não** usa `//` nem `/* */`
 
 ### Scripts MQL5 (MetaTrader 5)
 
@@ -116,15 +191,18 @@ Ao sugerir melhorias em estratégias, respeitar esta prioridade:
 #### Bloco padrão — NTSL (Neologica Profit):
 
 ```ntsl
-input UsarGestaoRisco      = true;   // false = backtest puro da lógica
-input UsarHardLock         = true;   // false = não fecha posição ao atingir limite
-input SaldoConta           = 10000.0;
-input RiscoDiaPct          = 1.5;    // % do saldo — limite de perda diária
-input RiscoSemanaPct       = 3.0;    // % do saldo — limite de perda semanal
-input MaxStopsConsecutivos = 2;      // stops em sequência antes de bloquear
-input ValorPorPonto        = 0.2;    // 1 contrato WIN mini = R$0,20/ponto
-input DiaSemanaReset       = 2;      // 2 = segunda-feira
+input
+  UsarGestaoRisco(true);      { false = backtest puro da logica }
+  UsarHardLock(true);         { false = monitora mas nao fecha posicao }
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);           { % do saldo - limite de perda diaria }
+  RiscoSemanaPct(3.0);        { % do saldo - limite de perda semanal }
+  MaxStopsConsecutivos(2);    { stops em sequencia antes de bloquear }
+  ValorPorPonto(0.2);         { 1 contrato WIN mini = R$0,20/ponto }
+  DiaSemanaReset(2);          { 2 = segunda-feira (DayOfWeek retorna 1=Dom..7=Sab) }
 ```
+
+> **Sintaxe NTSL:** inputs usam `NomeParam(valorPadrao);` — **sem** `=`, **sem** tipo explícito. Comentários com `{ }`, não `//`.
 
 #### Bloco padrão — MQL5 (MetaTrader 5 / Internacional):
 
