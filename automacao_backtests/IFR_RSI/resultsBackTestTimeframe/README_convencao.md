@@ -10,26 +10,28 @@ Cada robô deve ter um arquivo de resultado por timeframe testado.
 ## Convenção de nome dos arquivos de resultado
 
 ```
-TFmin_mes_GRUPO_NUM_vVERSAO_descricao.csv
+mar_GRUPO_NN_descricao_TFmin.csv
 ```
 
-| Campo       | Exemplo          | Descrição                              |
-|-------------|-----------------|----------------------------------------|
-| `TFmin`     | `60min`          | Timeframe testado (ver lista abaixo)   |
-| `mes`       | `mar`            | Prefixo do ciclo mensal                |
-| `GRUPO_NUM` | `IFR_04`         | Grupo + número sequencial do robô      |
-| `vVERSAO`   | `v1`             | Versão do robô                        |
-| `descricao` | `bandas_dinamicas` | Tema/estratégia em snake_case        |
+| Campo       | Exemplo            | Descrição                              |
+|-------------|-------------------|----------------------------------------|
+| `mar`       | `mar`              | Prefixo do ciclo mensal                |
+| `GRUPO`     | `IFR`              | Grupo de estratégia                    |
+| `NN`        | `04`               | Número sequencial do robô              |
+| `descricao` | `bandas_dinamicas` | Tema/estratégia em snake_case          |
+| `TFmin`     | `60min`            | Timeframe testado — **sempre no final**|
+
+> **Regra:** sem `vX` no nome; timeframe sempre no final antes da extensão.
 
 ### Exemplo completo para um robô:
 ```
-1min_mar_IFR_04_v1_bandas_dinamicas.csv
-2min_mar_IFR_04_v1_bandas_dinamicas.csv
-5min_mar_IFR_04_v1_bandas_dinamicas.csv
-15min_mar_IFR_04_v1_bandas_dinamicas.csv
-30min_mar_IFR_04_v1_bandas_dinamicas.csv
-60min_mar_IFR_04_v1_bandas_dinamicas.csv
-240min_mar_IFR_04_v1_bandas_dinamicas.csv
+mar_IFR_04_bandas_dinamicas_1min.csv
+mar_IFR_04_bandas_dinamicas_2min.csv
+mar_IFR_04_bandas_dinamicas_5min.csv
+mar_IFR_04_bandas_dinamicas_15min.csv
+mar_IFR_04_bandas_dinamicas_30min.csv
+mar_IFR_04_bandas_dinamicas_60min.csv
+mar_IFR_04_bandas_dinamicas_240min.csv
 ```
 
 ---
