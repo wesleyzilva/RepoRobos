@@ -1,0 +1,135 @@
+// ============================================================
+// mar_ST_04_v1_confluencia_maxima_rr3.ntsl
+// Grupo: STOPTOLERANTE | Versão: 1.0 | Timeframe: 60min
+// Descrição: Confluência máxima (IFR + MME200 + MME9/21 + volume)
+//            stop = ATR × 2.0 | alvo = ATR × 4.0 (R:R 1:2 mínimo)
+//            Robo mais seletivo do grupo — 1 operação/dia no máx
+// R:R mínimo: 1:2 | Taxa esperada: ~67%
+// Gestão: UsarGestaoRisco ativável | HardLock diário
+// ============================================================
+
+// ----- ENTRADAS -----
+input IFR_Periodo          = 9;
+input IFR_ZS               = 30;
+input IFR_SO               = 70;
+input MME9_Periodo         = 9;
+input MME21_Periodo        = 21;
+input MME200_Periodo       = 200;
+input Vol_Periodo          = 20;   // Média de volume para filtro
+input ATR_Periodo          = 14;
+input Mult_Stop            = 2.0;  // Stop = ATR × 2.0 (mais tolerante)
+input Mult_Alvo            = 4.0;  // Alvo = ATR × 4.0 (R:R mínimo 1:2)
+input MaxOpeDia            = 1;    // Máximo de 1 operação por dia
+
+// Gestão de risco
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+// ----- VARIÁVEIS -----
+var ifr, mme9, mme21  : float;
+var mme200, atr       : float;
+var volAtual, volMedia : float;
+
+var opeDia     : integer;
+var diaAtual   : integer;
+
+var perdaDiaria    : float;
+var perdaSemanal   : float;
+var stopsConsec    : integer;
+var diaUltimoReset : integer;
+var ultimoPnL      : float;
+var emOperacao     : boolean;
+
+// ----- INÍCIO -----
+begin
+  ifr      := IFR(IFR_Periodo, 0);
+  mme9     := MediaExp(MME9_Periodo, 0);
+  mme21    := MediaExp(MME21_Periodo, 0);
+  mme200   := MediaExp(MME200_Periodo, 0);
+  atr      := ATR(ATR_Periodo, 0);
+  volAtual := Volume;
+  volMedia := MediaAritmetica(Vol_Periodo, 0);  // volume médio dos últimos N candles
+
+  // Contador diário de operações (reset por dia)
+  if (DayOfMonth <> diaAtual) then
+  begin
+    opeDia   := 0;
+    diaAtual := DayOfMonth;
+  end;
+
+  // Gestão: reset semanal
+  if (UsarGestaoRisco) and (DayOfWeek = DiaSemanaReset) and (DayOfWeek <> diaUltimoReset) then
+  begin
+    perdaSemanal   := 0;
+    stopsConsec    := 0;
+    diaUltimoReset := DayOfWeek;
+  end;
+
+  if (IsBought or IsSold) then emOperacao := true
+  else begin
+    if emOperacao then
+    begin
+      opeDia := opeDia + 1;
+      ultimoPnL := NetProfit - ultimoPnL;
+      if ultimoPnL < 0 then
+      begin
+        perdaDiaria  := perdaDiaria  + Abs(ultimoPnL);
+        perdaSemanal := perdaSemanal + Abs(ultimoPnL);
+        stopsConsec  := stopsConsec + 1;
+      end else stopsConsec := 0;
+      ultimoPnL  := NetProfit;
+      emOperacao := false;
+    end;
+  end;
+
+  if (UsarHardLock) then
+  begin
+    if (perdaDiaria  >= (SaldoConta * RiscoDiaPct  / 100.0)) then exit;
+    if (perdaSemanal >= (SaldoConta * RiscoSemanaPct / 100.0)) then exit;
+    if (stopsConsec  >= MaxStopsConsecutivos) then exit;
+  end;
+
+  if IsBought or IsSold then exit;
+  if opeDia >= MaxOpeDia then exit;
+
+  // ===========================================================
+  // COMPRA — CONFLUÊNCIA MÁXIMA (4 filtros obrigatórios)
+  //   1. IFR saindo de sobrevenda
+  //   2. Preço acima de MME200 (tendência maior de alta)
+  //   3. MME9 cruzando MME21 para cima (impulso local)
+  //   4. Volume acima da média (institucional comprando)
+  // ===========================================================
+  if (IFR(IFR_Periodo, 1) < IFR_ZS) and (ifr >= IFR_ZS)  // IFR cruzando ZS para cima
+     and (Close > mme200)                                    // contexto altista
+     and (mme9 > mme21)                                      // momentum local
+     and (volAtual > volMedia * 1.2) then                    // volume elevado (20% acima)
+  begin
+    BuyAtMarket;
+    SetStopLoss(Close - atr * Mult_Stop);
+    SetTakeProfit(Close + atr * Mult_Alvo);
+  end;
+
+  // ===========================================================
+  // VENDA — CONFLUÊNCIA MÁXIMA (4 filtros obrigatórios)
+  //   1. IFR saindo de sobrecompra
+  //   2. Preço abaixo de MME200 (tendência maior de baixa)
+  //   3. MME9 cruzando MME21 para baixo (impulso local)
+  //   4. Volume acima da média (institucional vendendo)
+  // ===========================================================
+  if (IFR(IFR_Periodo, 1) > IFR_SO) and (ifr <= IFR_SO)   // IFR cruzando SO para baixo
+     and (Close < mme200)                                    // contexto baixista
+     and (mme9 < mme21)                                      // momentum local
+     and (volAtual > volMedia * 1.2) then                    // volume elevado
+  begin
+    SellShortAtMarket;
+    SetStopLoss(Close + atr * Mult_Stop);
+    SetTakeProfit(Close - atr * Mult_Alvo);
+  end;
+
+end;

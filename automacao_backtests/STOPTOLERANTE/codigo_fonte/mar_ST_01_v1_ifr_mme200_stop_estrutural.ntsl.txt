@@ -1,0 +1,116 @@
+// ============================================================
+// mar_ST_01_v1_ifr_mme200_stop_estrutural.ntsl
+// Grupo: STOPTOLERANTE | Versão: 1.0 | Timeframe: 60min
+// Descrição: IFR extremo (ZS/SO) + contexto MME200 + stop na
+//            mínima/máxima do candle sinal (estrutural)
+// R:R mínimo: 1:2 | Taxa esperada: ~63%
+// Gestão: UsarGestaoRisco ativável | HardLock diário
+// ============================================================
+
+// ----- ENTRADAS -----
+input IFR_Periodo       = 9;       // Período do IFR
+input IFR_ZS            = 30;      // Sobrevenda (compra)
+input IFR_SO            = 70;      // Sobrecompra (venda)
+input MME200_Periodo    = 200;     // Média longa de contexto
+input Multiplicador_RR  = 2.0;    // Alvo = 2x o stop (R:R 1:2)
+
+// Gestão de risco
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;   // 1.5% = R$150/dia
+input RiscoSemanaPct       = 3.0;   // 3.0% = R$300/semana
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;     // Segunda-feira
+
+// ----- VARIÁVEIS -----
+var ifr_atual      : float;
+var ifr_anterior   : float;
+var mme200         : float;
+var precoAtual     : float;
+
+var stopCompra     : float;   // mínima do candle sinal
+var stopVenda      : float;   // máxima do candle sinal
+var alvoCompra     : float;
+var alvoVenda      : float;
+
+var perdaDiaria    : float;
+var perdaSemanal   : float;
+var stopsConsec    : integer;
+var diaUltimoReset : integer;
+var ultimoPnL      : float;
+var emOperacao     : boolean;
+
+// ----- INÍCIO -----
+begin
+  ifr_atual    := IFR(IFR_Periodo, 0);
+  ifr_anterior := IFR(IFR_Periodo, 1);
+  mme200       := MediaExp(MME200_Periodo, 0);
+  precoAtual   := Close;
+
+  // Reset semanal (segunda-feira)
+  if (UsarGestaoRisco) and (DayOfWeek = DiaSemanaReset) and (DayOfWeek <> diaUltimoReset) then
+  begin
+    perdaSemanal   := 0;
+    stopsConsec    := 0;
+    diaUltimoReset := DayOfWeek;
+  end;
+
+  // Atualiza P&L se saiu de operação
+  if (IsBought or IsSold) then
+    emOperacao := true
+  else begin
+    if emOperacao then
+    begin
+      ultimoPnL := NetProfit - ultimoPnL;
+      if ultimoPnL < 0 then
+      begin
+        perdaDiaria  := perdaDiaria  + Abs(ultimoPnL);
+        perdaSemanal := perdaSemanal + Abs(ultimoPnL);
+        stopsConsec  := stopsConsec + 1;
+      end else
+        stopsConsec := 0;
+      ultimoPnL  := NetProfit;
+      emOperacao := false;
+    end;
+  end;
+
+  // HardLock — bloqueia o dia se atingiu limites
+  if (UsarHardLock) then
+  begin
+    if (perdaDiaria  >= (SaldoConta * RiscoDiaPct  / 100.0)) then exit;
+    if (perdaSemanal >= (SaldoConta * RiscoSemanaPct / 100.0)) then exit;
+    if (stopsConsec  >= MaxStopsConsecutivos) then exit;
+  end;
+
+  // Não abrir segunda posição
+  if IsBought or IsSold then exit;
+
+  // ===========================================================
+  // SINAL DE COMPRA
+  // IFR saindo de sobrevenda + preço acima da MME200 (tendência alta)
+  // ===========================================================
+  if (ifr_anterior < IFR_ZS) and (ifr_atual >= IFR_ZS) and (precoAtual > mme200) then
+  begin
+    stopCompra := Low[1];                              // mínima do candle que deu o sinal
+    alvoCompra := precoAtual + (precoAtual - stopCompra) * Multiplicador_RR;
+    BuyAtMarket;
+    SetStopLoss(stopCompra);
+    SetTakeProfit(alvoCompra);
+  end;
+
+  // ===========================================================
+  // SINAL DE VENDA
+  // IFR saindo de sobrecompra + preço abaixo da MME200 (tendência baixa)
+  // ===========================================================
+  if (ifr_anterior > IFR_SO) and (ifr_atual <= IFR_SO) and (precoAtual < mme200) then
+  begin
+    stopVenda := High[1];                              // máxima do candle que deu o sinal
+    alvoVenda := precoAtual - (stopVenda - precoAtual) * Multiplicador_RR;
+    SellShortAtMarket;
+    SetStopLoss(stopVenda);
+    SetTakeProfit(alvoVenda);
+  end;
+
+end;
