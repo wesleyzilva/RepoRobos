@@ -1,0 +1,152 @@
+{
+  Robo:      mar_PC_28_v1_gap_parcial_fecha_acima_maxD1_simples
+  Catalogo:  #8 — Tier 3
+  Descricao: Gap parcial para cima (abertura entre fechD1 e maxD1) + 1o candle fecha ACIMA
+             da maxima D-1. Rompimento confirmado com gap de impulsao. Compra.
+             Stop: abertura do dia. Alvo: 1.0x ATR.
+  Timeframe: 15min ou 30min
+  Ativo:     WIN (minicontrato de indice)
+  Versao:    1.0 — marco/2026
+}
+
+input
+  PctCorpoMinimo(0.45);
+  PeriodoMediaVol(20);
+  FatorVolumeMinimo(1.0);
+  PeriodoATR(14);
+  MultiplicadorAlvo(1.0);
+  UsarOCO(true);
+  MaxBarrasPosicao(8);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(3500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iCandleDia                                        : integer;
+  fMaxC1, fMinC1, fAberDia, fFechC1                : float;
+  fRangeC1, fCorpoC1, fVolC1                       : float;
+  fMaxD1, fMinD1, fFechD1                          : float;
+  fVWAPSoma, fVWAPVol, fVWAPDiario                 : float;
+  fMediaVol, fATR                                  : float;
+  bGapParcial, bFechaAcimaMaxD1, bCorpoAlta        : boolean;
+  bVolOK                                           : boolean;
+  bSinalCompra, bEntradaExecutada                  : boolean;
+  fPrecoEntrada, fStopAtual, fAlvoAtual            : float;
+  iBarrasEmPosicao, iDirecaoPosicao                : integer;
+  bEstavaPosicionado                               : boolean;
+  fResultadoDia, fResultadoSemana                  : float;
+  fLimiteDia, fLimiteSemana                        : float;
+  fResultadoPontos, fResultadoReais                : float;
+  bBloqueioDia, bBloqueioSemana                    : boolean;
+  iDiaSemanaAtual                                  : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    iCandleDia        := 1;
+    fMaxC1            := 0;
+    fMinC1            := 0;
+    fRangeC1          := 0;
+    fCorpoC1          := 0;
+    fVolC1            := 0;
+    bEntradaExecutada := false;
+    fResultadoDia     := 0;
+    bBloqueioDia      := false;
+    fVWAPSoma         := 0;
+    fVWAPVol          := 0;
+    iDiaSemanaAtual   := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end
+  else
+    iCandleDia := iCandleDia + 1;
+
+  fVWAPSoma := fVWAPSoma + ((High + Low + Close) / 3.0) * Volume;
+  fVWAPVol  := fVWAPVol  + Volume;
+  if fVWAPVol > 0 then
+    fVWAPDiario := fVWAPSoma / fVWAPVol;
+
+  fMediaVol := Media(PeriodoMediaVol, Volume);
+  fATR      := ATR(PeriodoATR);
+
+  fLimiteDia    := SaldoConta * (RiscoDiaPct    / 100.0);
+  fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+  if bEstavaPosicionado and (not IsBought) and (not IsSold) then
+  begin
+    fResultadoPontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
+    fResultadoReais  := fResultadoPontos * ValorPorPonto;
+    fResultadoDia    := fResultadoDia    + fResultadoReais;
+    fResultadoSemana := fResultadoSemana + fResultadoReais;
+  end;
+
+  if UsarGestaoRisco and (fResultadoDia    <= -fLimiteDia)    then bBloqueioDia    := true;
+  if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then bBloqueioSemana := true;
+  if UsarGestaoRisco and UsarHardLock and (bBloqueioDia or bBloqueioSemana) and (IsBought or IsSold) then
+    ClosePosition;
+
+  if iCandleDia = 1 then
+  begin
+    fMaxC1   := High;
+    fMinC1   := Low;
+    fAberDia := Open;
+    fFechC1  := Close;
+    fRangeC1 := High - Low;
+    fCorpoC1 := Abs(Close - Open);
+    fVolC1   := Volume;
+    fMaxD1   := High[1];
+    fMinD1   := Low[1];
+    fFechD1  := Close[1];
+  end;
+
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
+  begin
+    // Gap parcial para cima: abertura entre o fechamento D-1 e a maxima D-1
+    bGapParcial      := (fAberDia > fFechD1) and (fAberDia < fMaxD1);
+    bFechaAcimaMaxD1 := fFechC1 > fMaxD1;
+    bCorpoAlta       := (fFechC1 > fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
+    bVolOK           := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeMinimo);
+
+    bSinalCompra := bGapParcial and bFechaAcimaMaxD1 and bCorpoAlta and bVolOK;
+
+    if bSinalCompra then
+    begin
+      fStopAtual  := fAberDia;
+      fAlvoAtual  := fFechC1 + (fATR * MultiplicadorAlvo);
+      BuyAtMarket;
+      bEntradaExecutada := true;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and bEstavaPosicionado then
+  begin
+    if UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual)) then
+      ClosePosition
+    else if iBarrasEmPosicao >= MaxBarrasPosicao then
+      ClosePosition;
+  end;
+
+  if (not bEstavaPosicionado) and IsBought then
+  begin
+    fPrecoEntrada    := Close;
+    iDirecaoPosicao  := 1;
+    iBarrasEmPosicao := 0;
+    fStopAtual       := fAberDia;
+    fAlvoAtual       := fFechC1 + (fATR * MultiplicadorAlvo);
+  end;
+
+  bEstavaPosicionado := IsBought or IsSold;
+end;

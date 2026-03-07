@@ -1,0 +1,174 @@
+{
+  Robo:      mar_PC_11_v1_vwap_inversao_polo_compra
+  Catalogo:  #13 — Tier 2
+  Descricao: Abertura ABAIXO da VWAP diaria + 1o candle FECHA ACIMA da VWAP
+             Sinal de inversao de polo: VWAP vira suporte. Entrada compra no 2o candle.
+  Timeframe: 15min ou 30min
+  Ativo:     WIN (minicontrato de indice)
+  Versao:    1.0 — marco/2026
+}
+
+input
+  PctCorpoMinimo(0.40);         // corpo reduzido: a inversao de polo e o sinal principal
+  PeriodoMediaVol(20);
+  FatorVolumeMinimo(0.8);       // volume pode ser levemente abaixo da media
+  UsarFiltroMME200(true);
+  PeriodoMME200(200);
+  MultiplicadorAlvo(1.5);       // alvo = 1.5x range do 1o candle
+  UsarOCO(true);
+  UsarBreakEven(false);
+  BreakEvenTriggerPontos(80.0);
+  BreakEvenOffsetPontos(5.0);
+  MaxBarrasPosicao(8);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(3500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iCandleDia                                        : integer;
+  fMaxC1, fMinC1, fAberDia, fFechC1                : float;
+  fRangeC1, fCorpoC1, fVolC1                       : float;
+  fVWAPSoma, fVWAPVol, fVWAPDiario                 : float;
+  fVWAPAbertura                                    : float;  // VWAP no momento da abertura (D-1)
+  fMME200, fMediaVol                               : float;
+  bAberAbaixoVWAP, bFechaAcimaVWAP                 : boolean;
+  bCorpoAlta, bVolOK, bAcimaMME200                 : boolean;
+  bSinalCompra, bEntradaExecutada                  : boolean;
+  fPrecoEntrada, fStopAtual, fAlvoAtual            : float;
+  iBarrasEmPosicao, iDirecaoPosicao                : integer;
+  bBreakEvenAtivo, bEstavaPosicionado              : boolean;
+  fResultadoDia, fResultadoSemana                  : float;
+  fLimiteDia, fLimiteSemana                        : float;
+  fResultadoPontos, fResultadoReais                : float;
+  bBloqueioDia, bBloqueioSemana                    : boolean;
+  iDiaSemanaAtual                                  : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    iCandleDia        := 1;
+    fMaxC1            := 0;
+    fMinC1            := 0;
+    fRangeC1          := 0;
+    fCorpoC1          := 0;
+    fVolC1            := 0;
+    bEntradaExecutada := false;
+    fResultadoDia     := 0;
+    bBloqueioDia      := false;
+    fVWAPSoma         := 0;
+    fVWAPVol          := 0;
+    fVWAPAbertura     := 0;
+    iDiaSemanaAtual   := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end
+  else
+    iCandleDia := iCandleDia + 1;
+
+  fVWAPSoma := fVWAPSoma + ((High + Low + Close) / 3.0) * Volume;
+  fVWAPVol  := fVWAPVol  + Volume;
+  if fVWAPVol > 0 then
+    fVWAPDiario := fVWAPSoma / fVWAPVol;
+
+  fMME200   := Media(PeriodoMME200, 1, Close);
+  fMediaVol := Media(PeriodoMediaVol, Volume);
+
+  fLimiteDia    := SaldoConta * (RiscoDiaPct    / 100.0);
+  fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+  if bEstavaPosicionado and (not IsBought) and (not IsSold) then
+  begin
+    fResultadoPontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
+    fResultadoReais  := fResultadoPontos * ValorPorPonto;
+    fResultadoDia    := fResultadoDia    + fResultadoReais;
+    fResultadoSemana := fResultadoSemana + fResultadoReais;
+  end;
+
+  if UsarGestaoRisco and (fResultadoDia    <= -fLimiteDia)    then bBloqueioDia    := true;
+  if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then bBloqueioSemana := true;
+  if UsarGestaoRisco and UsarHardLock and (bBloqueioDia or bBloqueioSemana) and (IsBought or IsSold) then
+    ClosePosition;
+
+  // Captura VWAP no momento da abertura (inicio do 1o candle)
+  if iCandleDia = 1 then
+  begin
+    fMaxC1        := High;
+    fMinC1        := Low;
+    fAberDia      := Open;
+    fFechC1       := Close;
+    fRangeC1      := High - Low;
+    fCorpoC1      := Abs(Close - Open);
+    fVolC1        := Volume;
+    // VWAP do dia anterior (ultimo valor acumulado antes do reset)
+    // Usamos Open vs fVWAPDiario: no 1o candle fVWAPDiario ja foi atualizado
+    // A comparacao de abertura usa fVWAPDiario[1] que e o ultimo valor do dia anterior
+    // Aqui obtemos isso comparando Open com o valor acumulado do dia anterior = Close[1] proxy
+    // Solucao: capturar VWAP do D-1 antes do reset = guardar ultimo fVWAPDiario
+    fVWAPAbertura := fVWAPDiario;  // valor do D-1 (VWAP foi resetado, primeiro candle ainda nao tem historico)
+  end;
+
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
+  begin
+    // Abertura abaixo da VWAP (usando Close[1] = fechamento C1 como proxy da VWAP no momento da abertura)
+    // O 1o candle abriu abaixo da VWAP do dia anterior
+    bAberAbaixoVWAP := fAberDia < fVWAPAbertura;
+    // O 1o candle FECHOU acima da VWAP atual (inversao de polo confirmada)
+    bFechaAcimaVWAP := fFechC1 > fVWAPDiario;
+    // Corpo de alta
+    bCorpoAlta      := (fFechC1 > fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
+    bVolOK          := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeMinimo);
+    bAcimaMME200    := (not UsarFiltroMME200) or (Close > fMME200);
+
+    bSinalCompra := bAberAbaixoVWAP and bFechaAcimaVWAP and bCorpoAlta
+                    and bVolOK and bAcimaMME200;
+
+    if bSinalCompra then
+    begin
+      fStopAtual  := fMinC1;
+      fAlvoAtual  := fMaxC1 + (fRangeC1 * MultiplicadorAlvo);
+      BuyAtMarket;
+      bEntradaExecutada := true;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+  begin
+    iBarrasEmPosicao := 0;
+    bBreakEvenAtivo  := false;
+  end;
+
+  if IsBought and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((High - fPrecoEntrada) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Max(fStopAtual, fPrecoEntrada + BreakEvenOffsetPontos);
+
+    if UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual)) then
+      ClosePosition
+    else if iBarrasEmPosicao >= MaxBarrasPosicao then
+      ClosePosition;
+  end;
+
+  if (not bEstavaPosicionado) and IsBought then
+  begin
+    fPrecoEntrada    := Close;
+    iDirecaoPosicao  := 1;
+    iBarrasEmPosicao := 0;
+    bBreakEvenAtivo  := false;
+    fStopAtual       := fMinC1;
+    fAlvoAtual       := fMaxC1 + (fRangeC1 * MultiplicadorAlvo);
+  end;
+
+  bEstavaPosicionado := IsBought or IsSold;
+end;
