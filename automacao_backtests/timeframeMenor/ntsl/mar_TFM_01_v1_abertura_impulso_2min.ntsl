@@ -1,0 +1,139 @@
+// ============================================================
+// Robô: mar_TFM_01_v1_abertura_impulso_2min
+// Grupo: timeframeMenor
+// Versão: v1 | Timeframe sugerido: 2min
+// Descrição: Opera o impulso inicial da abertura.
+//            Define o range da 1ª barra do dia (09h55-10h00).
+//            Ao romper máx ou mín desse range com candle forte,
+//            entra na direção. Alvo: 40pts. Stop: outro lado.
+//            Janela: somente até 10h30 para capturar momentum.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 3;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input HoraBarraRef   = 1000;  // horário da barra de referência (1ª barra)
+input AlvoFixo       = 40;
+input StopExtra      = 10;    // pts além do outro lado da barra ref
+input HoraFimOperar  = 1030;  // fecha entradas depois deste horário
+input PctCorpoMin    = 55;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  MaxRef, MinRef: float;
+  BarraRefCapturada: boolean;
+  CorpoCandle, RangeCandle: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    MaxRef           := 0;
+    MinRef           := 999999;
+    BarraRefCapturada := false;
+    DataAnterior := Date;
+  end;
+
+  // Captura a barra de referência (1ª barra)
+  if (Time = HoraBarraRef) and (not BarraRefCapturada) then
+  begin
+    MaxRef            := High;
+    MinRef            := Low;
+    BarraRefCapturada := true;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  CorpoCandle := Abs(Close - Open);
+  RangeCandle := High - Low;
+  EmPosicao   := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and BarraRefCapturada and
+     (Time > HoraBarraRef) and (Time <= HoraFimOperar) and
+     (MaxRef > MinRef) then
+  begin
+    // LONG: rompe máxima da barra ref + candle forte
+    if (Close > MaxRef) and
+       ((RangeCandle = 0) or (CorpoCandle / RangeCandle * 100 >= PctCorpoMin)) then
+    begin
+      StopLoss   := MinRef - StopExtra;
+      TakeProfit := Close + AlvoFixo;
+      BuyAtMarket;
+    end;
+
+    // SHORT: rompe mínima da barra ref + candle forte
+    if (Close < MinRef) and
+       ((RangeCandle = 0) or (CorpoCandle / RangeCandle * 100 >= PctCorpoMin)) then
+    begin
+      StopLoss   := MaxRef + StopExtra;
+      TakeProfit := Close - AlvoFixo;
+      SellAtMarket;
+    end;
+  end;
+
+end;

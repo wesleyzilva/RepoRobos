@@ -1,0 +1,129 @@
+// ============================================================
+// Robô: mar_SCM_04_v1_pullback_ema5
+// Grupo: SCALPING
+// Versão: v1 | Timeframe: 1min / 2min
+// Descrição: Tendência de ultra-curto prazo pela EMA(5).
+//            Entra no primeiro toque de retorno à EMA após afastar.
+//            Confirmação: candle fecha na direção da tendência.
+//            Alvo: 25pts. Stop: ATR(5)×1.0.
+//            Janela: 09h30-11h45 (evita região de almoço).
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 3;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoEMA   = 5;
+input PeriodoATR   = 5;
+input MultATR      = 1.0;
+input AlvoFixo     = 25;
+input ToleranciaEMA= 15;   // pts de tolerância para "toque" na EMA
+input HoraIni      = 930;
+input HoraFim      = 1145;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  EMA5, ATR5: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  EMA5 := Media(PeriodoEMA, Close);
+  ATR5 := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: tendência de alta (Close > EMA5 na barra anterior afastada) + toque na EMA
+    if (Close[2] > EMA5[2] + ToleranciaEMA) and  // estava acima
+       (Abs(Close - EMA5) <= ToleranciaEMA) and   // agora está próximo
+       (Close > Open) then                          // candle de alta
+    begin
+      StopLoss   := Close - ATR5 * MultATR;
+      TakeProfit := Close + AlvoFixo;
+      BuyAtMarket;
+    end;
+
+    // SHORT: idem para baixo
+    if (Close[2] < EMA5[2] - ToleranciaEMA) and
+       (Abs(Close - EMA5) <= ToleranciaEMA) and
+       (Close < Open) then
+    begin
+      StopLoss   := Close + ATR5 * MultATR;
+      TakeProfit := Close - AlvoFixo;
+      SellAtMarket;
+    end;
+  end;
+
+end;

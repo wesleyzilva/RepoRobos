@@ -1,0 +1,134 @@
+// ============================================================
+// Robô: mar_LSW_05_v1_macd_histograma_lateral
+// Grupo: LATERALIZACAO_SWINGTRADE
+// Versão: v1 | Timeframe: 60min / 240min
+// Descrição: Em mercado lateral (ADX<25), o MACD oscila em torno
+//            do zero sem tendência. Entra quando o histograma
+//            para de cair (mínimo local) ou de subir (máximo local)
+//            próximo à linha zero. IFR como filtro de extremo.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 2.0;
+input RiscoSemanaPct       = 4.0;
+input MaxStopsConsecutivos = 3;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input MACDRapida    = 12;
+input MACDLenta     = 26;
+input MACDSinal     = 9;
+input PeriodoIFR    = 14;
+input IFRSobVend    = 40;
+input IFRSobComp    = 60;
+input PeriodoADX    = 14;
+input ADXMax        = 25;
+input PeriodoATR    = 14;
+input MultATR       = 2.0;
+input RelacaoRR     = 2.0;
+input HoraIni       = 1000;
+input HoraFim       = 1500;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  Hist, HistAnt, IFR14, ADX14, ATR14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  Hist    := MACD(MACDRapida, MACDLenta, MACDSinal) - MACDSignal(MACDRapida, MACDLenta, MACDSinal);
+  HistAnt := Hist[1];
+  IFR14   := IFR(PeriodoIFR, 0);
+  ADX14   := ADX(PeriodoADX, 0);
+  ATR14   := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (ADX14 < ADXMax) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // Histograma virou de baixo para cima (mínimo local negativo) + IFR sobrevendido
+    if (Hist < 0) and (Hist > HistAnt) and (IFR14 <= IFRSobVend) then
+    begin
+      StopLoss   := Close - ATR14 * MultATR;
+      TakeProfit := Close + (Close - StopLoss) * RelacaoRR;
+      BuyAtMarket;
+    end;
+
+    // Histograma virou de cima para baixo (máximo local positivo) + IFR sobrecomprado
+    if (Hist > 0) and (Hist < HistAnt) and (IFR14 >= IFRSobComp) then
+    begin
+      StopLoss   := Close + ATR14 * MultATR;
+      TakeProfit := Close - (StopLoss - Close) * RelacaoRR;
+      SellAtMarket;
+    end;
+  end;
+
+end;

@@ -1,0 +1,130 @@
+// ============================================================
+// Robô: mar_LAT_03_v1_vwap_oscilacao
+// Grupo: LATERALIZACAO_DAYTRADE
+// Versão: v1 | Timeframe sugerido: 5min / 15min
+// Descrição: Usa VWAP como pivô central em dia lateral.
+//            Quando preço se afasta X pontos da VWAP e volta,
+//            entra na direção do fechamento em relação à VWAP.
+//            Filtro: ADX < 25 (lateralização confirmada).
+//            Alvo: outro lado da VWAP (+margem). Stop: ATR×1.2
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input AfastamentoVWAP = 80;    // afastamento mínimo da VWAP para aguardar reteste
+input MargemAlvo      = 20;    // pontos além da VWAP para o alvo
+input PeriodoADX      = 14;
+input ADXMax          = 25;
+input PeriodoATR      = 14;
+input MultATR         = 1.2;
+input HoraIni         = 930;
+input HoraFim         = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  VWAP, ATR14, ADX14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  VWAP  := VWAP(0);
+  ATR14 := ATR(PeriodoATR, 0);
+  ADX14 := ADX(PeriodoADX, 0);
+  EmPosicao := IsBought or IsSold;
+
+  // ---- Saídas ----
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  // ---- Entradas ----
+  if (not EmPosicao) and
+     (ADX14 < ADXMax) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: estava muito abaixo da VWAP e volta para ela (cruzamento de baixo pra cima)
+    if (Close[1] < VWAP[1] - AfastamentoVWAP) and (Close > VWAP) then
+    begin
+      StopLoss   := Close - ATR14 * MultATR;
+      TakeProfit := VWAP + MargemAlvo;
+      BuyAtMarket;
+    end;
+
+    // SHORT: estava muito acima da VWAP e volta para ela (cruzamento de cima pra baixo)
+    if (Close[1] > VWAP[1] + AfastamentoVWAP) and (Close < VWAP) then
+    begin
+      StopLoss   := Close + ATR14 * MultATR;
+      TakeProfit := VWAP - MargemAlvo;
+      SellAtMarket;
+    end;
+  end;
+
+end;
