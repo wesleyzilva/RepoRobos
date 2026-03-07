@@ -80,6 +80,21 @@ O primeiro candle quase sempre tem o **maior volume do dia**. A análise deve se
     *   *Diagnóstico:* Vácuo de Liquidez (Fake).
     *   *Previsão:* O preço vai voltar facilmente, pois não houve barreira.
 
+### 5.1 Volume como Fator Decisivo (não apenas confirmação)
+
+> **Regra central:** O volume do 1º candle, comparado à média histórica dos primeiros candles do ativo, pode ser o sinal mais importante do dia — independente do formato do candle.
+
+| Condição de Volume | Diagnóstico | Ação |
+|---|---|---|
+| **>3x média** (qualquer corpo) | Iniciativa real — Smart Money agindo | Operar direção do fechamento no 2º candle |
+| **>3x média + corpo >70%** | Confluência máxima | Setup mais confiável do dia |
+| **1.5x–3x + corpo <30%** | Absorção intensa | Aguardar rompimento da max/min do 1º candle |
+| **<0.5x média** | Mercado dormindo | **VETO TOTAL** — não operar o 1º candle |
+| **<0.3x média** | Ausência de liquidez | **VETO TOTAL** — não operar nem o 2º candle |
+| **D0 < 0.6x volume abertura D-1** | Perda de força institucional | Reduzir tamanho para 0.5x padrão |
+
+**Interpretação prática:** Volume alto com corpo pequeno é sinal mais forte que corpo grande com volume fraco. O corpo mostra resultado; o volume mostra o esforço real por trás.
+
 ---
 
 ## 6. O Setup de Iniciativa Profissional (A Exceção)
@@ -138,7 +153,8 @@ Em ordem de relevância prática:
 ### Filtros de contexto (fortemente recomendados)
 *   **VWAP diária** (direção intraday).
 *   **VWAP semanal** (alinhamento da semana).
-*   **ATR** (se o 1º candle já consumiu parte grande do movimento típico).
+*   **MME200 diária** — ver seção 9.1 abaixo.
+*   **ATR consumido** — ver seção 9.2 abaixo.
 
 ### Complementares (opcional)
 *   **Médias (9/20/50):** apenas como estrutura, não como gatilho imediato na abertura.
@@ -147,20 +163,55 @@ Em ordem de relevância prática:
 
 ---
 
+### 9.1 MME200 — Filtro de Contexto Obrigatório
+
+A MME200 diária define o **regime de longo prazo** do ativo. Toda leitura do 1º candle deve ser condicionada por ela.
+
+| Posição de abertura | Viés de longo prazo | Regra operacional |
+|---|---|---|
+| Acima da MME200 | Comprador | Dar preferência a compras; vendas exigem confluência extra |
+| Abaixo da MME200 | Vendedor | Dar preferência a vendas; compras exigem confluência extra |
+| Cruzando a MME200 | Indefinido | Reduzir tamanho para 0.5x; exigir 3+ confluências |
+
+**Regra de veto:** Não operar contra a MME200. Se o 1º candle sinalizar compra mas o preço estiver abaixo da MME200, descartar o setup — exceto se houver volume >3x média + corpo >80% + gap externo inequívoco.
+
+> **Por que isso importa na abertura:** O 1º candle forma-se em ambiente de alta volatilidade e baixa liquidez. Sem o filtro da MME200, setups contra a tendência maior têm taxa de acerto significativamente pior.
+
+---
+
+### 9.2 ATR — Quanto do Dia Já Foi Consumido
+
+O ATR diário (14 períodos no gráfico diário) representa o **movimento esperado para o dia**. O range do 1º candle consome parte desse potencial.
+
+| Range do 1º candle vs ATR | Situação | Ação |
+|---|---|---|
+| **<20%** do ATR | Compressão — potencial de expansão alto | Operar rompimento com stop apertado |
+| **20%–40%** do ATR | Zona segura | Setup normal, alvo 1:2 viável |
+| **40%–70%** do ATR | Zona saudável | Ideal — há espaço para stop + alvo |
+| **>70%** do ATR | Consumo alto | Reduzir tamanho para 0.5x; ajustar alvos |
+| **>100%** do ATR | Dia esgotado | **VETO** — stops tecnicamente inviáveis |
+
+**Cálculo prático (WIN):** ATR no diário × 0,2 = ponto de alvo mínimo razoável para o 2º candle. Se o range do 1º candle já excede esse valor, a relação risco/retorno está comprometida.
+
+---
+
 ## 10. Checklist Operacional de 60 segundos
 
 Antes de operar o segundo candle, responder:
 
-1.  **Gap:** abriu fora do range de ontem ou dentro?
-2.  **Força:** corpo do 1º candle é > 70% do range?
-3.  **Volume:** houve volume climático (> 2x referência)?
-4.  **Localização:** preço está acima/abaixo da VWAP diária e semanal?
-5.  **Rejeição:** há pavio dominante indicando armadilha?
+1.  **MME200:** preço está acima ou abaixo? Opera só a favor — se contra, precisa de confluência excepcional.
+2.  **ATR consumido:** range do 1º candle é <70% do ATR? Se >100%, VETO.
+3.  **Volume:** houve volume climático (>2x referência)? Se <0.3x, VETO.
+4.  **Gap:** abriu fora do range de ontem ou dentro?
+5.  **Força:** corpo do 1º candle é >70% do range?
+6.  **Localização:** preço está acima/abaixo da VWAP diária e semanal?
+7.  **Rejeição:** há pavio dominante indicando armadilha?
 
 ### Leitura Final
-*   **4 ou 5 respostas alinhadas:** viés forte (buscar pullback e continuação).
-*   **2 ou 3 alinhadas:** viés moderado (reduzir mão e exigir confirmação).
-*   **0 ou 1 alinhada:** cenário de ruído (priorizar proteção e paciência).
+*   **Itens 1, 2 ou 3 com VETO:** não operar, independente dos demais.
+*   **5–7 respostas alinhadas:** viés forte (buscar pullback e continuação — tamanho padrão).
+*   **3–4 alinhadas:** viés moderado (reduzir mão para 0.5x e exigir confirmação).
+*   **0–2 alinhadas:** cenário de ruído (sem entrada — proteção e paciência).
 
 ---
 
@@ -191,9 +242,10 @@ Antes de operar o segundo candle, responder:
 
 O primeiro candle não é, em geral, candle de execução. É candle de **diagnóstico**.
 
-Ele serve para responder três perguntas:
-1.  **Quem tomou iniciativa?** (comprador ou vendedor)
-2.  **A iniciativa é real?** (volume + corpo + contexto)
-3.  **Onde está a fronteira do dia?** (máxima/mínima do primeiro candle)
+Ele serve para responder quatro perguntas:
+1.  **O contexto permite?** (MME200 + ATR disponível + volume mínimo)
+2.  **Quem tomou iniciativa?** (comprador ou vendedor)
+3.  **A iniciativa é real?** (volume + corpo + contexto)
+4.  **Onde está a fronteira do dia?** (máxima/mínima do primeiro candle)
 
 Quando essas respostas estão claras, a execução do restante do pregão fica simples: operar a favor do viés até prova em contrário.
