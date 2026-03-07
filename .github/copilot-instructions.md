@@ -22,10 +22,25 @@ Este workspace é um sistema de **day trade quantitativo** focado no mercado bra
 ## Estrutura do Workspace
 
 ```
-automacao_backtests/   → Scripts Python de backtest + catálogos IFR
-estudo_teorias/        → Teoria técnica em Markdown (consulta e edição)
-profit_estudos_cores/  → Scripts NTSL para Neologica Profit
-WorkspaceRobosTrade/   → Orientações e documentação do workspace
+automacao_backtests/
+└── IFR_RSI/
+    ├── codigo_fonte/                  → Scripts NTSL dos robôs testados
+    ├── top10/                         → Top 10 por desempenho
+    ├── resultadosAprovadosPorTimeframe/ → CSVs de resultados
+    └── Reprovados/                    → Versões descartadas
+
+estudo_teorias/
+├── 0_diario/                          → Diário de bordo e aulas
+├── 1_operacional/                     → Consulta pré-trade (risco, WIN, horários)
+├── 2_teorias/                         → Indicadores técnicos (IFR, MACD, médias...)
+├── 3_tendencia_contexto/              → Tendência, pivôs e panorama
+└── 4_volume_institucional/            → VSA, VWAP, volume, Wyckoff
+
+profit_estudos_cores/
+├── fev2026/                           → Scripts do ciclo fevereiro/2026
+└── marco2026_IFR_top5/                → Top 5 robôs IFR ativos (mar/2026)
+
+WorkspaceRobosTrade/                   → Orientações e documentação do workspace
 ```
 
 ---

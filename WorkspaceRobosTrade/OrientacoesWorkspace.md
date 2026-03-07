@@ -28,23 +28,23 @@ RepoRobos/
 ## 3. Para Que Serve Cada Pasta
 
 ### `estudo_teorias/`
-Base teórica de consulta antes e durante o trade. Arquivos chave:
+Base teórica organizada por tema:
 
-| Arquivo | Uso |
-|---|---|
-| `tabela_confluencias.md` | **Hierarquia de decisão** — seguir antes de qualquer entrada |
-| `mapa_de_uso_operacional.md` | Roteiro passo a passo do dia (pré-mercado → encerramento) |
-| `gerenciamento_risco.md` | Regras de stop, contratos e risco por operação |
-| `caracteristicas_WIN_mini_indice.md` | Verdades operacionais do WIN |
-| `organizacao_B3_Internacional_horarios.md` | Calendário, horários críticos e janelas de risco |
-| `teoria_IFR.md` | Referência técnica principal dos robôs |
-| `teoria_panorama_contexto.md` | Contexto macro antes do gatilho |
-| `teoria_tendencia.md` / `teoria_tendencia_pivots.md` | Estrutura de tendência |
-| `teoria_vwap.md` | VWAP como filtro institucional |
-| `teoria_VSA.md` / `teoria_volume.md` | Leitura de volume e assinatura institucional |
+| Subpasta | Conteúdo | Arquivos chave |
+|---|---|---|
+| `0_diario/` | Diário de bordo e aulas | `0326_diarioDeBordo.md`, `AulaVascoMamede.md` |
+| `1_operacional/` | Consulta pré-trade e regras práticas | `tabela_confluencias.md`, `mapa_de_uso_operacional.md`, `gerenciamento_risco.md`, `caracteristicas_WIN_mini_indice.md` |
+| `2_teorias/` | Indicadores técnicos | `teoria_IFR.md`, `teoria_MACD.md`, `teoria_medias.md`, `teoria_priceaction.md` |
+| `3_tendencia_contexto/` | Tendência, pivôs e panorama | `teoria_tendencia.md`, `teoria_tendencia_pivots.md`, `teoria_panorama_contexto.md` |
+| `4_volume_institucional/` | Volume, VSA, VWAP e Wyckoff | `teoria_VSA.md`, `teoria_vwap.md`, `teoria_volume.md`, `teoria_wyckoff.md` |
 
 ### `profit_estudos_cores/`
-Scripts NTSL para a plataforma Profit. Cada arquivo é um indicador/coloração aplicável ao gráfico.
+Scripts NTSL para a plataforma Profit, organizados por ciclo mensal:
+
+- `fev2026/` — todos os indicadores/colorações do ciclo de fevereiro/2026
+- `marco2026_IFR_top5/` — top 5 robôs IFR ativos do ciclo de março/2026
+
+Cada arquivo é um indicador/coloração aplicável ao gráfico.
 
 **Hierarquia de uso (do mais importante para o menos):**
 
@@ -66,10 +66,12 @@ Scripts NTSL para a plataforma Profit. Cada arquivo é um indicador/coloração 
 ### `automacao_backtests/`
 Scripts de backtest e catálogos de estratégias IFR.
 
-- `IFR_RSI/robos_IFR.txt` — catálogo completo das versões testadas
+- `IFR_RSI/robos_IFR.txt` — índice de todas as versões testadas
 - `IFR_RSI/catalogo_50_opcoes_IFR.txt` — 50 variações catalogadas para priorização
-- `IFR_RSI/resultadosAprovadosPorTimeframe/` — resultados filtrados por aprovação
+- `IFR_RSI/codigo_fonte/` — scripts NTSL `.txt` das versões de robô
 - `IFR_RSI/top10/` — os 10 melhores robôs IFR por desempenho
+- `IFR_RSI/resultadosAprovadosPorTimeframe/` — CSVs de resultados por timeframe
+- `IFR_RSI/Reprovados/` — versões descartadas
 - `NeologicaProfitAPIbacktest.txt` — referência de API Neologica para automação
 
 ---
