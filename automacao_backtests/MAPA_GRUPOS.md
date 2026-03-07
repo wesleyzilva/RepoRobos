@@ -30,7 +30,7 @@ GRUPO/
 | Grupo | Pasta | Robôs NTSL | Robôs MQL5 | Status |
 |-------|-------|------------|------------|--------|
 | Primeiro Candle | `CANDLE1/` | 33 (PC_01–PC_33) | — | ✅ Completo |
-| IFR/RSI | `IFR_RSI/` | 3 feitos / 14 planejados | — | 🔄 Em progresso |
+| IFR/RSI | `IFR_RSI/` | 3 novos (`mar_IFR_*`) + 10 legado em `legado/` | — | 🔄 Em progresso |
 | Médias | `MEDIAS/` | 0 / 18 planejados | — | ⬜ Pendente |
 | Stop Tolerante | `STOPTOLERANTE/` | 4 (ST_01–ST_04) | — | ✅ Completo |
 | Poucos Pontos Vencedores | `POUCOSPONTOSVENCEDORES/` | 4 (PPV_01–PPV_04) | — | 🔄 Faltam 05–08 |
@@ -73,7 +73,9 @@ automacao_backtests/
 │   └── mql5/           → (pendente)
 │
 ├── IFR_RSI/
-│   ├── codigo_fonte/   → 3 robôs (mar_IFR_01-03) + 10 antigos 🔄
+│   ├── codigo_fonte/   → 3 robôs novos (mar_IFR_01-03) 🔄
+│   ├── legado/         → 10 robôs antigos (robo_ifr_v*) — só referência
+│   ├── top10/          → top 10 histórico (referência)
 │   └── mql5/           → (pendente)
 │
 ├── MEDIAS/
