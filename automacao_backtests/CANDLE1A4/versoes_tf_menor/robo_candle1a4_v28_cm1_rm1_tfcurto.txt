@@ -1,0 +1,225 @@
+﻿// Estrategia: robo_candle1a4_v28_cm1_rm1_tfcurto
+// Tema: Candle1A4 - operacao apenas nos primeiros 5 candles do dia (grafico 2 min)
+// Regras: Le leitura principal do gap no candle 1 + nivel do dia anterior, entrada no candle 1 com sinal forte,
+//         maximo 1 trade por dia, saida por rejeicao/tempo.
+input
+  ConfirmacaoModo(1);
+  RejeicaoModo(1);
+  MinPercCorpoC1(0.45);
+  MinRangeC1(14);
+  ConfirmacaoC2MinPerc(0.55);
+  RazaoPavio(1.8);
+  GapMinPontos(10);
+  ToleranciaNivelDiaAnterior(15);
+  ScoreMinimoEntrada(3);
+  PeriodoMMECurta(9);
+  PeriodoMMEIntermediaria(20);
+  PeriodoMMELenta(50);
+  MaxBarrasPosicao(9);
+  HoraInicioJanela(900);
+  HoraFimJanela(910);
+  MaxTradesPorDia(1);
+
+var
+  oC1, hC1, lC1, cC1, rangeC1, corpoC1, pavioSupC1, pavioInfC1 : float;
+  fMaxDiaAtual, fMinDiaAtual, fMaxDiaAnterior, fMinDiaAnterior, fGapAbertura : float;
+  fMME9, fMME20, fMME50 : float;
+  fPosFechC1NoRange : float;
+  fCloseAnterior, fVolumeAnterior : float;
+  iDateAnterior : integer;
+  oAtual, hAtual, lAtual, cAtual, rangeAtual, corpoAtual : float;
+  iCandleDia, iBarrasPosicao, iTradesDia, iScoreCompra, iScoreVenda : integer;
+  bDiaNovo, bJanelaAtiva, bC1Valido, bDirecaoAlta, bDirecaoBaixa : boolean;
+  bSinalForteC1, bRejeicaoAtual : boolean;
+  bGapAlta, bGapBaixa, bEmMaxAnterior, bEmMinAnterior : boolean;
+  bGapNaRegiaoAlta, bGapNaRegiaoBaixa : boolean;
+  bC1DirecionalAlta, bC1DirecionalBaixa : boolean;
+  bC1RejeicaoAlta, bC1RejeicaoBaixa : boolean;
+  bFechamentoMediasAlta, bFechamentoMediasBaixa : boolean;
+  bSinalModoCompra, bSinalModoVenda : boolean;
+
+begin
+  iDateAnterior := Date[1];
+  fCloseAnterior := Close[1];
+  fVolumeAnterior := Volume[1];
+
+  bDiaNovo := Date <> iDateAnterior;
+
+  if bDiaNovo then
+  begin
+    if iDateAnterior > 0 then
+    begin
+      fMaxDiaAnterior := fMaxDiaAtual;
+      fMinDiaAnterior := fMinDiaAtual;
+    end
+    else
+    begin
+      fMaxDiaAnterior := High;
+      fMinDiaAnterior := Low;
+    end;
+
+    iCandleDia := 1;
+    iBarrasPosicao := 0;
+    iTradesDia := 0;
+
+    oC1 := Open;
+    hC1 := High;
+    lC1 := Low;
+    cC1 := Close;
+
+    fMaxDiaAtual := High;
+    fMinDiaAtual := Low;
+    fGapAbertura := Open - fCloseAnterior;
+  end
+  else
+  begin
+    iCandleDia := iCandleDia + 1;
+
+    if High > fMaxDiaAtual then
+      fMaxDiaAtual := High;
+
+    if Low < fMinDiaAtual then
+      fMinDiaAtual := Low;
+  end;
+
+  bJanelaAtiva := (Time >= HoraInicioJanela) and (Time <= HoraFimJanela);
+
+  fMME9 := MediaExp(PeriodoMMECurta, Close);
+  fMME20 := MediaExp(PeriodoMMEIntermediaria, Close);
+  fMME50 := MediaExp(PeriodoMMELenta, Close);
+
+  rangeC1 := hC1 - lC1;
+  corpoC1 := Abs(cC1 - oC1);
+
+  bDirecaoAlta := cC1 > oC1;
+  bDirecaoBaixa := cC1 < oC1;
+  bC1Valido := (rangeC1 >= MinRangeC1) and ((corpoC1 / Max(rangeC1, 0.01)) >= MinPercCorpoC1);
+
+  pavioSupC1 := hC1 - Max(oC1, cC1);
+  pavioInfC1 := Min(oC1, cC1) - lC1;
+
+  bGapAlta := fGapAbertura >= GapMinPontos;
+  bGapBaixa := fGapAbertura <= (-GapMinPontos);
+
+  bEmMaxAnterior := (Abs(cC1 - fMaxDiaAnterior) <= ToleranciaNivelDiaAnterior)
+                 or (Abs(hC1 - fMaxDiaAnterior) <= ToleranciaNivelDiaAnterior);
+
+  bEmMinAnterior := (Abs(cC1 - fMinDiaAnterior) <= ToleranciaNivelDiaAnterior)
+                 or (Abs(lC1 - fMinDiaAnterior) <= ToleranciaNivelDiaAnterior);
+
+  bGapNaRegiaoAlta := bGapAlta and bEmMaxAnterior;
+  bGapNaRegiaoBaixa := bGapBaixa and bEmMinAnterior;
+
+  fPosFechC1NoRange := (cC1 - lC1) / Max(rangeC1, 0.01);
+
+  bC1DirecionalAlta := bDirecaoAlta
+                    and bC1Valido
+                    and ((corpoC1 / Max(rangeC1, 0.01)) >= ConfirmacaoC2MinPerc)
+                    and (fPosFechC1NoRange >= 0.70);
+
+  bC1DirecionalBaixa := bDirecaoBaixa
+                     and bC1Valido
+                     and ((corpoC1 / Max(rangeC1, 0.01)) >= ConfirmacaoC2MinPerc)
+                     and (fPosFechC1NoRange <= 0.30);
+
+  bC1RejeicaoAlta := bDirecaoAlta
+                  and bC1Valido
+                  and (pavioInfC1 >= (corpoC1 * RazaoPavio))
+                  and (fPosFechC1NoRange >= 0.55);
+
+  bC1RejeicaoBaixa := bDirecaoBaixa
+                   and bC1Valido
+                   and (pavioSupC1 >= (corpoC1 * RazaoPavio))
+                   and (fPosFechC1NoRange <= 0.45);
+
+  bFechamentoMediasAlta := (cC1 >= fMME9) and (cC1 >= fMME20) and (cC1 >= fMME50);
+  bFechamentoMediasBaixa := (cC1 <= fMME9) and (cC1 <= fMME20) and (cC1 <= fMME50);
+
+  bSinalForteC1 := false;
+  bSinalModoCompra := false;
+  bSinalModoVenda := false;
+
+  if ConfirmacaoModo = 1 then
+  begin
+    bSinalModoCompra := bC1DirecionalAlta;
+    bSinalModoVenda := bC1DirecionalBaixa;
+  end;
+
+  if ConfirmacaoModo = 2 then
+  begin
+    bSinalModoCompra := bC1RejeicaoAlta;
+    bSinalModoVenda := bC1RejeicaoBaixa;
+  end;
+
+  if ConfirmacaoModo = 3 then
+  begin
+    bSinalModoCompra := (bC1DirecionalAlta or bC1RejeicaoAlta) and (Volume > fVolumeAnterior);
+    bSinalModoVenda := (bC1DirecionalBaixa or bC1RejeicaoBaixa) and (Volume > fVolumeAnterior);
+  end;
+
+  iScoreCompra := 0;
+  if bGapAlta then
+    iScoreCompra := iScoreCompra + 1;
+  if bEmMaxAnterior then
+    iScoreCompra := iScoreCompra + 1;
+  if bFechamentoMediasAlta then
+    iScoreCompra := iScoreCompra + 1;
+  if bSinalModoCompra then
+    iScoreCompra := iScoreCompra + 1;
+
+  iScoreVenda := 0;
+  if bGapBaixa then
+    iScoreVenda := iScoreVenda + 1;
+  if bEmMinAnterior then
+    iScoreVenda := iScoreVenda + 1;
+  if bFechamentoMediasBaixa then
+    iScoreVenda := iScoreVenda + 1;
+  if bSinalModoVenda then
+    iScoreVenda := iScoreVenda + 1;
+
+  if bDirecaoAlta then
+    bSinalForteC1 := iScoreCompra >= ScoreMinimoEntrada;
+
+  if bDirecaoBaixa then
+    bSinalForteC1 := iScoreVenda >= ScoreMinimoEntrada;
+
+  if (not IsBought) and (not IsSold) and bJanelaAtiva and (iTradesDia < MaxTradesPorDia) and (iCandleDia = 1) and bSinalForteC1 then
+  begin
+    if bDirecaoAlta then BuyAtMarket;
+    if bDirecaoBaixa then SellShortAtMarket;
+    iTradesDia := iTradesDia + 1;
+    iBarrasPosicao := 0;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasPosicao := iBarrasPosicao + 1
+  else
+    iBarrasPosicao := 0;
+
+  if IsBought or IsSold then
+  begin
+    oAtual := Open;
+    hAtual := High;
+    lAtual := Low;
+    cAtual := Close;
+    corpoAtual := Abs(cAtual - oAtual);
+
+    bRejeicaoAtual := false;
+
+    if RejeicaoModo = 1 then
+      bRejeicaoAtual := (IsBought and (cAtual < oAtual)) or (IsSold and (cAtual > oAtual));
+
+    if RejeicaoModo = 2 then
+      bRejeicaoAtual := (IsBought and ((hAtual - cAtual) > (corpoAtual * RazaoPavio)))
+                     or (IsSold and ((cAtual - lAtual) > (corpoAtual * RazaoPavio)));
+
+    if RejeicaoModo = 3 then
+      bRejeicaoAtual := (IsBought and (cAtual < hC1)) or (IsSold and (cAtual > lC1));
+
+    if ((iCandleDia >= 3) and bRejeicaoAtual)
+       or (iBarrasPosicao >= MaxBarrasPosicao)
+       or (iCandleDia >= 5)
+       or (Time > HoraFimJanela) then
+      ClosePosition;
+  end;
+end;

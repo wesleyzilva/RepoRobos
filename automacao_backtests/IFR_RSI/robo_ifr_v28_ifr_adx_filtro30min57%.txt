@@ -3,6 +3,7 @@
   Autor: Wesley
   Descricao: IFR com filtro de forca de tendencia por ADX.
              Opera apenas quando ADX estiver acima do nivel minimo.
+             20260306: Baseado no dia anterior com pior resultado, implementado Stop Loss e Take Profit.
 }
 
 input
@@ -16,31 +17,104 @@ input
   UsarSaidaIFR50(true);
   UsarSaidaTempo(true);
   MaxBarrasPosicao(14);
+  UsarStopLoss(true); // Liga/desliga stop loss
+  StopLoss(-200); // Limite de perda por operação (exemplo: -200 pontos)
+
+  UsarTakeProfit(true); // Liga/desliga take profit
+  TakeProfit(300); // Alvo de ganho por operação (exemplo: 300 pontos)
+  UsarDrawdownDiario(true); // Liga/desliga controle de drawdown diário
+  LimiteDrawdownDiario(-300); // Limite de perda diária (exemplo: -300 reais)
+
+  UsarLimiteSaldoMaximo(true); // Liga/desliga bloqueio por saldo máximo
+  LimiteSaldoMaximo(1000); // Limite de saldo máximo para bloquear operações
+
+  PatrimonioInicial(10000); // Patrimônio inicial para cálculo financeiro
+  UsarPerdaMaximaCarteira(true); // Liga/desliga controle de perda máxima da carteira
+  PerdaMaximaCarteira(0.1); // Percentual máximo de perda da carteira (exemplo: 0.1 = 10%)
+  UsarTaxaRisco(true); // Liga/desliga controle por taxa de risco
+  TaxaRisco(0.2); // Taxa de risco máxima (exemplo: 0.2 = 20%)
 
 var
   iBarrasEmPosicao : integer;
   fIFR, fADX : float;
   bTendenciaValida : boolean;
+  PrecoEntrada : float;
+
+  saldoDiario : float;
+  ultimoDia : integer;
 
 begin
   fIFR := IFR(PeriodoIFR);
   fADX := ADX(PeriodoADX, PeriodoADX);
   bTendenciaValida := (fADX >= ADXMinimo);
 
+  // Controle de saldo diário
+  if (DayOfYear(Date) <> ultimoDia) then
+  begin
+    saldoDiario := 0;
+    ultimoDia := DayOfYear(Date);
+  end;
+
   if (not IsBought) and (not IsSold) and bTendenciaValida then
   begin
+      // Bloqueia novas operações se drawdown diário atingido, saldo acima do limite, risco financeiro ou perda máxima da carteira excedida
+      if UsarDrawdownDiario and (saldoDiario <= LimiteDrawdownDiario) then
+        Print(Date, ": Bloqueio LimiteDrawdownDiario | Saldo: ", saldoDiario);
+      if UsarLimiteSaldoMaximo and (saldoDiario > LimiteSaldoMaximo) then
+        Print(Date, ": Bloqueio LimiteSaldoMaximo | Saldo: ", saldoDiario);
+      if UsarTaxaRisco and (saldoDiario <= -PatrimonioInicial * TaxaRisco) then
+        Print(Date, ": Bloqueio TaxaRisco | Saldo: ", saldoDiario);
+      if UsarPerdaMaximaCarteira and (saldoDiario <= -PatrimonioInicial * PerdaMaximaCarteira) then
+        Print(Date, ": Bloqueio PerdaMaximaCarteira | Saldo: ", saldoDiario);
+      if (UsarDrawdownDiario and (saldoDiario <= LimiteDrawdownDiario))
+         or (UsarLimiteSaldoMaximo and (saldoDiario > LimiteSaldoMaximo))
+         or (UsarTaxaRisco and (saldoDiario <= -PatrimonioInicial * TaxaRisco))
+         or (UsarPerdaMaximaCarteira and (saldoDiario <= -PatrimonioInicial * PerdaMaximaCarteira)) then
+        exit;
     if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
     begin
       BuyAtMarket;
+      PrecoEntrada := Close;
+      Print(Date, ": Compra executada | Preço: ", PrecoEntrada, " | Saldo: ", saldoDiario);
     end
     else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
     begin
       SellShortAtMarket;
+      PrecoEntrada := Close;
+      Print(Date, ": Venda executada | Preço: ", PrecoEntrada, " | Saldo: ", saldoDiario);
     end;
   end;
 
   if IsBought or IsSold then
-    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  begin
+    iBarrasEmPosicao := iBarrasEmPosicao + 1;
+
+    // Stop-loss para posição comprada
+    if UsarStopLoss and IsBought and ((Close - PrecoEntrada) <= StopLoss) then
+    begin
+      ClosePosition;
+      Print(Date, ": StopLoss ativado | Fechando posição comprada | Preço: ", Close, " | Saldo: ", saldoDiario);
+    end;
+    // Stop-loss para posição vendida
+    if UsarStopLoss and IsSold and ((PrecoEntrada - Close) <= StopLoss) then
+    begin
+      ClosePosition;
+      Print(Date, ": StopLoss ativado | Fechando posição vendida | Preço: ", Close, " | Saldo: ", saldoDiario);
+    end;
+
+    // Take profit para posição comprada
+    if UsarTakeProfit and IsBought and ((Close - PrecoEntrada) >= TakeProfit) then
+    begin
+      ClosePosition;
+      Print(Date, ": TakeProfit ativado | Fechando posição comprada | Preço: ", Close, " | Saldo: ", saldoDiario);
+    end;
+    // Take profit para posição vendida
+    if UsarTakeProfit and IsSold and ((PrecoEntrada - Close) >= TakeProfit) then
+    begin
+      ClosePosition;
+      Print(Date, ": TakeProfit ativado | Fechando posição vendida | Preço: ", Close, " | Saldo: ", saldoDiario);
+    end;
+  end
   else
     iBarrasEmPosicao := 0;
 
@@ -49,4 +123,12 @@ begin
 
   if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
     ClosePosition;
+
+  // Atualiza saldo diário ao fechar posição
+  if (not IsBought) and (not IsSold) and (PrecoEntrada <> 0) then
+  begin
+     saldoDiario := saldoDiario + (Close - PrecoEntrada);
+    Print(Date, ": Posição fechada | Resultado: ", Close - PrecoEntrada, " | Saldo atualizado: ", saldoDiario);
+     PrecoEntrada := 0;
+  end;
 end;

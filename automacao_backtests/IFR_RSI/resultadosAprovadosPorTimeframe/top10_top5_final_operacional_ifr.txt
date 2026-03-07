@@ -1,0 +1,26 @@
+﻿TOP 10 E TOP 5 FINAL OPERACIONAL - IFR_RSI (CORRIGIDO)
+Gerado em: 04/03/2026 18:03:14
+Regras aplicadas: WinRate > 60; Saldo > 0; Drawdown <= 700; amostra pequena com peso menor.
+
+TOP 10 FINAL (ROBOS ELEGIVEIS)
+Pos | Robo | ScoreFinal | TFAprov | TradesAprov | WinRateAprov | SaldoAprov | DrawdownPiorAprov | PatrimonioSugerido
+1 | robo_ifr_v7_resgate_contexto | 71.4 | 2 | 17 | 82.35 | 1955 | 105 | 1000
+2 | robo_ifr_v6_saida_hibrida | 66.61 | 2 | 45 | 80 | 4569 | 662 | 1655
+3 | robo_ifr_v47_orb_confirmacao_dupla | 64.01 | 2 | 5 | 80 | 915 | 0 | 1000
+4 | robo_ifr_v23_dupla_confirmacao | 57.9 | 1 | 16 | 87.5 | 1253 | 59 | 1000
+5 | robo_ifr_v25_ifr_mme200_contexto | 57.35 | 3 | 143 | 69.23 | 1740 | 636 | 1590
+6 | robo_ifr_v45_volume_por_horario | 57.22 | 2 | 141 | 68.79 | 3124 | 544 | 1360
+7 | robo_ifr_v5_regime_volatilidade | 55.53 | 1 | 11 | 90.91 | 1563 | 392 | 1000
+8 | robo_ifr_v4_divergencia_confirmada | 55.21 | 1 | 10 | 90 | 988 | 0 | 1000
+9 | robo_ifr_v1_reversao_extremos | 53 | 2 | 86 | 66.28 | 1916 | 545 | 1362
+10 | robo_ifr_v36_divergencia_regular_pivo | 30.17 | 1 | 29 | 62.07 | 882 | 274 | 1000
+
+TOP 5 PARA OPERAR
+Pos | Robo | ScoreFinal | TFAprov | TradesAprov | WinRateAprov | SaldoAprov | DrawdownPiorAprov | PatrimonioSugerido
+1 | robo_ifr_v7_resgate_contexto | 71.4 | 2 | 17 | 82.35 | 1955 | 105 | 1000
+2 | robo_ifr_v6_saida_hibrida | 66.61 | 2 | 45 | 80 | 4569 | 662 | 1655
+3 | robo_ifr_v47_orb_confirmacao_dupla | 64.01 | 2 | 5 | 80 | 915 | 0 | 1000
+4 | robo_ifr_v23_dupla_confirmacao | 57.9 | 1 | 16 | 87.5 | 1253 | 59 | 1000
+5 | robo_ifr_v25_ifr_mme200_contexto | 57.35 | 3 | 143 | 69.23 | 1740 | 636 | 1590
+
+OBS PATRIMONIO: estimativa tecnica = 2.5x drawdown pior aprovado (minimo 1000).

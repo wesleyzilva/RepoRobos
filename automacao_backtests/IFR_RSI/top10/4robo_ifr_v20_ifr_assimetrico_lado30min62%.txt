@@ -3,6 +3,8 @@
   Autor: Wesley
   Descricao: IFR com niveis assimetricos para compra e venda.
              Ajusta sensibilidade por lado para refletir comportamento diferente do mercado.
+             20260303: 30 min Entrada 10h30 tivemos uma queda brusca, 
+             20260306:implantado drawdown, stoploss, saldocarteira
 }
 
 input
@@ -30,6 +32,8 @@ input
   DiasParaResetSemanal(5);
   UsarResetSemanalPorDiaFixo(true);
   DiaSemanaReset(2);
+  UsarPerdaMaximaCarteira(true); // Liga/desliga controle de perda máxima da carteira
+  PerdaMaximaCarteira(0.1); // Percentual máximo de perda da carteira (exemplo: 0.1 = 10%)
 
 var
   iBarrasEmPosicao : integer;
@@ -77,7 +81,12 @@ begin
     fResultadoTradeReais := fResultadoTradePontos * ValorPorPonto * QuantidadeContratos;
     fResultadoDia := fResultadoDia + fResultadoTradeReais;
     fResultadoSemana := fResultadoSemana + fResultadoTradeReais;
+    Print(Date, ": Posição fechada | Resultado: ", fResultadoTradeReais, " | Saldo atualizado: ", fResultadoDia);
   end;
+
+  // Log de bloqueio por perda máxima da carteira
+  if UsarPerdaMaximaCarteira and (fResultadoDia <= -SaldoConta * PerdaMaximaCarteira) then
+    Print(Date, ": Bloqueio PerdaMaximaCarteira | Saldo: ", fResultadoDia);
 
   if UsarGestaoRisco and (fResultadoDia <= -fLimiteDia) then
     bBloqueioDia := true;
@@ -121,13 +130,19 @@ begin
 
   if (not IsBought) and (not IsSold) and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
   begin
+    // Bloqueia novas operações se perda máxima da carteira excedida
+    if UsarPerdaMaximaCarteira and (fResultadoDia <= -SaldoConta * PerdaMaximaCarteira) then
+      exit;
+
     if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
     begin
       BuyAtMarket;
+      Print(Date, ": Compra executada | Preço: ", Close, " | Saldo: ", fResultadoDia);
     end
     else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
     begin
       SellShortAtMarket;
+      Print(Date, ": Venda executada | Preço: ", Close, " | Saldo: ", fResultadoDia);
     end;
   end;
 
@@ -137,10 +152,16 @@ begin
     iBarrasEmPosicao := 0;
 
   if IsBought and ((UsarSaidaIFR50 and (fIFR >= 52)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao)) or bSaidaOCOCompra) then
+  begin
     ClosePosition;
+    Print(Date, ": Fechando posição comprada | Preço: ", Close, " | Saldo: ", fResultadoDia);
+  end;
 
   if IsSold and ((UsarSaidaIFR50 and (fIFR <= 48)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao)) or bSaidaOCOVenda) then
+  begin
     ClosePosition;
+    Print(Date, ": Fechando posição vendida | Preço: ", Close, " | Saldo: ", fResultadoDia);
+  end;
 
   if (not bEstavaPosicionado) and IsBought then
   begin

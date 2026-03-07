@@ -1,0 +1,507 @@
+﻿==================================================================
+  PANORAMA COMPLETO - CANDLE1A4 | 05/03/2026
+  Criterios aprovacao: WR>60% | Saldo>0 | DD<=700 | Trades>=5
+  Score: 40%risco + 25%consist + 15%WR + 10%saldo + 10%amostra
+==================================================================
+
+[TOP5] #1  V42_CM3_RM2  [Score: 0.6576]  >> STOP SEGURO + ALTA PRECISAO + CONSISTENTE
+     TFs testados : 5  |  Aprovados: 3  (60% dos TFs)  |  [1min, 30min, 60min]
+     WR medio(%ap): 73%   DD pior: 278 pts   Saldo(aprov): R$ 907   Trades(aprov): 19
+     Saldo GERAL (todos TFs): R$ 504  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         6   66.7%      266    108  OK
+  [--] 5min        10     30%     -180    297  WR 30% <= 60% | saldo -180
+  [--] 15min       11   45.5%     -223    328  WR 45.5% <= 60% | saldo -223
+  [OK] 30min        6   66.7%       59    150  OK
+  [OK] 60min        7   85.7%      582    278  OK
+
+======================================================================
+
+[TOP5] #2  V01_CM1_RM1  [Score: 0.631]  >> STOP SEGURO + BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 2  (25% dos TFs)  |  [2min, 30min]
+     WR medio(%ap): 70.1%   DD pior: 243 pts   Saldo(aprov): R$ 1239   Trades(aprov): 39
+     Saldo GERAL (todos TFs): R$ 3396  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [--] 1min        12   58.3%      295    277  WR 58.3% <= 60%
+  [OK] 2min         7   71.4%      255     79  OK
+  [--] 3min        25     52%      814    178  WR 52% <= 60%
+  [--] 4min        26     50%      315    199  WR 50% <= 60%
+  [--] 5min        29   44.8%      215    368  WR 44.8% <= 60%
+  [--] 15min       34   58.8%     -190    525  WR 58.8% <= 60% | saldo -190
+  [OK] 30min       32   68.8%      984    243  OK
+  [--] 60min       42   52.4%      708   1136  WR 52.4% <= 60% | DD 1136 > 700
+
+======================================================================
+
+[TOP5] #3  V40_CM1_RM2  [Score: 0.6289]  >> STOP SEGURO + CONSISTENTE
+     TFs testados : 5  |  Aprovados: 3  (60% dos TFs)  |  [1min, 30min, 60min]
+     WR medio(%ap): 71.6%   DD pior: 278 pts   Saldo(aprov): R$ 642   Trades(aprov): 21
+     Saldo GERAL (todos TFs): R$ 124  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%        1    276  OK
+  [--] 5min         9   22.2%     -318    356  WR 22.2% <= 60% | saldo -318
+  [--] 15min       10     50%     -200    328  WR 50% <= 60% | saldo -200
+  [OK] 30min        6   66.7%       59    150  OK
+  [OK] 60min        7   85.7%      582    278  OK
+
+======================================================================
+
+[TOP5] #4  V21_CM3_RM1  [Score: 0.5723]  >> STOP SEGURO
+     TFs testados : 8  |  Aprovados: 2  (25% dos TFs)  |  [1min, 2min]
+     WR medio(%ap): 69.1%   DD pior: 178 pts   Saldo(aprov): R$ 533   Trades(aprov): 13
+     Saldo GERAL (todos TFs): R$ 1223  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         6   66.7%      278    178  OK
+  [OK] 2min         7   71.4%      255     79  OK
+  [--] 3min        22     50%      750    178  WR 50% <= 60%
+  [--] 4min        24   41.7%     -311    688  WR 41.7% <= 60% | saldo -311
+  [--] 5min        20     30%     -215    431  WR 30% <= 60% | saldo -215
+  [--] 15min       22   54.5%     -185    340  WR 54.5% <= 60% | saldo -185
+  [--] 30min        2     50%      -38     41  WR 50% <= 60% | saldo -38 | apenas 2 trades
+  [--] 60min        4    100%      689      0  apenas 4 trades
+
+======================================================================
+
+[TOP5] #5  V48_CM3_RM1  [Score: 0.5721]  >> ALTA PRECISAO + ALTO RETORNO
+     TFs testados : 5  |  Aprovados: 2  (40% dos TFs)  |  [1min, 60min]
+     WR medio(%ap): 74.1%   DD pior: 410 pts   Saldo(aprov): R$ 1665   Trades(aprov): 27
+     Saldo GERAL (todos TFs): R$ 1436  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      365    174  OK
+  [--] 5min        19   26.3%     -297    407  WR 26.3% <= 60% | saldo -297
+  [--] 15min       21   57.1%     -103    328  WR 57.1% <= 60% | saldo -103
+  [--] 30min       16   56.2%      171    186  WR 56.2% <= 60%
+  [OK] 60min       22   68.2%     1300    410  OK
+
+======================================================================
+
+[TOP10] #6  V45_CM3_RM3  [Score: 0.5715]  >> ALTA PRECISAO + ALTO RETORNO
+     TFs testados : 5  |  Aprovados: 2  (40% dos TFs)  |  [1min, 60min]
+     WR medio(%ap): 74.1%   DD pior: 410 pts   Saldo(aprov): R$ 1655   Trades(aprov): 27
+     Saldo GERAL (todos TFs): R$ 1504  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      355    174  OK
+  [--] 5min        19   31.6%     -219    382  WR 31.6% <= 60% | saldo -219
+  [--] 15min       21   57.1%     -103    328  WR 57.1% <= 60% | saldo -103
+  [--] 30min       16   56.2%      171    186  WR 56.2% <= 60%
+  [OK] 60min       22   68.2%     1300    410  OK
+
+======================================================================
+
+[TOP10] #7  V02_CM2_RM1  [Score: 0.5694]  >> STOP SEGURO + BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 2  (25% dos TFs)  |  [15min, 30min]
+     WR medio(%ap): 65.5%   DD pior: 257 pts   Saldo(aprov): R$ 746   Trades(aprov): 55
+     Saldo GERAL (todos TFs): R$ 3126  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [--] 1min        11   54.5%       50    277  WR 54.5% <= 60%
+  [--] 2min        23   52.2%      479    188  WR 52.2% <= 60%
+  [--] 3min        23   56.5%      883    178  WR 56.5% <= 60%
+  [--] 4min        21   42.9%      182    270  WR 42.9% <= 60%
+  [--] 5min        27   40.7%       -4    501  WR 40.7% <= 60% | saldo -4
+  [OK] 15min       28   64.3%       88    257  OK
+  [OK] 30min       27   66.7%      658    254  OK
+  [--] 60min       40     55%      790   1058  WR 55% <= 60% | DD 1058 > 700
+
+======================================================================
+
+[TOP10] #8  V12_CM3_RM1  [Score: 0.5538]  >> ALTO RETORNO + BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 3  (38% dos TFs)  |  [1min, 2min, 60min]
+     WR medio(%ap): 71.7%   DD pior: 422 pts   Saldo(aprov): R$ 1830   Trades(aprov): 34
+     Saldo GERAL (todos TFs): R$ 1911  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      349    178  OK
+  [OK] 2min         7   71.4%      255     79  OK
+  [--] 3min        19   52.6%      817    178  WR 52.6% <= 60%
+  [--] 4min        17   29.4%     -405    496  WR 29.4% <= 60% | saldo -405
+  [--] 5min        19   26.3%     -349    451  WR 26.3% <= 60% | saldo -349
+  [--] 15min       19   63.2%      -50    257  saldo -50
+  [--] 30min       14   57.1%       68    299  WR 57.1% <= 60%
+  [OK] 60min       22   63.6%     1226    422  OK
+
+======================================================================
+
+[TOP10] #9  V22_CM1_RM2  [Score: 0.5456]  >> STOP SEGURO
+     TFs testados : 8  |  Aprovados: 2  (25% dos TFs)  |  [2min, 30min]
+     WR medio(%ap): 66.2%   DD pior: 197 pts   Saldo(aprov): R$ 490   Trades(aprov): 25
+     Saldo GERAL (todos TFs): R$ 1236  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [--] 1min         9   55.6%     -158    290  WR 55.6% <= 60% | saldo -158
+  [OK] 2min         7   71.4%      339     97  OK
+  [--] 3min        22     50%      674    197  WR 50% <= 60%
+  [--] 4min        19   42.1%     -345    503  WR 42.1% <= 60% | saldo -345
+  [--] 5min        21   33.3%     -240    372  WR 33.3% <= 60% | saldo -240
+  [--] 15min       24   58.3%     -149    340  WR 58.3% <= 60% | saldo -149
+  [OK] 30min       18   61.1%      151    197  OK
+  [--] 60min       26   61.5%      964    793  DD 793 > 700
+
+======================================================================
+
+[TOP10] #10  V30_CM3_RM1  [Score: 0.5284]  >> ALTO RETORNO
+     TFs testados : 5  |  Aprovados: 2  (40% dos TFs)  |  [1min, 60min]
+     WR medio(%ap): 71.8%   DD pior: 422 pts   Saldo(aprov): R$ 1575   Trades(aprov): 27
+     Saldo GERAL (todos TFs): R$ 1188  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      349    178  OK
+  [--] 5min        19   26.3%     -349    451  WR 26.3% <= 60% | saldo -349
+  [--] 15min       21   57.1%     -158    340  WR 57.1% <= 60% | saldo -158
+  [--] 30min       16   56.2%      120    206  WR 56.2% <= 60%
+  [OK] 60min       22   63.6%     1226    422  OK
+
+======================================================================
+
+       #11  V36_CM3_RM3  [Score: 0.5278]  >> ALTO RETORNO
+     TFs testados : 5  |  Aprovados: 2  (40% dos TFs)  |  [1min, 60min]
+     WR medio(%ap): 71.8%   DD pior: 422 pts   Saldo(aprov): R$ 1565   Trades(aprov): 27
+     Saldo GERAL (todos TFs): R$ 1252  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      339    178  OK
+  [--] 5min        19   31.6%     -275    412  WR 31.6% <= 60% | saldo -275
+  [--] 15min       21   57.1%     -158    340  WR 57.1% <= 60% | saldo -158
+  [--] 30min       16   56.2%      120    206  WR 56.2% <= 60%
+  [OK] 60min       22   63.6%     1226    422  OK
+
+======================================================================
+
+       #12  V43_CM1_RM3  [Score: 0.4918]  >> STOP SEGURO + CONSISTENTE
+     TFs testados : 4  |  Aprovados: 2  (50% dos TFs)  |  [1min, 30min]
+     WR medio(%ap): 64.6%   DD pior: 260 pts   Saldo(aprov): R$ 202   Trades(aprov): 14
+     Saldo GERAL (todos TFs): R$ -54  fica negativo se somar TFs ruins
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%      143    260  OK
+  [--] 5min         9   33.3%      -56    156  WR 33.3% <= 60% | saldo -56
+  [--] 15min       10     50%     -200    328  WR 50% <= 60% | saldo -200
+  [OK] 30min        6   66.7%       59    150  OK
+
+======================================================================
+
+       #13  V15_CM3_RM2  [Score: 0.4889]  >> ALTO RETORNO
+     TFs testados : 8  |  Aprovados: 2  (25% dos TFs)  |  [1min, 60min]
+     WR medio(%ap): 71.8%   DD pior: 422 pts   Saldo(aprov): R$ 1542   Trades(aprov): 27
+     Saldo GERAL (todos TFs): R$ 1779  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      316    112  OK
+  [--] 2min        19   52.6%      536    234  WR 52.6% <= 60%
+  [--] 3min        19   52.6%      730    197  WR 52.6% <= 60%
+  [--] 4min        17   35.3%     -599    655  WR 35.3% <= 60% | saldo -599
+  [--] 5min        19   26.3%     -448    550  WR 26.3% <= 60% | saldo -448
+  [--] 15min       19   63.2%      -50    257  saldo -50
+  [--] 30min       14   57.1%       68    299  WR 57.1% <= 60%
+  [OK] 60min       22   63.6%     1226    422  OK
+
+======================================================================
+
+       #14  V49_CM1_RM2  [Score: 0.4512]  >> STOP SEGURO
+     TFs testados : 5  |  Aprovados: 2  (40% dos TFs)  |  [1min, 30min]
+     WR medio(%ap): 62.8%   DD pior: 299 pts   Saldo(aprov): R$ 367   Trades(aprov): 27
+     Saldo GERAL (todos TFs): R$ 962  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%       17    299  OK
+  [--] 5min        20     30%     -292    415  WR 30% <= 60% | saldo -292
+  [--] 15min       23   60.9%      -59    328  saldo -59
+  [OK] 30min       19   63.2%      350    186  OK
+  [--] 60min       25     64%      946    779  DD 779 > 700
+
+======================================================================
+
+       #15  V19_CM1_RM1  [Score: 0.4452]  >> STOP SEGURO
+     TFs testados : 7  |  Aprovados: 2  (29% dos TFs)  |  [1min, 30min]
+     WR medio(%ap): 62.8%   DD pior: 277 pts   Saldo(aprov): R$ 409   Trades(aprov): 27
+     Saldo GERAL (todos TFs): R$ 2351  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%      120    277  OK
+  [--] 2min        19   52.6%      556    174  WR 52.6% <= 60%
+  [--] 3min        21   52.4%      793    178  WR 52.4% <= 60%
+  [--] 4min        19   36.8%     -151    421  WR 36.8% <= 60% | saldo -151
+  [--] 15min       23   60.9%     -122    340  saldo -122
+  [OK] 30min       19   63.2%      289    197  OK
+  [--] 60min       25     60%      866    793  WR 60% <= 60% | DD 793 > 700
+
+======================================================================
+
+       #16  V39_CM3_RM1  [Score: 0.443]  >> ALTA PRECISAO + CONSISTENTE + ALTO RETORNO
+     TFs testados : 4  |  Aprovados: 2  (50% dos TFs)  |  [1min, 60min]
+     WR medio(%ap): 72.6%   DD pior: 560 pts   Saldo(aprov): R$ 1515   Trades(aprov): 28
+     Saldo GERAL (todos TFs): R$ 1389  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      365    174  OK
+  [--] 5min        19   26.3%     -297    407  WR 26.3% <= 60% | saldo -297
+  [--] 30min       16   56.2%      171    186  WR 56.2% <= 60%
+  [OK] 60min       23   65.2%     1150    560  OK
+
+======================================================================
+
+       #17  V07_CM1_RM3  [Score: 0.4411]  >> STOP SEGURO
+     TFs testados : 8  |  Aprovados: 2  (25% dos TFs)  |  [1min, 30min]
+     WR medio(%ap): 63.6%   DD pior: 272 pts   Saldo(aprov): R$ 352   Trades(aprov): 25
+     Saldo GERAL (todos TFs): R$ 1997  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%      115    272  OK
+  [--] 2min        19   52.6%      571    168  WR 52.6% <= 60%
+  [--] 3min        19   52.6%      678    178  WR 52.6% <= 60%
+  [--] 4min        18   33.3%     -255    496  WR 33.3% <= 60% | saldo -255
+  [--] 5min        20     35%     -201    338  WR 35% <= 60% | saldo -201
+  [--] 15min       21   66.7%      -14    257  saldo -14
+  [OK] 30min       17   64.7%      237    268  OK
+  [--] 60min       25     60%      866    793  WR 60% <= 60% | DD 793 > 700
+
+======================================================================
+
+       #18  V34_CM1_RM3  [Score: 0.4263]  >> STOP SEGURO
+     TFs testados : 7  |  Aprovados: 2  (29% dos TFs)  |  [1min, 30min]
+     WR medio(%ap): 61.8%   DD pior: 272 pts   Saldo(aprov): R$ 266   Trades(aprov): 26
+     Saldo GERAL (todos TFs): R$ 1227  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%      115    272  OK
+  [--] 3min        21   52.4%      654    178  WR 52.4% <= 60%
+  [--] 4min        19   36.8%     -236    477  WR 36.8% <= 60% | saldo -236
+  [--] 5min        20     35%     -201    338  WR 35% <= 60% | saldo -201
+  [--] 15min       23   60.9%     -122    340  saldo -122
+  [OK] 30min       18   61.1%      151    197  OK
+  [--] 60min       25     60%      866    793  WR 60% <= 60% | DD 793 > 700
+
+======================================================================
+
+       #19  V03_CM3_RM1  [Score: 0.4069]  >> ALTO RETORNO + BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 3  (38% dos TFs)  |  [1min, 2min, 60min]
+     WR medio(%ap): 70.8%   DD pior: 572 pts   Saldo(aprov): R$ 1680   Trades(aprov): 35
+     Saldo GERAL (todos TFs): R$ 1940  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      349    178  OK
+  [OK] 2min         7   71.4%      255     79  OK
+  [--] 3min        19   52.6%      817    178  WR 52.6% <= 60%
+  [--] 4min        18   33.3%     -226    496  WR 33.3% <= 60% | saldo -226
+  [--] 5min        19   26.3%     -349    451  WR 26.3% <= 60% | saldo -349
+  [--] 15min       19   63.2%      -50    257  saldo -50
+  [--] 30min       14   57.1%       68    299  WR 57.1% <= 60%
+  [OK] 60min       23   60.9%     1076    572  OK
+
+======================================================================
+
+       #20  V18_CM3_RM3  [Score: 0.3657]  >> ALTO RETORNO + BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 3  (38% dos TFs)  |  [1min, 2min, 60min]
+     WR medio(%ap): 66.9%   DD pior: 572 pts   Saldo(aprov): R$ 1703   Trades(aprov): 37
+     Saldo GERAL (todos TFs): R$ 1872  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         6   66.7%      268    178  OK
+  [OK] 2min         7   71.4%      261     63  OK
+  [--] 3min        22     50%      611    178  WR 50% <= 60%
+  [--] 4min        19   36.8%     -236    477  WR 36.8% <= 60% | saldo -236
+  [--] 5min        20     35%     -141    412  WR 35% <= 60% | saldo -141
+  [--] 15min       22   54.5%     -185    340  WR 54.5% <= 60% | saldo -185
+  [--] 30min       16   56.2%      120    206  WR 56.2% <= 60%
+  [OK] 60min       24   62.5%     1174    572  OK
+
+======================================================================
+
+       #21  V09_CM3_RM3  [Score: 0.3574]  >> basico
+     TFs testados : 6  |  Aprovados: 2  (33% dos TFs)  |  [1min, 60min]
+     WR medio(%ap): 70.4%   DD pior: 572 pts   Saldo(aprov): R$ 1415   Trades(aprov): 28
+     Saldo GERAL (todos TFs): R$ 1847  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      339    178  OK
+  [--] 2min         4     50%      689     63  WR 50% <= 60% | apenas 4 trades
+  [--] 5min        19   31.6%     -275    412  WR 31.6% <= 60% | saldo -275
+  [--] 15min       19   63.2%      -50    257  saldo -50
+  [--] 30min       14   57.1%       68    299  WR 57.1% <= 60%
+  [OK] 60min       23   60.9%     1076    572  OK
+
+======================================================================
+
+       #22  V25_CM1_RM3  [Score: 0.334]  >> ALTO RETORNO + BOA AMOSTRA
+     TFs testados : 9  |  Aprovados: 4  (44% dos TFs)  |  [1min, 2min, 30min, 60min]
+     WR medio(%ap): 64.5%   DD pior: 643 pts   Saldo(aprov): R$ 1670   Trades(aprov): 57
+     Saldo GERAL (todos TFs): R$ 1142  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%      115    272  OK
+  [OK] 2min         7   71.4%      261     63  OK
+  [--] 3min        20     50%      652    178  WR 50% <= 60%
+  [--] 4min        18   33.3%     -415    477  WR 33.3% <= 60% | saldo -415
+  [--] 5min        20     35%     -201    338  WR 35% <= 60% | saldo -201
+  [--] 10min       22     50%     -442    638  WR 50% <= 60% | saldo -442
+  [--] 15min       23   60.9%     -122    340  saldo -122
+  [OK] 30min       19   63.2%      289    197  OK
+  [OK] 60min       23   60.9%     1005    643  OK
+
+======================================================================
+
+       #23  V28_CM1_RM1  [Score: 0.3322]  >> CONSISTENTE + ALTO RETORNO + BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 4  (50% dos TFs)  |  [1min, 2min, 30min, 60min]
+     WR medio(%ap): 64%   DD pior: 643 pts   Saldo(aprov): R$ 1531   Trades(aprov): 56
+     Saldo GERAL (todos TFs): R$ 2939  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%      120    277  OK
+  [OK] 2min         7   71.4%      255     79  OK
+  [--] 3min        20     50%      791    178  WR 50% <= 60%
+  [--] 5min        20     30%     -275    377  WR 30% <= 60% | saldo -275
+  [--] 15min       23   60.9%     -122    340  saldo -122
+  [OK] 30min       18   61.1%      151    197  OK
+  [OK] 60min       23   60.9%     1005    643  OK
+  [--] 90min       27   55.6%     1014    860  WR 55.6% <= 60% | DD 860 > 700
+
+======================================================================
+
+       #24  V16_CM1_RM3  [Score: 0.3322]  >> CONSISTENTE + ALTO RETORNO + BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 4  (50% dos TFs)  |  [1min, 2min, 30min, 60min]
+     WR medio(%ap): 64%   DD pior: 643 pts   Saldo(aprov): R$ 1532   Trades(aprov): 56
+     Saldo GERAL (todos TFs): R$ 1446  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%      115    272  OK
+  [OK] 2min         7   71.4%      261     63  OK
+  [--] 3min        20     50%      652    178  WR 50% <= 60%
+  [--] 4min        18   33.3%     -415    477  WR 33.3% <= 60% | saldo -415
+  [--] 5min        20     35%     -201    338  WR 35% <= 60% | saldo -201
+  [--] 15min       23   60.9%     -122    340  saldo -122
+  [OK] 30min       18   61.1%      151    197  OK
+  [OK] 60min       23   60.9%     1005    643  OK
+
+======================================================================
+
+       #25  V10_CM1_RM1  [Score: 0.3281]  >> CONSISTENTE + BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 4  (50% dos TFs)  |  [1min, 2min, 30min, 60min]
+     WR medio(%ap): 64.3%   DD pior: 643 pts   Saldo(aprov): R$ 1479   Trades(aprov): 54
+     Saldo GERAL (todos TFs): R$ 1602  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         8   62.5%      120    277  OK
+  [OK] 2min         7   71.4%      255     79  OK
+  [--] 3min        19   52.6%      817    178  WR 52.6% <= 60%
+  [--] 4min        17   29.4%     -405    496  WR 29.4% <= 60% | saldo -405
+  [--] 5min        20     30%     -275    377  WR 30% <= 60% | saldo -275
+  [--] 15min       21   66.7%      -14    257  saldo -14
+  [OK] 30min       16   62.5%       99    268  OK
+  [OK] 60min       23   60.9%     1005    643  OK
+
+======================================================================
+
+       #26  V27_CM3_RM3  [Score: 0.301]  >> ALTA PRECISAO + BOA AMOSTRA
+     TFs testados : 9  |  Aprovados: 2  (22% dos TFs)  |  [1min, 55min]
+     WR medio(%ap): 72%   DD pior: 630 pts   Saldo(aprov): R$ 1368   Trades(aprov): 30
+     Saldo GERAL (todos TFs): R$ 3000  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         5     80%      339    178  OK
+  [--] 5min        19   31.6%     -275    412  WR 31.6% <= 60% | saldo -275
+  [--] 15min       21   57.1%     -158    340  WR 57.1% <= 60% | saldo -158
+  [--] 30min        2     50%      -38     41  WR 50% <= 60% | saldo -38 | apenas 2 trades
+  [--] 40min       24   41.7%      103    352  WR 41.7% <= 60%
+  [--] 50min       24   54.2%      116    757  WR 54.2% <= 60% | DD 757 > 700
+  [OK] 55min       25     64%     1029    630  OK
+  [--] 60min        4    100%      689      0  apenas 4 trades
+  [--] 90min       26   57.7%     1195    679  WR 57.7% <= 60%
+
+======================================================================
+
+       #27  V33_CM3_RM2  [Score: 0.268]  >> BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 2  (25% dos TFs)  |  [1min, 60min]
+     WR medio(%ap): 64.6%   DD pior: 572 pts   Saldo(aprov): R$ 1353   Trades(aprov): 30
+     Saldo GERAL (todos TFs): R$ 2035  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [OK] 1min         6   66.7%      179    178  OK
+  [--] 2min        19   52.6%      672    188  WR 52.6% <= 60%
+  [--] 3min        22     50%      706    197  WR 50% <= 60%
+  [--] 4min        19   42.1%     -345    503  WR 42.1% <= 60% | saldo -345
+  [--] 5min        20     30%     -286    521  WR 30% <= 60% | saldo -286
+  [--] 15min       22   54.5%     -185    340  WR 54.5% <= 60% | saldo -185
+  [--] 30min       16   56.2%      120    206  WR 56.2% <= 60%
+  [OK] 60min       24   62.5%     1174    572  OK
+
+======================================================================
+
+       #28  V04_CM1_RM2  [Score: 0.177]  >> BOA AMOSTRA
+     TFs testados : 8  |  Aprovados: 2  (25% dos TFs)  |  [30min, 60min]
+     WR medio(%ap): 61.7%   DD pior: 643 pts   Saldo(aprov): R$ 1104   Trades(aprov): 39
+     Saldo GERAL (todos TFs): R$ 1376  positivo mesmo somando reprovados
+
+     Detalhe por TF:
+     TF      Trades     WR%    Saldo     DD  Status
+     -----------------------------------------------------------------
+  [--] 1min         8   62.5%      -29    290  saldo -29
+  [--] 2min        19   52.6%      540    234  WR 52.6% <= 60%
+  [--] 3min        19   52.6%      730    197  WR 52.6% <= 60%
+  [--] 4min        17   35.3%     -581    637  WR 35.3% <= 60% | saldo -581
+  [--] 5min        20     30%     -374    476  WR 30% <= 60% | saldo -374
+  [--] 15min       21   66.7%      -14    257  saldo -14
+  [OK] 30min       16   62.5%       99    268  OK
+  [OK] 60min       23   60.9%     1005    643  OK
+
+======================================================================
+

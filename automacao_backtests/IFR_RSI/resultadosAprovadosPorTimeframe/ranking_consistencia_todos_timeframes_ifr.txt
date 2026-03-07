@@ -1,0 +1,38 @@
+﻿RANKING DE CONSISTENCIA - IFR_RSI (CORRIGIDO)
+Gerado em: 04/03/2026 18:03:13
+Combinacoes analisadas (robo+tf): 87
+Criterios de aprovacao: WinRate > 60; Saldo > 0; Drawdown <= 700
+
+TOP 15 ROBOS ELEGIVEIS (SCORE COM AMOSTRA PONDERADA)
+Robo | ScoreFinal | TFAprov | QtdTF | TradesAprov | WinRateAprov | SaldoAprov | DrawdownPiorAprov | PatrimonioSugerido
+robo_ifr_v7_resgate_contexto | 71.4 | 2 | 5 | 17 | 82.35 | 1955 | 105 | 1000
+robo_ifr_v6_saida_hibrida | 66.61 | 2 | 5 | 45 | 80 | 4569 | 662 | 1655
+robo_ifr_v47_orb_confirmacao_dupla | 64.01 | 2 | 4 | 5 | 80 | 915 | 0 | 1000
+robo_ifr_v23_dupla_confirmacao | 57.9 | 1 | 5 | 16 | 87.5 | 1253 | 59 | 1000
+robo_ifr_v25_ifr_mme200_contexto | 57.35 | 3 | 6 | 143 | 69.23 | 1740 | 636 | 1590
+robo_ifr_v45_volume_por_horario | 57.22 | 2 | 5 | 141 | 68.79 | 3124 | 544 | 1360
+robo_ifr_v5_regime_volatilidade | 55.53 | 1 | 5 | 11 | 90.91 | 1563 | 392 | 1000
+robo_ifr_v4_divergencia_confirmada | 55.21 | 1 | 5 | 10 | 90 | 988 | 0 | 1000
+robo_ifr_v1_reversao_extremos | 53 | 2 | 5 | 86 | 66.28 | 1916 | 545 | 1362
+robo_ifr_v36_divergencia_regular_pivo | 30.17 | 1 | 5 | 29 | 62.07 | 882 | 274 | 1000
+
+RANKING DOS METODOS IFR
+Metodo | Combinacoes | Aprovacoes | TradesTot | WinRateGlobal | SaldoTotal | DrawdownPior
+ifr_mme200_contexto | 6 | 3 | 255 | 65.1 | 1471 | 744
+volume_por_horario | 5 | 2 | 273 | 64.47 | 3538 | 1607
+orb_confirmacao_dupla | 4 | 2 | 19 | 63.16 | 848 | 142
+reversao_extremos | 5 | 2 | 179 | 63.13 | -2516 | 3934
+resgate_contexto | 5 | 2 | 40 | 62.5 | 196 | 1107
+saida_hibrida | 5 | 2 | 358 | 54.19 | 1894 | 2376
+regime_volatilidade | 5 | 1 | 238 | 66.39 | -2676 | 2451
+divergencia_confirmada | 5 | 1 | 341 | 62.76 | -3813 | 3165
+dupla_confirmacao | 5 | 1 | 84 | 59.52 | -292 | 864
+divergencia_regular_pivo | 5 | 1 | 597 | 52.6 | -4270 | 2306
+ifr_adx_filtro | 5 | 0 | 497 | 63.38 | -1382 | 3342
+pullback_mme200 | 5 | 0 | 1020 | 62.84 | -637 | 2191
+ifr_assimetrico_lado | 5 | 0 | 609 | 62.23 | -4536 | 2671
+controle_risco_diario | 2 | 0 | 62 | 59.68 | -546 | 678
+bandas_dinamicas | 5 | 0 | 1804 | 59.65 | -9208 | 6844
+agressivo_reentrada | 5 | 0 | 222 | 57.66 | 96 | 1119
+balanceado_regime | 5 | 0 | 517 | 53.97 | -4093 | 2792
+um_trade_por_direcao | 5 | 0 | 346 | 51.73 | 874 | 2097

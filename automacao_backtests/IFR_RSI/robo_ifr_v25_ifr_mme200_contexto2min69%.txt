@@ -20,6 +20,8 @@ var
   iBarrasEmPosicao : integer;
   fIFR, fMME200 : float;
   bContextoCompra, bContextoVenda : boolean;
+  SaldoAcumulado : float;
+  PrecoEntrada : float;
 
 begin
   fIFR := IFR(PeriodoIFR);
@@ -28,16 +30,16 @@ begin
   bContextoCompra := (Close > fMME200);
   bContextoVenda := (Close < fMME200);
 
-  if (not IsBought) and (not IsSold) then
+  // Atualiza saldo acumulado ao fechar posição
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
   begin
-    if bContextoCompra and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
-    begin
-      BuyAtMarket;
-    end
-    else if bContextoVenda and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
-    begin
-      SellShortAtMarket;
-    end;
+    SaldoAcumulado := SaldoAcumulado + (Close - PrecoEntrada);
+    ClosePosition;
+  end;
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+  begin
+    SaldoAcumulado := SaldoAcumulado + (PrecoEntrada - Close);
+    ClosePosition;
   end;
 
   if IsBought or IsSold then
@@ -45,9 +47,25 @@ begin
   else
     iBarrasEmPosicao := 0;
 
-  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
-    ClosePosition;
-
-  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
-    ClosePosition;
+  // Filtro: só entra se saldo <= 0
+  if (not IsBought) and (not IsSold) then
+  begin
+    if SaldoAcumulado > 0 then
+    begin
+      // Não entra em operação
+    end
+    else
+    begin
+      if bContextoCompra and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+      begin
+        BuyAtMarket;
+        PrecoEntrada := Close;
+      end
+      else if bContextoVenda and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+      begin
+        SellShortAtMarket;
+        PrecoEntrada := Close;
+      end;
+    end;
+  end;
 end;

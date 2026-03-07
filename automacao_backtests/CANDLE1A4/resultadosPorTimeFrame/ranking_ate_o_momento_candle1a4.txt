@@ -1,0 +1,22 @@
+﻿RANKING ATE O MOMENTO - CANDLE1A4 (CORRIGIDO v2)
+Gerado em: 04/03/2026 17:51:57
+Combinacoes analisadas (robo+tf): 175
+Criterios de aprovacao: WinRate > 60; Saldo > 0; Drawdown <= 700
+
+TOP 15 COMBINACOES APROVADAS (robo+tf)
+Robo | TF | Trades | WinRate | Saldo | Drawdown
+robo_candle1a4_v21_cm3_rm1_tfcurto | 60 | 4 | 100 | 689 | 0
+robo_candle1a4_v27_cm3_rm3_tfcurto | 60 | 4 | 100 | 689 | 0
+robo_candle1a4_v03_cm3_rm1_tfcurto | 1 | 5 | 80 | 349 | 178
+robo_candle1a4_v12_cm3_rm1_tfcurto | 1 | 5 | 80 | 349 | 178
+robo_candle1a4_v30_cm3_rm1_tfcurto | 1 | 5 | 80 | 349 | 178
+robo_candle1a4_v27_cm3_rm3_tfcurto | 1 | 5 | 80 | 339 | 178
+robo_candle1a4_v09_cm3_rm3_tfcurto | 1 | 5 | 80 | 339 | 178
+robo_candle1a4_v15_cm3_rm2_tfcurto | 1 | 5 | 80 | 316 | 112
+robo_candle1a4_v06_cm3_rm2_tfcurto | 1 | 4 | 75 | 179 | 112
+robo_candle1a4_v22_cm1_rm2_tfcurto | 2 | 7 | 71.43 | 339 | 41
+robo_candle1a4_v16_cm1_rm3_tfcurto | 2 | 7 | 71.43 | 261 | 7
+robo_candle1a4_v18_cm3_rm3_tfcurto | 2 | 7 | 71.43 | 261 | 7
+robo_candle1a4_v25_cm1_rm3_tfcurto | 2 | 7 | 71.43 | 261 | 7
+robo_candle1a4_v12_cm3_rm1_tfcurto | 2 | 7 | 71.43 | 255 | 7
+robo_candle1a4_v10_cm1_rm1_tfcurto | 2 | 7 | 71.43 | 255 | 7
