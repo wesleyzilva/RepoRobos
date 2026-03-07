@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Git: Pull marco_Tradeoperador",
+      "type": "shell",
+      "command": "git pull origin marco_Tradeoperador",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Git: Push marco_Tradeoperador",
+      "type": "shell",
+      "command": "git push origin marco_Tradeoperador",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Git: Status resumido",
+      "type": "shell",
+      "command": "git status --short && git log --oneline -10",
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Backtest: Rodar script Python",
+      "type": "shell",
+      "command": "python ${file}",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": ["$python"]
+    }
+  ]
+}
