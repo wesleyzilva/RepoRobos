@@ -1,0 +1,84 @@
+{
+  Robo:       mar_DDZ_03_v1_trailing_apertado_imediato
+  Grupo:      DRAWDOWNZERO – Tier 1 (#03)
+  Descricao:  Trailing stop imediato desde a entrada (ATR × 1.0).
+              Nunca deixa um trade virar stop cheio; o trailing reduz o risco
+              progressivamente conforme o preco evolui.
+  Timeframe:  5min, 15min | Versao: 1.0 – marco/2026
+}
+input
+  PeriodoIFR(9); IFRSobreVendido(28); IFRSobreComprado(72);
+  PeriodoATR(14); MultiplicadorTrailing(1.0);
+  StopMaximo(120);               // stop maximo inicial caso ATR seja grande
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fIFR, fATR : float;
+  fPrecoEntrada, fStop : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0); fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fIFR := RSI(Close, PeriodoIFR);
+  fATR := ATR(PeriodoATR);
+
+  // Trailing dinamico: stop acompanha preco usando ATR
+  if IsBought then
+  begin
+    fStop := Max(fStop, Close - fATR * MultiplicadorTrailing);
+    if Close <= fStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    fStop := Min(fStop, Close + fATR * MultiplicadorTrailing);
+    if Close >= fStop then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR[1] < IFRSobreVendido) and (fIFR >= IFRSobreVendido) then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close;
+      fStop := Close - Min(fATR * MultiplicadorTrailing, StopMaximo);
+      iDirecaoPosicao := 1;
+    end;
+    if (fIFR[1] > IFRSobreComprado) and (fIFR <= IFRSobreComprado) then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close;
+      fStop := Close + Min(fATR * MultiplicadorTrailing, StopMaximo);
+      iDirecaoPosicao := -1;
+    end;
+  end;
+end;

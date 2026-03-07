@@ -1,0 +1,88 @@
+{
+  Robo:       mar_DC_01_v1_ifr_candle_reversao
+  Grupo:      DUPLACONFIRMACAO – Tier 1 (#01)
+  Descricao:  Dupla confirmacao: IFR em extremo (1a) + candle de reversao
+              martelo/estrela cadente (2a). Ambos obrigatorios para entrada.
+  Timeframe:  15min, 30min | Versao: 1.0 – marco/2026
+}
+input
+  PeriodoIFR(9); IFRSobreVendido(30); IFRSobreComprado(70);
+  MultiplicadorPavio(1.8);       // pavio >= corpo × X para candle de reversao
+  StopPorATR(14); StopATRMult(1.5); AlvoRR(2.0);
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fIFR, fATR : float;
+  fRange, fCorpo, fPavioInf, fPavioSup : float;
+  bMartelo, bEstrela : boolean;
+  fPrecoEntrada, fStop, fAlvo : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0); fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fIFR    := RSI(Close, PeriodoIFR);
+  fATR    := ATR(StopPorATR);
+  fRange  := High[1] - Low[1];
+  fCorpo  := Abs(Close[1] - Open[1]);
+  fPavioInf := Min(Close[1], Open[1]) - Low[1];
+  fPavioSup := High[1] - Max(Close[1], Open[1]);
+
+  // Candles de reversao (barra anterior fechada)
+  bMartelo := (fRange > 0) and (fCorpo > 0) and (fPavioInf >= fCorpo * MultiplicadorPavio) and (fPavioSup < fCorpo);
+  bEstrela  := (fRange > 0) and (fCorpo > 0) and (fPavioSup >= fCorpo * MultiplicadorPavio) and (fPavioInf < fCorpo);
+
+  if IsBought then begin if Close >= fAlvo then SellAtMarket; if Close <= fStop then SellAtMarket; end;
+  if IsSold   then begin if Close <= fAlvo then BuyAtMarket;  if Close >= fStop then BuyAtMarket;  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    // Dupla: IFR sobrevendido + martelo
+    if (fIFR[1] < IFRSobreVendido) and bMartelo then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close;
+      fStop := Close - fATR * StopATRMult;
+      fAlvo := Close + fATR * StopATRMult * AlvoRR;
+      iDirecaoPosicao := 1;
+    end;
+    // Dupla: IFR sobrecomprado + estrela cadente
+    if (fIFR[1] > IFRSobreComprado) and bEstrela then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close;
+      fStop := Close + fATR * StopATRMult;
+      fAlvo := Close - fATR * StopATRMult * AlvoRR;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+end;

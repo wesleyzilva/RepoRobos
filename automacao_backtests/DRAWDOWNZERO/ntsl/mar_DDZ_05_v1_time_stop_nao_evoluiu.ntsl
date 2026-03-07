@@ -1,0 +1,95 @@
+{
+  Robo:       mar_DDZ_05_v1_time_stop_nao_evoluiu
+  Grupo:      DRAWDOWNZERO – Tier 1 (#05)
+  Descricao:  Se posicao aberta nao evolui em X barras (preco nao avancou
+              mais que MinEvolucao pts), fecha no mercado. Elimina trades
+              laterais que acumulam risco sem ganho.
+  Timeframe:  5min, 15min | Versao: 1.0 – marco/2026
+}
+input
+  PeriodoIFR(14); IFRSobreVendido(32); IFRSobreComprado(68);
+  StopFixo(70); AlvoFixo(140);
+  MaxBarrasSemEvolucao(8);       // fecha se preco nao avancou em N barras
+  MinEvolucaoPontos(30);         // evolucao minima necessaria
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fIFR : float;
+  fPrecoEntrada, fMaxFavoravel : float;
+  iBarrasSemEvolucao : integer;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0); fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0; iBarrasSemEvolucao := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0; iBarrasSemEvolucao := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fIFR := RSI(Close, PeriodoIFR);
+
+  if IsBought then
+  begin
+    if Close > fMaxFavoravel then fMaxFavoravel := Close;
+    // Conta barras sem evolucao (maximo favoravel nao cresceu o suficiente)
+    if (fMaxFavoravel - fPrecoEntrada) < MinEvolucaoPontos then
+      iBarrasSemEvolucao := iBarrasSemEvolucao + 1
+    else
+      iBarrasSemEvolucao := 0;
+    if iBarrasSemEvolucao >= MaxBarrasSemEvolucao then SellAtMarket;
+    if Close >= fPrecoEntrada + AlvoFixo then SellAtMarket;
+    if Close <= fPrecoEntrada - StopFixo  then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if Close < fMaxFavoravel then fMaxFavoravel := Close;
+    if (fPrecoEntrada - fMaxFavoravel) < MinEvolucaoPontos then
+      iBarrasSemEvolucao := iBarrasSemEvolucao + 1
+    else
+      iBarrasSemEvolucao := 0;
+    if iBarrasSemEvolucao >= MaxBarrasSemEvolucao then BuyAtMarket;
+    if Close <= fPrecoEntrada - AlvoFixo then BuyAtMarket;
+    if Close >= fPrecoEntrada + StopFixo  then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR[1] < IFRSobreVendido) and (fIFR >= IFRSobreVendido) then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close; fMaxFavoravel := Close;
+      iBarrasSemEvolucao := 0; iDirecaoPosicao := 1;
+    end;
+    if (fIFR[1] > IFRSobreComprado) and (fIFR <= IFRSobreComprado) then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close; fMaxFavoravel := Close;
+      iBarrasSemEvolucao := 0; iDirecaoPosicao := -1;
+    end;
+  end;
+end;

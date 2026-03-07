@@ -1,0 +1,109 @@
+{
+  Robo:       mar_5M1_04_v1_ifr_extremo_impulso
+  Grupo:      50mais1 – Tier 1 (#04)
+  Descricao:  IFR em extremo + candle de impulso (range >= 50pts na mesma barra
+              de reversao). Combina exaustao do oscilador com forca do candle.
+  Timeframe:  15min, 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 – marco/2026
+}
+
+input
+  PeriodoIFR(9);
+  IFRSobreVendido(25);
+  IFRSobreComprado(75);
+  MinRangeImpulso(50);
+  StopFixo(70);
+  AlvoRR(2.0);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR             : float;
+  fPrecoEntrada    : float;
+  fStop, fAlvo     : float;
+  fResultadoDia    : float;
+  fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then
+    begin
+      if IsBought then SellAtMarket;
+      if IsSold  then BuyAtMarket;
+      exit;
+    end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fIFR := RSI(Close, PeriodoIFR);
+
+  if IsBought then
+  begin
+    if Close >= fAlvo then SellAtMarket;
+    if Close <= fStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if Close <= fAlvo then BuyAtMarket;
+    if Close >= fStop then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    // Compra: IFR sobrevendido + candle de impulso para cima >= 50pts
+    if (fIFR < IFRSobreVendido) and (Close > Open) and ((High - Low) >= MinRangeImpulso) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close;
+      fStop := Close - StopFixo;
+      fAlvo := Close + StopFixo * AlvoRR;
+      iDirecaoPosicao := 1;
+    end;
+    // Venda: IFR sobrecomprado + candle de queda >= 50pts
+    if (fIFR > IFRSobreComprado) and (Close < Open) and ((High - Low) >= MinRangeImpulso) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close;
+      fStop := Close + StopFixo;
+      fAlvo := Close - StopFixo * AlvoRR;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;

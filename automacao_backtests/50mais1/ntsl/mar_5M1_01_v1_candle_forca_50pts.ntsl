@@ -1,0 +1,126 @@
+{
+  Robo:       mar_5M1_01_v1_candle_forca_50pts
+  Grupo:      50mais1 – Tier 1 (#01)
+  Descricao:  Entra quando candle atual tem range >= 50 pontos e fecha
+              perto da maxima (alta) ou minima (baixa), sinalizando forca direcional.
+              Stop na extremidade oposta do candle gerador.
+  Timeframe:  5min, 15min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 – marco/2026
+}
+
+input
+  MinRangeCandle(50);            // range minimo do candle de forca (pts)
+  ProporcaoFechamento(0.70);     // fechamento nos ultimos X% do range
+  MultiplicadorAlvo(2.0);        // alvo = stop × 2
+  FiltroMME(21);                 // filtro de direcao por MME
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fMME             : float;
+  fRange, fCorpo   : float;
+  fStop, fAlvo     : float;
+  fPrecoEntrada    : float;
+  fResultadoDia    : float;
+  fResultadoSemana : float;
+  fLimiteDia       : float;
+  fLimiteSemana    : float;
+  bBloqueioDia     : boolean;
+  bBloqueioSemana  : boolean;
+  iStopsConsec     : integer;
+  iDirecaoPosicao  : integer;
+  iDiaSemanaAtual  : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then
+    begin
+      if IsBought then SellAtMarket;
+      if IsSold  then BuyAtMarket;
+      exit;
+    end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fMME   := Media(FiltroMME, Close);
+  fRange := High[1] - Low[1];    // candle anterior (fechado)
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    // Compra: candle de alta forte >= 50pts + acima MME
+    if (fRange >= MinRangeCandle) and
+       (Close[1] > Open[1]) and
+       ((Close[1] - Low[1]) / fRange >= ProporcaoFechamento) and
+       (Close[1] > fMME) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada   := Close;
+      fStop           := Low[1];
+      fAlvo           := Close + (Close - fStop) * MultiplicadorAlvo;
+      iDirecaoPosicao := 1;
+    end;
+    // Venda: candle de baixa forte >= 50pts + abaixo MME
+    if (fRange >= MinRangeCandle) and
+       (Close[1] < Open[1]) and
+       ((High[1] - Close[1]) / fRange >= ProporcaoFechamento) and
+       (Close[1] < fMME) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada   := Close;
+      fStop           := High[1];
+      fAlvo           := Close - (fStop - Close) * MultiplicadorAlvo;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+
+  if IsBought then
+  begin
+    if Close >= fAlvo  then SellAtMarket;
+    if Close <= fStop  then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if Close <= fAlvo  then BuyAtMarket;
+    if Close >= fStop  then BuyAtMarket;
+  end;
+
+end;
