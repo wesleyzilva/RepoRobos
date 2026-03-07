@@ -1,0 +1,157 @@
+{
+  Robo:       mar_MED_03_v1_posicao_4_medias
+  Grupo:      MEDIAS — Tier 1 (#03)
+  Descricao:  Analisa a posicao relativa do preco em relacao as 4 medias moveis
+              classicas: MME9, MME21, MMA50, MMA200. Pontuacao: +1 por media
+              abaixo do preco, -1 por media acima. Score 4/4 = alta convicta,
+              Score -4/-4 = baixa convicta. Entra apenas com score extremo
+              (+3 ou +4 para compra, -3 ou -4 para venda).
+              Estrategia de alta alfa e baixa frequencia.
+  Timeframe:  60min / Diario
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+}
+
+input
+  // ── As 4 medias ─────────────────────────────────────────────
+  PeriodoMME1(9);
+  PeriodoMME2(21);
+  PeriodoMMA3(50);
+  PeriodoMMA4(200);
+  // ── Score para entrada ──────────────────────────────────────
+  ScoreEntradaCompra(3);         // minimo de 3 medias abaixo do preco
+  ScoreEntradaVenda(-3);         // minimo de 3 medias acima do preco
+  // ── Saida ───────────────────────────────────────────────────
+  ScoreSaidaCompra(1);           // sair quando score cair para 1 (2 medias perdidas)
+  ScoreSaidaVenda(-1);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(20);
+  UsarTrailing(true);
+  PontosTrailing(250);
+  HorarioEncerramentoH(17);
+  HorarioEncerramentoM(15);
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fMME1, fMME2, fMMA3, fMMA4 : float;
+  iScore : integer;
+  fPicoPositivo, fPicoBaixo : float;
+  iBarrasPosicao : integer;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iDirecaoPosicao, iStopsConsec, iDiaSemanaAtual : integer;
+  bEncerramento : boolean;
+
+begin
+  // ── RESET DIARIO ─────────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; fPicoPositivo := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; fPicoBaixo := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // ── CALCULOS ─────────────────────────────────────────────────
+  bEncerramento := (HourOf(Time) * 60 + MinuteOf(Time)) >= (HorarioEncerramentoH * 60 + HorarioEncerramentoM);
+
+  fMME1 := MediaExp(PeriodoMME1, Close);
+  fMME2 := MediaExp(PeriodoMME2, Close);
+  fMMA3 := Media(PeriodoMMA3, Close);
+  fMMA4 := Media(PeriodoMMA4, Close);
+
+  // Score: +1 se preco acima da media (tendencia de alta), -1 se abaixo
+  iScore := 0;
+  if Close > fMME1 then iScore := iScore + 1 else iScore := iScore - 1;
+  if Close > fMME2 then iScore := iScore + 1 else iScore := iScore - 1;
+  if Close > fMMA3 then iScore := iScore + 1 else iScore := iScore - 1;
+  if Close > fMMA4 then iScore := iScore + 1 else iScore := iScore - 1;
+
+  // Atualiza pico para trailing
+  if IsBought and (High > fPicoPositivo) then fPicoPositivo := High;
+  if IsSold   and ((fPicoBaixo = 0) or (Low < fPicoBaixo)) then fPicoBaixo := Low;
+
+  // ── SAIDAS ───────────────────────────────────────────────────
+  if IsBought then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or (iScore <= ScoreSaidaCompra) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) or
+       (UsarTrailing and (fPicoPositivo > 0) and (Close < fPicoPositivo - PontosTrailing)) then
+      SellAtMarket;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or (iScore >= ScoreSaidaVenda) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) or
+       (UsarTrailing and (fPicoBaixo > 0) and (Close > fPicoBaixo + PontosTrailing)) then
+      BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) and (not bEncerramento) then
+  begin
+    iBarrasPosicao := 0;
+    if UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana) then exit;
+
+    if iScore >= ScoreEntradaCompra then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+      fPicoPositivo := Close;
+    end
+    else if iScore <= ScoreEntradaVenda then
+    begin
+      SellAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+      fPicoBaixo    := Close;
+    end;
+  end;
+
+end;
