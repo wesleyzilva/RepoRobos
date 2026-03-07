@@ -15,12 +15,18 @@ Este repositório organiza toda a estrutura de estudo, desenvolvimento e automa�
 
 ```
 RepoRobos/
-├── automacao_backtests/          # Scripts Python de backtest + resultados IFR/RSI
-│   └── IFR_RSI/                  # 50+ variações de estratégia IFR catalogadas e testadas
-├── estudo_teorias/               # Base de conhecimento técnico (Markdown)
-├── profit_estudos_cores/         # Scripts NTSL prontos para colar no Profit (indicadores/cores)
-│   └── marco2026_IFR_top5/       # Top 5 robôs IFR ativos do ciclo de março/2026
-└── WorkspaceRobosTrade/          # Este arquivo + orientações do workspace
+├── automacao_backtests/           # Robôs NTSL, MQL5 e resultados de backtest
+│   ├── GRUPO_X/                   # Um grupo por lógica de estratégia
+│   │   ├── ntsl/              # Robôs Neologica Profit (.ntsl)
+│   │   ├── mql5/              # Robôs MetaTrader 5 (.mq5)
+│   │   ├── resultsBackTestTimeframe/  # mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv
+│   │   ├── reprovados/        # Versões descartadas
+│   │   └── GRUPO.md           # Documentação do grupo
+│   ├── IFR_RSI/                   # Scripts IFR legados + resultados
+│   └── MAPA_GRUPOS.md             # Índice de todos os grupos
+├── estudo_teorias/                # Base de conhecimento técnico (Markdown)
+├── profit_estudos_cores/          # Indicadores/colorações prontos para o Profit
+└── WorkspaceRobosTrade/           # Este arquivo + orientações do workspace
 ```
 
 ---
@@ -150,22 +156,27 @@ main
 
 ## 7. Padrão de Nomenclatura de Arquivos
 
-| Prefixo | Significado | Exemplo |
+| Tipo | Formato | Exemplo |
 |---|---|---|
-| `fev_` | Script do ciclo de fevereiro/2026 | `fev_VWAPsemanalDiario.txt` |
-| `mar_IFR_` | Robô IFR do ciclo de março/2026 | `mar_IFR_01_v6_60min_saida_hibrida.ntsl.txt` |
-| `robo_ifr_vNN_` | Versão numerada de robô IFR em backtest | `robo_ifr_v31_reversao_volume_relativo60min72%.txt` |
-| `teoria_` | Arquivo teórico de consulta | `teoria_IFR.md` |
-| `caracteristicas_` | Verdades práticas de um ativo | `caracteristicas_WIN_mini_indice.md` |
+| Robô NTSL | `mar_GRUPO_NN_vX_descricao.ntsl` | `mar_REV_01_v1_pullback_mme21.ntsl` |
+| Robô MQL5 | `mar_GRUPO_NN_vX_descricao.mq5` | `mar_REV_01_v1_pullback_mme21.mq5` |
+| Resultado CSV | `mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv` | `mar_REV_01_v1_pullback_mme21_15min.csv` |
+| Indicador/cor Profit | `mar_NomeDoEstudo.ntsl` | `mar_VWAPsemanalDiario.ntsl` |
+| Arquivo teórico | `teoria_TEMA.md` | `teoria_IFR.md` |
+| Características ativo | `caracteristicas_ATIVO.md` | `caracteristicas_WIN_mini_indice.md` |
+
+> **Regra de ouro:** Timeframe **sempre no final** do nome do CSV (antes do `.csv`), facilitando ordenação e filtragem no explorador. Ex: `_15min`, `_30min`, `_60min`, `_1min`.
 
 ---
 
 ## 8. Convenções para o Agente (GitHub Copilot)
 
 - Linguagem dos arquivos: **português brasileiro**
-- Plataforma alvo dos scripts `.txt`/`.ntsl.txt`: **Neologica Profit (NTSL)**
+- Robôs NTSL: extensão `.ntsl` — nunca `.txt` nem `.ntsl.txt`
+- Robôs MQL5: extensão `.mq5`, salvos em `GRUPO/mql5/` espelhando o NTSL
+- Arquivos `.txt`: reservados exclusivamente para anotações e documentação livre
 - Scripts de backtest: **Python**
+- Resultados de backtest: `mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv` (timeframe sempre no final)
 - Quando sugerir código NTSL, respeitar a sintaxe da plataforma Profit
 - Ao editar teorias, manter a estrutura de heading `#` e tabelas Markdown existentes
-- Ao criar novos robôs IFR, seguir a nomenclatura `mar_IFR_NN_vX_TIMEFRAME_descricao.ntsl.txt`
 - Registros de sessão/diário: usar `estudo_teorias/0326_diarioDeBordo.md`

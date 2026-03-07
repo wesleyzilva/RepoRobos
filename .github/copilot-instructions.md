@@ -23,24 +23,24 @@ Este workspace é um sistema de **day trade quantitativo** focado no mercado bra
 
 ```
 automacao_backtests/
-└── IFR_RSI/
-    ├── codigo_fonte/                  → Scripts NTSL dos robôs testados
-    ├── top10/                         → Top 10 por desempenho
-    ├── resultadosAprovadosPorTimeframe/ → CSVs de resultados
-    └── Reprovados/                    → Versões descartadas
+├── IFR_RSI/                 → Scripts IFR legados + resultados
+├── GRUPO_X/                 → Cada grupo tem a mesma estrutura interna:
+│   ├── ntsl/                → Scripts Neologica Profit (.ntsl)
+│   ├── mql5/                → Scripts MetaTrader 5 (.mq5)
+│   ├── resultsBackTestTimeframe/ → CSVs: mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv
+│   ├── reprovados/          → Versões descartadas
+│   └── GRUPO.md             → Documentação / notas do grupo
+└── MAPA_GRUPOS.md           → Índice de todos os grupos
 
 estudo_teorias/
-├── 0_diario/                          → Diário de bordo e aulas
-├── 1_operacional/                     → Consulta pré-trade (risco, WIN, horários)
-├── 2_teorias/                         → Indicadores técnicos (IFR, MACD, médias...)
-├── 3_tendencia_contexto/              → Tendência, pivôs e panorama
-└── 4_volume_institucional/            → VSA, VWAP, volume, Wyckoff
+├── 0_diario/                → Diário de bordo e aulas
+├── 1_operacional/           → Consulta pré-trade (risco, WIN, horários)
+├── 2_teorias/               → Indicadores técnicos (IFR, MACD, médias...)
+├── 3_tendencia_contexto/    → Tendência, pivôs e panorama
+└── 4_volume_institucional/  → VSA, VWAP, volume, Wyckoff
 
-profit_estudos_cores/
-├── fev2026/                           → Scripts do ciclo fevereiro/2026
-└── marco2026_IFR_top5/                → Top 5 robôs IFR ativos (mar/2026)
-
-WorkspaceRobosTrade/                   → Orientações e documentação do workspace
+profit_estudos_cores/        → Indicadores/colorações prontos para o Profit
+WorkspaceRobosTrade/         → Orientações e documentação do workspace
 ```
 
 ---
@@ -49,19 +49,29 @@ WorkspaceRobosTrade/                   → Orientações e documentação do wor
 
 ### Scripts NTSL (Neologica Profit)
 
-- Extensão: `.txt` ou `.ntsl.txt`
-- Nomenclatura robôs março/2026: `mar_GRUPO_NN_vX_descricao.ntsl.txt`
-- Nomenclatura indicadores/cores: `mar_NomeDoEstudo.ntsl.txt`
+- Extensão: **`.ntsl`** (nunca `.txt` nem `.ntsl.txt` — `.txt` é reservado para anotações)
+- Nomenclatura robôs: `mar_GRUPO_NN_vX_descricao.ntsl` (ex: `mar_REV_01_v1_pullback_mme21.ntsl`)
+- Nomenclatura indicadores/cores: `mar_NomeDoEstudo.ntsl` (ex: `mar_VWAPsemanalDiario.ntsl`)
 - Sempre incluir comentário de cabeçalho com: versão, timeframe, descrição, taxa de acerto se disponível
 - Respeitar a sintaxe NTSL da plataforma Profit (variáveis, séries, funções nativas)
 - **OBRIGATÓRIO:** todos os parâmetros de risco declarados como `input` (ver bloco padrão na seção Gerenciamento de Risco)
 - Nunca usar `UsarGestaoRisco(true)` hardcoded — sempre `input UsarGestaoRisco = true`
 
+### Scripts MQL5 (MetaTrader 5)
+
+- Extensão: **`.mq5`**
+- Nomenclatura: mesmo padrão do NTSL — `mar_GRUPO_NN_vX_descricao.mq5`
+- Estrutura obrigatória: `#include <Trade\Trade.mqh>` + inputs espelhando o NTSL + `OnInit`, `OnDeinit`, `OnTick`
+- Inputs de risco espelham o NTSL: `UsarGestaoRisco`, `UsarHardLock`, `SaldoConta`, `RiscoDiaPct`, `RiscoSemanaPct`, `MaxStopsConsecutivos`, `ValorPorPonto`
+- Salvar em `GRUPO/mql5/` ao lado da pasta `ntsl/`
+
 ### Scripts Python (Backtest)
 
 - Usar Python 3.10 (`C:/Program Files/Python310/python.exe`)
 - Seguir estrutura de backtest existente na pasta `automacao_backtests/IFR_RSI/`
-- Nomear resultados com timeframe e taxa de acerto no nome do arquivo: `robo_ifr_vNN_descricao_TIMEFRAME_XX%.txt`
+- Nomear resultados com timeframe **no final** antes da extensão: `mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv`
+  - Exemplo: `mar_REV_01_v1_pullback_mme21_15min.csv`, `mar_REV_01_v1_pullback_mme21_30min.csv`
+  - Timeframe ao final facilita ordenar e filtrar resultados no explorador de arquivos
 
 ### Arquivos de Teoria (Markdown)
 
