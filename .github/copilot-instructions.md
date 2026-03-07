@@ -47,12 +47,22 @@ WorkspaceRobosTrade/         → Orientações e documentação do workspace
 
 ## Regras para Geração de Código
 
+### Convenção de Nomenclatura de Arquivos
+
+| Plataforma           | Formato                                 | Exemplo                                   |
+| -------------------- | --------------------------------------- | ----------------------------------------- |
+| Profit (NTSL)        | `mar_GRUPO_NN_descricao_timeframe.ntsl` | `mar_5M1_01_candle_forca_50pts_5min.ntsl` |
+| MetaTrader (MQL5)    | `mar_GRUPO_NN_descricao_timeframe.mq5`  | `mar_5M1_01_candle_forca_50pts_5min.mq5`  |
+| Resultado backtest   | `mar_GRUPO_NN_descricao_timeframe.csv`  | `mar_REV_01_pullback_mme21_15min.csv`     |
+| Indicador/cor Profit | `mar_NomeDoEstudo.ntsl`                 | `mar_VWAPsemanalDiario.ntsl`              |
+
+> **Regras:** sem número de versão (`vX`) no nome; timeframe **sempre no final**, antes da extensão; `.txt` é reservado exclusivamente para anotações livres.
+
 ### Scripts NTSL (Neologica Profit)
 
-- Extensão: **`.ntsl`** (nunca `.txt` nem `.ntsl.txt` — `.txt` é reservado para anotações)
-- Nomenclatura robôs: `mar_GRUPO_NN_vX_descricao.ntsl` (ex: `mar_REV_01_v1_pullback_mme21.ntsl`)
-- Nomenclatura indicadores/cores: `mar_NomeDoEstudo.ntsl` (ex: `mar_VWAPsemanalDiario.ntsl`)
-- Sempre incluir comentário de cabeçalho com: versão, timeframe, descrição, taxa de acerto se disponível
+- Extensão: **`.ntsl`** (nunca `.txt` nem `.ntsl.txt`)
+- Nomenclatura: `mar_GRUPO_NN_descricao_timeframe.ntsl`
+- Sempre incluir comentário de cabeçalho com: timeframe, descrição, taxa de acerto se disponível
 - Respeitar a sintaxe NTSL da plataforma Profit (variáveis, séries, funções nativas)
 - **OBRIGATÓRIO:** todos os parâmetros de risco declarados como `input` (ver bloco padrão na seção Gerenciamento de Risco)
 - Nunca usar `UsarGestaoRisco(true)` hardcoded — sempre `input UsarGestaoRisco = true`
@@ -60,7 +70,7 @@ WorkspaceRobosTrade/         → Orientações e documentação do workspace
 ### Scripts MQL5 (MetaTrader 5)
 
 - Extensão: **`.mq5`**
-- Nomenclatura: mesmo padrão do NTSL — `mar_GRUPO_NN_vX_descricao.mq5`
+- Nomenclatura: `mar_GRUPO_NN_descricao_timeframe.mq5`
 - Estrutura obrigatória: `#include <Trade\Trade.mqh>` + inputs espelhando o NTSL + `OnInit`, `OnDeinit`, `OnTick`
 - Inputs de risco espelham o NTSL: `UsarGestaoRisco`, `UsarHardLock`, `SaldoConta`, `RiscoDiaPct`, `RiscoSemanaPct`, `MaxStopsConsecutivos`, `ValorPorPonto`
 - Salvar em `GRUPO/mql5/` ao lado da pasta `ntsl/`
@@ -69,9 +79,8 @@ WorkspaceRobosTrade/         → Orientações e documentação do workspace
 
 - Usar Python 3.10 (`C:/Program Files/Python310/python.exe`)
 - Seguir estrutura de backtest existente na pasta `automacao_backtests/IFR_RSI/`
-- Nomear resultados com timeframe **no final** antes da extensão: `mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv`
-  - Exemplo: `mar_REV_01_v1_pullback_mme21_15min.csv`, `mar_REV_01_v1_pullback_mme21_30min.csv`
-  - Timeframe ao final facilita ordenar e filtrar resultados no explorador de arquivos
+- Nomear resultados: `mar_GRUPO_NN_descricao_timeframe.csv` — timeframe sempre no final
+  - Exemplo: `mar_REV_01_pullback_mme21_15min.csv`, `mar_5M1_01_candle_forca_50pts_5min.csv`
 
 ### Arquivos de Teoria (Markdown)
 
@@ -102,9 +111,9 @@ Ao sugerir melhorias em estratégias, respeitar esta prioridade:
 
 ### Regra Obrigatória — Gestão Sempre Parametrizável
 
-**TODOS os parâmetros de risco devem ser declarados como `input`**, nunca hardcoded no corpo do código. Isso permite alterá-los na tela de configuração do Profit sem editar o código-fonte.
+**TODOS os parâmetros de risco devem ser declarados como `input`**, nunca hardcoded no corpo do código.
 
-Bloco padrão obrigatório em todo robô NTSL:
+#### Bloco padrão — NTSL (Neologica Profit):
 
 ```ntsl
 input UsarGestaoRisco      = true;   // false = backtest puro da lógica
@@ -117,11 +126,28 @@ input ValorPorPonto        = 0.2;    // 1 contrato WIN mini = R$0,20/ponto
 input DiaSemanaReset       = 2;      // 2 = segunda-feira
 ```
 
+#### Bloco padrão — MQL5 (MetaTrader 5 / Internacional):
+
+```mql5
+// Gestão de Risco
+input bool   UsarGestaoRisco      = true;   // false = backtest puro
+input bool   UsarHardLock         = true;   // false = só bloqueia entradas
+input double SaldoConta           = 10000.0;
+input double RiscoDiaPct          = 1.5;    // % do saldo — perda máxima diária
+input double RiscoSemanaPct       = 3.0;    // % do saldo — perda máxima semanal
+input int    MaxStopsConsecutivos = 2;      // stops consecutivos antes de bloquear
+input double ValorPorPonto        = 0.20;   // varia por ativo (WIN=0.20, XAUUSD=1.0 etc.)
+input int    DiaSemanaReset       = 1;      // 0=Dom 1=Seg 2=Ter ... (MT5 usa 0-based)
+input double LotePadrao           = 1.0;
+```
+
+> **MT5 vs NTSL:** `DiaSemanaReset` usa base 0 no MQL5 (segunda = 1) versus base 1 no NTSL (segunda = 2). `ValorPorPonto` deve ser ajustado por ativo.
+
 Regras de uso:
 
-- `UsarGestaoRisco = false` → desativa todos os limites (uso em backtest para testar a lógica pura)
-- `UsarHardLock = false` → monitora os limites mas não força fechamento (apenas bloqueia novas entradas)
-- `UsarHardLock = true` → fecha posição aberta imediatamente ao atingir o limite (uso operacional)
+- `UsarGestaoRisco = false` → desativa todos os limites (backtest de lógica pura)
+- `UsarHardLock = false` → monitora limites mas não força fechamento (só bloqueia novas entradas)
+- `UsarHardLock = true` → fecha posição imediatamente ao atingir o limite (uso operacional)
 - O bloco de verificação dos limites deve ser executado **antes de qualquer sinal de entrada**
 
 ---

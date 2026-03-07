@@ -19,7 +19,7 @@ RepoRobos/
 │   ├── GRUPO_X/                   # Um grupo por lógica de estratégia
 │   │   ├── ntsl/              # Robôs Neologica Profit (.ntsl)
 │   │   ├── mql5/              # Robôs MetaTrader 5 (.mq5)
-│   │   ├── resultsBackTestTimeframe/  # mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv
+│   │   ├── resultsBackTestTimeframe/  # mar_GRUPO_NN_descricao_timeframe.csv
 │   │   ├── reprovados/        # Versões descartadas
 │   │   └── GRUPO.md           # Documentação do grupo
 │   ├── IFR_RSI/                   # Scripts IFR legados + resultados
@@ -158,25 +158,28 @@ main
 
 | Tipo | Formato | Exemplo |
 |---|---|---|
-| Robô NTSL | `mar_GRUPO_NN_vX_descricao.ntsl` | `mar_REV_01_v1_pullback_mme21.ntsl` |
-| Robô MQL5 | `mar_GRUPO_NN_vX_descricao.mq5` | `mar_REV_01_v1_pullback_mme21.mq5` |
-| Resultado CSV | `mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv` | `mar_REV_01_v1_pullback_mme21_15min.csv` |
+| Robô NTSL | `mar_GRUPO_NN_descricao_timeframe.ntsl` | `mar_5M1_01_candle_forca_50pts_5min.ntsl` |
+| Robô MQL5 | `mar_GRUPO_NN_descricao_timeframe.mq5` | `mar_5M1_01_candle_forca_50pts_5min.mq5` |
+| Resultado CSV | `mar_GRUPO_NN_descricao_timeframe.csv` | `mar_REV_01_pullback_mme21_15min.csv` |
 | Indicador/cor Profit | `mar_NomeDoEstudo.ntsl` | `mar_VWAPsemanalDiario.ntsl` |
 | Arquivo teórico | `teoria_TEMA.md` | `teoria_IFR.md` |
 | Características ativo | `caracteristicas_ATIVO.md` | `caracteristicas_WIN_mini_indice.md` |
 
-> **Regra de ouro:** Timeframe **sempre no final** do nome do CSV (antes do `.csv`), facilitando ordenação e filtragem no explorador. Ex: `_15min`, `_30min`, `_60min`, `_1min`.
+> **Regras obrigatórias:**
+> - Sem número de versão (`vX`) no nome do arquivo
+> - Timeframe **sempre no final**, antes da extensão: `_1min`, `_5min`, `_15min`, `_30min`, `_60min`
+> - `.txt` reservado exclusivamente para anotações livres
 
 ---
 
 ## 8. Convenções para o Agente (GitHub Copilot)
 
 - Linguagem dos arquivos: **português brasileiro**
-- Robôs NTSL: extensão `.ntsl` — nunca `.txt` nem `.ntsl.txt`
-- Robôs MQL5: extensão `.mq5`, salvos em `GRUPO/mql5/` espelhando o NTSL
+- Robôs NTSL: `mar_GRUPO_NN_descricao_timeframe.ntsl` — nunca `.txt`; sem `vX` no nome
+- Robôs MQL5: `mar_GRUPO_NN_descricao_timeframe.mq5`, salvos em `GRUPO/mql5/`
 - Arquivos `.txt`: reservados exclusivamente para anotações e documentação livre
 - Scripts de backtest: **Python**
-- Resultados de backtest: `mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv` (timeframe sempre no final)
+- Resultados CSV: `mar_GRUPO_NN_descricao_timeframe.csv` — sem `vX`, timeframe no final
 - Quando sugerir código NTSL, respeitar a sintaxe da plataforma Profit
 - Ao editar teorias, manter a estrutura de heading `#` e tabelas Markdown existentes
 - Registros de sessão/diário: usar `estudo_teorias/0326_diarioDeBordo.md`
