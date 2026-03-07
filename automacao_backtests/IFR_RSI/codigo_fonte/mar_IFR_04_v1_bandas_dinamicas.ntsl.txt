@@ -1,0 +1,148 @@
+{
+  Robo:       mar_IFR_04_v1_bandas_dinamicas
+  Grupo:      IFR_RSI — Tier 2 (#04)
+  Descricao:  Bandas dinamicas do IFR: calcula o percentil 25 (zona sobrevenda)
+              e percentil 75 (zona sobrecompra) usando os ultimos N periodos
+              do proprio IFR. Entrada quando o IFR cruza de volta para dentro
+              da banda — mais adaptavel que niveis fixos 30/70.
+  Timeframe:  60min (referencia: ~60%)
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+  Legado:     robo_ifr_v18_bandas_dinamicas60min60%
+}
+
+input
+  // ── IFR ──────────────────────────────────────────────────────
+  PeriodoIFR(14);
+  // ── Bandas dinamicas ────────────────────────────────────────
+  JanelaBandas(50);              // janela para calcular percentis do IFR
+  FatorBandaSuperior(0.75);      // percentil 75 = sobrecompra
+  FatorBandaInferior(0.25);      // percentil 25 = sobrevenda
+  // ── Saida ───────────────────────────────────────────────────
+  UsarSaidaIFR(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(16);
+  NivelSaidaCompra(50);          // IFR retorna ao centro → sair compra
+  NivelSaidaVenda(50);
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR, fIFRMin, fIFRMax, fBandaSup, fBandaInf : float;
+  fIntervaloBanda : float;
+  bCompraAtivada, bVendaAtivada : boolean;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iDirecaoPosicao, iStopsConsec, iBarra : integer;
+  iDiaSemanaAtual : integer;
+
+begin
+  // ── RESET DIARIO ─────────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // ── CALCULOS ─────────────────────────────────────────────────
+  fIFR    := IFR(PeriodoIFR);
+  fIFRMin := Lowest(IFR(PeriodoIFR), JanelaBandas);
+  fIFRMax := Highest(IFR(PeriodoIFR), JanelaBandas);
+
+  fIntervaloBanda := fIFRMax - fIFRMin;
+  if fIntervaloBanda > 0 then
+  begin
+    fBandaInf := fIFRMin + fIntervaloBanda * FatorBandaInferior;
+    fBandaSup := fIFRMin + fIntervaloBanda * FatorBandaSuperior;
+  end
+  else
+  begin
+    fBandaInf := 30; fBandaSup := 70;
+  end;
+
+  // Cruzamento de volta para cima da banda inferior = compra
+  bCompraAtivada := (IFR(PeriodoIFR)[1] < fBandaInf) and (fIFR >= fBandaInf);
+  // Cruzamento de volta para baixo da banda superior = venda
+  bVendaAtivada  := (IFR(PeriodoIFR)[1] > fBandaSup) and (fIFR <= fBandaSup);
+
+  // ── SAIDAS ───────────────────────────────────────────────────
+  if IsBought then
+  begin
+    iBarra := iBarra + 1;
+    if (UsarSaidaIFR and (fIFR >= NivelSaidaCompra)) or
+       (UsarSaidaTempo and (iBarra >= MaxBarrasPosicao)) then
+      SellAtMarket;
+  end;
+
+  if IsSold then
+  begin
+    iBarra := iBarra + 1;
+    if (UsarSaidaIFR and (fIFR <= NivelSaidaVenda)) or
+       (UsarSaidaTempo and (iBarra >= MaxBarrasPosicao)) then
+      BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) then
+  begin
+    iBarra := 0;
+    if UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana) then exit;
+
+    if bCompraAtivada then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+    end
+    else if bVendaAtivada then
+    begin
+      SellAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;

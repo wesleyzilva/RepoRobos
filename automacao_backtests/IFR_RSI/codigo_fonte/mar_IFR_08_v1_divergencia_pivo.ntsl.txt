@@ -1,0 +1,163 @@
+{
+  Robo:       mar_IFR_08_v1_divergencia_pivo
+  Grupo:      IFR_RSI — Tier 2 (#08)
+  Descricao:  Divergencia regular do IFR + confirmacao de rompimento de pivo
+              de curto prazo. A divergencia identifica o potencial de reversao
+              e o rompimento do pivo confirma que o mercado ja esta se movendo
+              na direcao esperada. Combinacao de sinal adiantado + confirmacao.
+  Timeframe:  60min (referencia: ~62%)
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+  Legado:     robo_ifr_v36_divergencia_regular_pivo60min62%
+}
+
+input
+  // ── IFR ──────────────────────────────────────────────────────
+  PeriodoIFR(14);
+  LookbackPivo(5);               // janela para identificar pivos recentes
+  DeltaIFRMinimo(3.0);           // diferenca minima do IFR entre fundos/topos
+  // ── Confirmacao de pivo ─────────────────────────────────────
+  UsarRompimentoPivo(true);
+  MargemRompimento(50);          // pontos alem do pivo para confirmar rompimento
+  // ── Saida ───────────────────────────────────────────────────
+  UsarSaidaIFR(true);
+  NivelSaidaCompra(55);
+  NivelSaidaVenda(45);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(14);
+  HorarioEncerramentoH(17);
+  HorarioEncerramentoM(15);
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR, fIFRFundoAnterior, fIFRTopoAnterior : float;
+  fPivoMin, fPivoMax, fFundoAnterior, fTopoAnterior : float;
+  bDivBullish, bDivBearish : boolean;
+  bRompeuPivoAlta, bRompeuPivoBaixa : boolean;
+  iBarrasPosicao : integer;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iDirecaoPosicao, iStopsConsec, iDiaSemanaAtual : integer;
+  bEncerramento : boolean;
+
+begin
+  // ── RESET DIARIO ─────────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // ── CALCULOS ─────────────────────────────────────────────────
+  bEncerramento := (HourOf(Time) * 60 + MinuteOf(Time)) >= (HorarioEncerramentoH * 60 + HorarioEncerramentoM);
+
+  fIFR := IFR(PeriodoIFR);
+
+  // Pivos de curto prazo
+  fPivoMin := Lowest(Low,  LookbackPivo);
+  fPivoMax := Highest(High, LookbackPivo);
+
+  // Fundo anterior e IFR naquele fundo
+  fFundoAnterior    := Lowest(Low,  LookbackPivo * 2)[LookbackPivo];
+  fIFRFundoAnterior := Lowest(IFR(PeriodoIFR), LookbackPivo * 2)[LookbackPivo];
+
+  // Topo anterior e IFR naquele topo
+  fTopoAnterior    := Highest(High, LookbackPivo * 2)[LookbackPivo];
+  fIFRTopoAnterior := Highest(IFR(PeriodoIFR), LookbackPivo * 2)[LookbackPivo];
+
+  // Divergencia bullish: preco fez fundo mais baixo, IFR fez fundo mais alto
+  bDivBullish := (Low < fFundoAnterior)
+             and (fIFR > fIFRFundoAnterior + DeltaIFRMinimo);
+
+  // Divergencia bearish: preco fez topo mais alto, IFR fez topo mais baixo
+  bDivBearish := (High > fTopoAnterior)
+             and (fIFR < fIFRTopoAnterior - DeltaIFRMinimo);
+
+  // Confirmacao por rompimento do pivo
+  bRompeuPivoAlta  := (not UsarRompimentoPivo) or (Close > fPivoMax + MargemRompimento);
+  bRompeuPivoBaixa := (not UsarRompimentoPivo) or (Close < fPivoMin - MargemRompimento);
+
+  // ── SAIDAS ───────────────────────────────────────────────────
+  if IsBought then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaIFR and (fIFR >= NivelSaidaCompra)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) then
+      SellAtMarket;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaIFR and (fIFR <= NivelSaidaVenda)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) then
+      BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) and (not bEncerramento) then
+  begin
+    iBarrasPosicao := 0;
+    if UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana) then exit;
+
+    if bDivBullish and bRompeuPivoAlta then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+    end
+    else if bDivBearish and bRompeuPivoBaixa then
+    begin
+      SellAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;
