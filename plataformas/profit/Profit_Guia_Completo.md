@@ -73,12 +73,12 @@
 - Menu **"Ferramentas → Editor de Estratégias"** ou `F12`
 - Clique em **"Novo"** → selecione **"Robô de Execução"**
 
-### 4.2 Importar código dos robôs PC_XX
-1. Abra o arquivo `.ntsl.txt` da pasta `automacao_backtests/CANDLE1/codigo_fonte/`
+### 4.2 Importar código dos robôs
+1. Abra o arquivo `.ntsl` da pasta `automacao_backtests/GRUPO/ntsl/`
 2. **Ctrl+A** → **Ctrl+C** para copiar todo o código
 3. No editor do Profit, cole com **Ctrl+V**
 4. Clique em **"Compilar"** (`F7`)
-5. Se sem erros: clique em **"Salvar"** com o nome do robô (ex: `mar_PC_01`)
+5. Se sem erros: clique em **"Salvar"** com o nome do robô (ex: `mar_PC_01_candle_gap_vwap_5min`)
 
 ### 4.3 Erros comuns de compilação NTSL
 | Erro | Causa | Solução |
@@ -136,7 +136,7 @@ Horário:        09:00 - 17:45 (evitar leilão)
 
 ### 6.2 Exportar resultados
 1. Na aba **"Operações"**, clique em **"Exportar"** → CSV
-2. Salvar em: `automacao_backtests/CANDLE1/resultados/mar_PC_XX_resultado.csv`
+2. Salvar em: `automacao_backtests/GRUPO/resultsBackTestTimeframe/mar_GRUPO_NN_descricao_timeframe.csv`
 3. Para análise em Python: use o script em `automacao_backtests/`
 
 ### 6.3 Curva de capital saudável

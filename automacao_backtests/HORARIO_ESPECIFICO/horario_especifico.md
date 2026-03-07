@@ -58,6 +58,8 @@ HE_04 — MT5: London Session / NY Overlap (9h–12h UTC)          (MQL5 .mq5)
 ```
 HORARIO_ESPECIFICO/
 ├── horario_especifico.md  ← este arquivo
-├── codigo_fonte/          ← robôs Profit (.ntsl.txt)
-└── mql5/                  ← robôs MetaTrader (.mq5)
+├── ntsl/                  ← robôs Profit (.ntsl)
+├── mql5/                  ← robôs MetaTrader (.mq5)
+├── resultsBackTestTimeframe/ ← CSVs de resultado
+└── reprovados/            ← versões descartadas
 ```

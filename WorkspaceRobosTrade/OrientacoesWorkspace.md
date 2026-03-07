@@ -74,7 +74,7 @@ Scripts de backtest e catálogos de estratégias IFR.
 
 - `IFR_RSI/robos_IFR.txt` — índice de todas as versões testadas
 - `IFR_RSI/catalogo_50_opcoes_IFR.txt` — 50 variações catalogadas para priorização
-- `IFR_RSI/codigo_fonte/` — scripts NTSL `.txt` das versões de robô
+- `IFR_RSI/ntsl/` — scripts Profit `.ntsl` das versões de robô
 - `IFR_RSI/top10/` — os 10 melhores robôs IFR por desempenho
 - `IFR_RSI/resultadosAprovadosPorTimeframe/` — CSVs de resultados por timeframe
 - `IFR_RSI/Reprovados/` — versões descartadas

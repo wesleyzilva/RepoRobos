@@ -57,40 +57,40 @@ LABORATORIO_INDICADORES/
 ├── README.md              ← este arquivo
 │
 ├── ADX/
-│   ├── codigo_fonte/      ← robôs Profit isolando só o ADX (.ntsl.txt)
+│   ├── ntsl/              ← robôs Profit isolando só o ADX (.ntsl)
 │   └── mql5/              ← versão MT5 (.mq5)
 │
 ├── ESTOCASTICO/
-│   ├── codigo_fonte/
+│   ├── ntsl/
 │   └── mql5/
 │
 ├── BOLLINGER/
-│   ├── codigo_fonte/
+│   ├── ntsl/
 │   └── mql5/
 │
 ├── OBV/
-│   ├── codigo_fonte/
+│   ├── ntsl/
 │   └── mql5/
 │
 ├── COMBOS/
 │   ├── IFR_ADX/
-│   │   └── codigo_fonte/
+│   │   └── ntsl/
 │   ├── BOLLINGER_IFR/
-│   │   └── codigo_fonte/
+│   │   └── ntsl/
 │   ├── VWAP_VOLUME/
-│   │   └── codigo_fonte/
+│   │   └── ntsl/
 │   └── ATR_MME200/
-│       └── codigo_fonte/
+│       └── ntsl/
 │
 └── AVANCADOS/
     ├── PARABOLIC_SAR/
-    │   └── codigo_fonte/
+    │   └── ntsl/
     ├── MACD/
-    │   └── codigo_fonte/
+    │   └── ntsl/
     ├── KELTNER/
-    │   └── codigo_fonte/
+    │   └── ntsl/
     └── WILLIAMS_R/
-        └── codigo_fonte/
+        └── ntsl/
 ```
 
 ---

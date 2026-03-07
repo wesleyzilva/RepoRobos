@@ -12,7 +12,7 @@ Esta pasta contém os robôs da **geração anterior** (nomenclatura `robo_ifr_v
 
 > **NÃO usar estes arquivos diretamente no Profit.**
 > Todos carecem do bloco de gestão de risco via `input` obrigatório.
-> Use os arquivos em `../codigo_fonte/mar_IFR_*.ntsl.txt`.
+> Use os arquivos em `../ntsl/mar_IFR_*.ntsl`.
 
 ## Mapeamento legado → novo
 

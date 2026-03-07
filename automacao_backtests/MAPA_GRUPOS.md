@@ -8,45 +8,49 @@
 
 ## Convenção de Arquivos
 
-| Extensão | Plataforma | Mercado |
-|----------|-----------|---------|
-| `.ntsl.txt` | **Neologica Profit** | B3 — WIN (minicontrato de índice) |
+| Extensão | Plataforma | Uso |
+|----------|-----------|-----|
+| `.ntsl` | **Neologica Profit** | B3 — WIN (minicontrato de índice) |
 | `.mq5` | **MetaTrader 5** | Internacional — XAUUSD, NAS100, US30, EURUSD |
+| `.csv` | Resultados | Saída dos backtests com timeframe no final |
+| `.txt` | Anotações | Exclusivamente texto livre / rascunhos |
+
+**Nomenclatura:** `mar_GRUPO_NN_descricao_timeframe.ntsl` (sem número de versão `vX`)
 
 Cada grupo possui:
 ```
 GRUPO/
-├── grupo.md           → Documentação, filosofia, critérios
-├── codigo_fonte/      → Robôs Profit (.ntsl.txt)
-└── mql5/              → Robôs MetaTrader (.mq5)
+├── GRUPO.md                  → Documentação, filosofia, critérios
+├── ntsl/                     → Robôs Profit (.ntsl)
+├── mql5/                     → Robôs MetaTrader (.mq5)
+├── resultsBackTestTimeframe/ → Resultados CSV por timeframe
+└── reprovados/               → Versões descartadas
 ```
 
 ---
 
-## Grupos Ativos (13 no total)
+### Grupos Ativos (18 no total)
 
-### Grupos Já Desenvolvidos
-
-| Grupo | Pasta | Robôs NTSL | Robôs MQL5 | Status |
-|-------|-------|------------|------------|--------|
-| Primeiro Candle | `CANDLE1/` | 33 (PC_01–PC_33) | — | ✅ Completo |
-| IFR/RSI | `IFR_RSI/` | 3 novos (`mar_IFR_*`) + 10 legado em `legado/` | — | 🔄 Em progresso |
-| Médias | `MEDIAS/` | 0 / 18 planejados | — | ⬜ Pendente |
-| Stop Tolerante | `STOPTOLERANTE/` | 4 (ST_01–ST_04) | — | ✅ Completo |
-| Poucos Pontos Vencedores | `POUCOSPONTOSVENCEDORES/` | 4 (PPV_01–PPV_04) | — | 🔄 Faltam 05–08 |
-| Drawdown Zero | `DRAWDOWNZERO/` | 0 / 4 planejados | — | ⬜ Pendente |
-| 50Mais1 | `50mais1/` | 0 / 4 planejados | — | ⬜ Pendente |
-
-### Grupos Obrigatórios — Pasta Criada, Robôs Pendentes
-
-| Grupo | Pasta | Conceito Central | Prioridade |
-|-------|-------|-----------------|------------|
-| Scalping | `SCALPING/` | Capturar 10–30 pts, alta frequência, 1–2min | Alta |
-| Breakout | `BREAKOUT/` | Rompimento de range/nível com volume | Alta |
-| VWAP Institucional | `VWAP_INSTITUCIONAL/` | Operar com referência do fluxo institucional | Alta |
-| Tendência Seguir | `TENDENCIA_SEGUIR/` | Trend following puro — sem alvo, trailing ATR | Média |
-| Reversão à Média | `REVERSAO_MEDIA/` | Bollinger/VWAP extremo → retorno à média | Média |
-| Horário Específico | `HORARIO_ESPECIFICO/` | Janelas estatísticas do WIN + sessões MT5 | Alta |
+| Grupo | Pasta | NTSL | MQL5 | Status |
+|-------|-------|------|------|--------|
+| Primeiro Candle | `CANDLE1/` | 33 | — | ✅ Completo |
+| IFR/RSI | `IFR_RSI/` | 10+ legado | — | 📦 Referência |
+| Médias | `MEDIAS/` | 6 | — | ✅ Completo |
+| Stop Tolerante | `STOPTOLERANTE/` | 5 | — | ✅ Completo |
+| Poucos Pontos Vencedores | `POUCOSPONTOSVENCEDORES/` | 5 | — | ✅ Completo |
+| Drawdown Zero | `DRAWDOWNZERO/` | 5 | — | ✅ Completo |
+| 50Mais1 | `50mais1/` | 5 | — | ✅ Completo |
+| Dupla Confirmação | `DUPLACONFIRMAÇÃO/` | 5 | — | ✅ Completo |
+| Scalping | `SCALPING/` | 5 | — | ✅ Completo |
+| Breakout | `BREAKOUT/` | 5 | — | ✅ Completo |
+| VWAP Institucional | `VWAP_INSTITUCIONAL/` | 5 | — | ✅ Completo |
+| Tendência Seguir | `TENDENCIA_SEGUIR/` | 5 | — | ✅ Completo |
+| Reversão Média | `REVERSAO_MEDIA/` | 5 | 5 | ✅ Completo |
+| Horário Específico | `HORARIO_ESPECIFICO/` | 5 | — | ✅ Completo |
+| Laboratório Indicadores | `LABORATORIO_INDICADORES/` | 5 | — | ✅ Completo |
+| Lateralização DayTrade | `LATERALIZACAO_DAYTRADE/` | 5 | — | ✅ Completo |
+| Lateralização SwingTrade | `LATERALIZACAO_SWINGTRADE/` | 5 | — | ✅ Completo |
+| timeframeMenor | `timeframeMenor/` | 5 | — | ✅ Completo |
 
 ---
 
@@ -69,95 +73,69 @@ HORARIO_ESPECIFICO → Horário define liquidez, slippage e probabilidade
 automacao_backtests/
 │
 ├── CANDLE1/
-│   ├── codigo_fonte/   → 33 robôs (mar_PC_01 a mar_PC_33) ✅
-│   └── mql5/           → (pendente)
+│   ├── ntsl/         → 33 robôs (mar_PC_01 a mar_PC_33) ✅
+│   └── mql5/         → (pendente)
 │
 ├── IFR_RSI/
-│   ├── codigo_fonte/   → 3 robôs novos (mar_IFR_01-03) 🔄
-│   ├── legado/         → 10 robôs antigos (robo_ifr_v*) — só referência
-│   ├── top10/          → top 10 histórico (referência)
-│   └── mql5/           → (pendente)
+│   ├── legado/       → robôs antigos (robo_ifr_v*) — só referência
+│   └── mql5/         → (pendente)
 │
 ├── MEDIAS/
-│   ├── codigo_fonte/   → (pendente)
-│   └── mql5/           → (pendente)
+│   └── ntsl/         → 6 robôs ✅
 │
 ├── POUCOSPONTOSVENCEDORES/
-│   ├── codigo_fonte/   → 4 robôs (mar_PPV_01-04) 🔄
-│   └── mql5/           → (pendente)
+│   └── ntsl/         → 5 robôs ✅
 │
 ├── STOPTOLERANTE/
-│   ├── codigo_fonte/   → 4 robôs (mar_ST_01-04) ✅
-│   └── mql5/           → (pendente)
+│   └── ntsl/         → 5 robôs ✅
 │
 ├── DRAWDOWNZERO/
-│   ├── codigo_fonte/   → (pendente)
-│   └── mql5/           → (pendente)
+│   └── ntsl/         → 5 robôs ✅
 │
 ├── 50mais1/
-│   ├── codigo_fonte/   → (pendente)
-│   └── mql5/           → (pendente)
+│   └── ntsl/         → 5 robôs ✅
 │
-├── SCALPING/           ← NOVO
-│   ├── codigo_fonte/   → (pendente)
-│   └── mql5/           → (pendente)
+├── DUPLACONFIRMAÇÃO/
+│   └── ntsl/         → 5 robôs ✅
 │
-├── BREAKOUT/           ← NOVO
-│   ├── codigo_fonte/   → (pendente)
-│   └── mql5/           → (pendente)
+├── SCALPING/
+│   └── ntsl/         → 5 robôs ✅
 │
-├── VWAP_INSTITUCIONAL/ ← NOVO
-│   ├── codigo_fonte/   → (pendente)
-│   └── mql5/           → (pendente)
+├── BREAKOUT/
+│   └── ntsl/         → 5 robôs ✅
 │
-├── TENDENCIA_SEGUIR/   ← NOVO
-│   ├── codigo_fonte/   → (pendente)
-│   └── mql5/           → (pendente)
+├── VWAP_INSTITUCIONAL/
+│   └── ntsl/         → 5 robôs ✅
 │
-├── REVERSAO_MEDIA/     ← NOVO
-│   ├── codigo_fonte/   → (pendente)
-│   └── mql5/           → (pendente)
+├── TENDENCIA_SEGUIR/
+│   └── ntsl/         → 5 robôs ✅
 │
-└── HORARIO_ESPECIFICO/ ← NOVO
-    ├── codigo_fonte/   → (pendente)
-    └── mql5/           → (pendente)
-
-LABORATORIO_INDICADORES/ ← NOVO
-├── ADX/
-├── ESTOCASTICO/
-├── BOLLINGER/
-├── OBV/
-├── COMBOS/
-│   ├── IFR_ADX/
-│   ├── BOLLINGER_IFR/
-│   ├── VWAP_VOLUME/
-│   └── ATR_MME200/
-└── AVANCADOS/
-    ├── PARABOLIC_SAR/
-    ├── MACD/
-    ├── KELTNER/
-    └── WILLIAMS_R/
+├── REVERSAO_MEDIA/
+│   ├── ntsl/         → 5 robôs ✅
+│   └── mql5/         → 5 robôs ✅
+│
+├── HORARIO_ESPECIFICO/
+│   └── ntsl/         → 5 robôs ✅
+│
+├── LABORATORIO_INDICADORES/
+│   └── ntsl/         → 5 robôs ✅
+│
+├── LATERALIZACAO_DAYTRADE/
+│   └── ntsl/         → 5 robôs ✅
+│
+├── LATERALIZACAO_SWINGTRADE/
+│   └── ntsl/         → 5 robôs ✅
+│
+└── timeframeMenor/
+    └── ntsl/         → 5 robôs ✅
 ```
 
 ---
 
-## Backlog de Robôs Pendentes (ordenado por prioridade)
+## Backlog de Robôs Pendentes (MQL5)
 
-### Imediato
-- [ ] PPV_05 a PPV_08 (`POUCOSPONTOSVENCEDORES`)
-- [ ] IFR_04 a IFR_14 (`IFR_RSI`)
-- [ ] DZ_01 a DZ_04 (`DRAWDOWNZERO`)
-- [ ] WR_01 a WR_04 (`50mais1`)
-
-### Próximo Ciclo
-- [ ] MEDIAS_01 a MEDIAS_18
-- [ ] SC_01 a SC_04 (`SCALPING`)
-- [ ] BK_01 a BK_04 (`BREAKOUT`)
-- [ ] VI_01 a VI_04 (`VWAP_INSTITUCIONAL`)
-- [ ] TS_01 a TS_04 (`TENDENCIA_SEGUIR`)
-- [ ] RM_01 a RM_04 (`REVERSAO_MEDIA`)
-- [ ] HE_01 a HE_04 (`HORARIO_ESPECIFICO`)
-- [ ] Versões MQL5 dos principais grupos
+- [ ] MQL5 para todos os grupos (prioridade: grupos com mais de 60% de acerto validado)
+- [ ] Backtest CSV por timeframe para todos os grupos aprovados
 
 ---
 
@@ -195,20 +173,25 @@ Laboratório → backtest isolado → aprovado (+3pp acerto, drawdown ok) → in
 
 ```ntsl
 // Profit (NTSL)
-UsarGestaoRisco      = true
-UsarHardLock         = true
-SaldoConta           = 10000.0    // R$10.000
-RiscoDiaPct          = 1.5        // R$150/dia
-RiscoSemanaPct       = 3.0        // R$300/semana
-MaxStopsConsecutivos = 2          // (1 para DRAWDOWNZERO)
-ValorPorPonto        = 0.2        // 1 contrato WIN mini
-DiaSemanaReset       = 2          // segunda-feira
+input UsarGestaoRisco      = true;   // false = backtest puro
+input UsarHardLock         = true;   // false = só bloqueia entradas
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;    // R$150/dia
+input RiscoSemanaPct       = 3.0;    // R$300/semana
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;    // 1 contrato WIN mini
+input DiaSemanaReset       = 2;      // 2 = segunda-feira
 ```
 
 ```mql5
-// MetaTrader 5 (MQL5)
-VolumeLote          = 0.01        // USD$5.000 demo Tickmill
-RiscoPorOpPct       = 1.5
-MaxStopsConsec      = 2
-MagicNumber         = 2026XX     // último 2 dígitos = número do robô
+// MetaTrader 5 (MQL5 / Internacional)
+input bool   UsarGestaoRisco      = true;
+input bool   UsarHardLock         = true;
+input double SaldoConta           = 10000.0;
+input double RiscoDiaPct          = 1.5;
+input double RiscoSemanaPct       = 3.0;
+input int    MaxStopsConsecutivos = 2;
+input double ValorPorPonto        = 0.20;   // WIN=0.20, XAUUSD=1.0 etc.
+input int    DiaSemanaReset       = 1;      // 0=Dom 1=Seg (MT5: 0-based)
+input double LotePadrao           = 1.0;
 ```

@@ -52,7 +52,9 @@ VI_04 — MT5: VWAP setup EURUSD / NAS100                        (MQL5 .mq5)
 ## Estrutura de Pastas
 ```
 VWAP_INSTITUCIONAL/
-├── vwap_institucional.md   ← este arquivo
-├── codigo_fonte/           ← robôs Profit (.ntsl.txt)
-└── mql5/                   ← robôs MetaTrader (.mq5)
+├── vwap_institucional.md        ← este arquivo
+├── ntsl/                        ← robôs Profit (.ntsl)
+├── mql5/                        ← robôs MetaTrader (.mq5)
+├── resultsBackTestTimeframe/    ← CSVs de resultado
+└── reprovados/                  ← versões descartadas
 ```

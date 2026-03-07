@@ -7,7 +7,7 @@ Objetivo
 - Estrutura: contexto -> filtro -> gatilho -> entrada -> saída padrao.
 - Este catalogo prioriza a fase de conceituação antes da implementação NTSL.
 
-Prefixo de nomenclatura dos scripts: mar_PC_NN_descricao.ntsl.txt
+Prefixo de nomenclatura dos scripts: mar_PC_NN_descricao_timeframe.ntsl
 Timeframe padrão de referência: 15min ou 30min (primeiro candle = barra 1 do dia).
 
 ================================================================================

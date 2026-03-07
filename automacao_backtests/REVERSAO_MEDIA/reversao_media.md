@@ -55,6 +55,8 @@ RM_04 — MT5: Mean reversion EURUSD (mercado mais controlado)     (MQL5 .mq5)
 ```
 REVERSAO_MEDIA/
 ├── reversao_media.md    ← este arquivo
-├── codigo_fonte/        ← robôs Profit (.ntsl.txt)
-└── mql5/                ← robôs MetaTrader (.mq5)
+├── ntsl/                ← robôs Profit (.ntsl)
+├── mql5/                ← robôs MetaTrader (.mq5)
+├── resultsBackTestTimeframe/ ← CSVs de resultado
+└── reprovados/          ← versões descartadas
 ```

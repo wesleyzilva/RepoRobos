@@ -61,12 +61,11 @@ Timeframe,TaxaAcerto,TotalTrades,FinanceiroBruto,FinanceiroLiq,MaxDrawdown,Fator
 
 ## Robô correspondente
 
-O arquivo `.ntsl.txt` do robô fica em `../ntsl/` com o **mesmo nome base** (sem o prefixo do timeframe):
+O arquivo `.ntsl` do robô fica em `../ntsl/` com o **mesmo nome base** (sem o prefixo do timeframe):
 ```
-../ntsl/mar_IFR_04_v1_bandas_dinamicas.ntsl.txt
+../ntsl/mar_IFR_04_bandas_dinamicas_60min.ntsl
          ↓ resultados gerados ↓
-1min_mar_IFR_04_v1_bandas_dinamicas.csv
-60min_mar_IFR_04_v1_bandas_dinamicas.csv
+mar_IFR_04_bandas_dinamicas_60min.csv
 ...
 ```
 

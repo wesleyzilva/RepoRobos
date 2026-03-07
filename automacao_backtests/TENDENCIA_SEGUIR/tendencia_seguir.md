@@ -56,6 +56,8 @@ TS_04 — MT5: Trend following NAS100 / US30 (tendências longas)   (MQL5 .mq5)
 ```
 TENDENCIA_SEGUIR/
 ├── tendencia_seguir.md  ← este arquivo
-├── codigo_fonte/        ← robôs Profit (.ntsl.txt)
-└── mql5/                ← robôs MetaTrader (.mq5)
+├── ntsl/                ← robôs Profit (.ntsl)
+├── mql5/                ← robôs MetaTrader (.mq5)
+├── resultsBackTestTimeframe/ ← CSVs de resultado
+└── reprovados/          ← versões descartadas
 ```

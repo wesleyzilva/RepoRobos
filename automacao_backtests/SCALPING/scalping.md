@@ -50,6 +50,8 @@ SC_04 — MT5: IFR(3) scalp XAUUSD / NAS100                     (MQL5 .mq5)
 ```
 SCALPING/
 ├── scalping.md          ← este arquivo
-├── codigo_fonte/        ← robôs Profit (.ntsl.txt)
-└── mql5/                ← robôs MetaTrader (.mq5)
+├── ntsl/                ← robôs Profit (.ntsl)
+├── mql5/                ← robôs MetaTrader (.mq5)
+├── resultsBackTestTimeframe/ ← CSVs de resultado
+└── reprovados/          ← versões descartadas
 ```
