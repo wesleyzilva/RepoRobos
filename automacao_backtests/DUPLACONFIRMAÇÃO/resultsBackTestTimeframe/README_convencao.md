@@ -3,16 +3,18 @@
 ## Nomenclatura dos arquivos de resultado
 
 ```
-TFmin_mes_GRUPO_NUM_vVERSAO_descricao.csv
+mar_GRUPO_NN_descricao_timeframe.csv
 ```
+
+> **Regra:** sem `vX` no nome; timeframe sempre no final antes da extensão.
 
 **Timeframes obrigatórios:** `1min`  `2min`  `5min`  `15min`  `30min`  `60min`  `240min`
 
 **Exemplo:**
 ```
-1min_mar_MED_01_v1_cruzamento_mme9_mme21.csv
-60min_mar_MED_01_v1_cruzamento_mme9_mme21.csv
-240min_mar_MED_01_v1_cruzamento_mme9_mme21.csv
+mar_DPL_01_descricao_1min.csv
+mar_DPL_01_descricao_60min.csv
+mar_DPL_01_descricao_240min.csv
 ```
 
 O robô correspondente fica em `../ntsl/` com o mesmo nome base.

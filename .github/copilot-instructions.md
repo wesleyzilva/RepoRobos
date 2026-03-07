@@ -27,7 +27,7 @@ automacao_backtests/
 ├── GRUPO_X/                 → Cada grupo tem a mesma estrutura interna:
 │   ├── ntsl/                → Scripts Neologica Profit (.ntsl)
 │   ├── mql5/                → Scripts MetaTrader 5 (.mq5)
-│   ├── resultsBackTestTimeframe/ → CSVs: mar_GRUPO_NN_vX_descricao_TIMEFRAME.csv
+│   ├── resultsBackTestTimeframe/ → CSVs: mar_GRUPO_NN_descricao_timeframe.csv
 │   ├── reprovados/          → Versões descartadas
 │   └── GRUPO.md             → Documentação / notas do grupo
 └── MAPA_GRUPOS.md           → Índice de todos os grupos
