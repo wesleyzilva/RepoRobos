@@ -1,0 +1,133 @@
+// ================================================================
+// Estrategia : robo_medias_v6_sw_expansao_compressao
+// Familia    : [SW] Swing Trade
+// Logica     : Detecta compressao das medias (MME20 proxima da MMA50)
+//              como sinal de acumulacao/distribuicao.
+//              Entrada quando a MME20 começa a se AFASTAR da MMA50
+//              de forma direcional (expansao), indicando inicio de
+//              novo movimento tendencial.
+//              Saida quando as medias voltam a se juntar (medias
+//              convergindo novamente) OU take/stop absoluto.
+//              Para swing: use TF 60min, 240min ou Diario.
+// ================================================================
+
+input
+  PeriodoMME20(20);
+  PeriodoMMA50(50);
+  PeriodoMMA200(200);
+  StopLossPontos(320);
+  TakeProfitPontos(700);
+  CompressaoMaximaPerc(1.0);
+  ExpansaoMinimaPerc(0.3);
+  ConvReentradaPerc(0.7);
+  ToleranciaPontos(25);
+  MinPercCorpoPA(0.40);
+  DistMinPerc(1.2);
+  SlopeMinimoPerc(0.04);
+  BarrasSlope(5);
+  MaxBarrasPosicao(55);
+
+var
+  fMME20, fMMA50, fMMA200 : float;
+  fMME20_ant, fMMA50_ant, fMMA200_ant : float;
+  fDist20_50_atual, fDist20_50_ant : float;
+  fDist20_200, fSlope200 : float;
+  fCorpo, fRange, fPercCorpo : float;
+  fPrecoEntrada : float;
+  bEstavemComprimidas : boolean;
+  bExpandindoAlta, bExpandindoBaixa : boolean;
+  bMMA200Favoravel : boolean;
+  bLateral : boolean;
+  bConvergindo : boolean;
+  bConfirmacaoPA : boolean;
+  iBarrasPosicao : integer;
+
+begin
+  fMME20      := MediaExp(PeriodoMME20, Close);
+  fMMA50      := Media(PeriodoMMA50, Close);
+  fMMA200     := Media(PeriodoMMA200, Close);
+  fMME20_ant  := MediaExp(PeriodoMME20, Close)[BarrasSlope];
+  fMMA50_ant  := Media(PeriodoMMA50, Close)[BarrasSlope];
+  fMMA200_ant := Media(PeriodoMMA200, Close)[BarrasSlope];
+
+  // --- FILTRO DE LATERALIDADE (MMA200 plana = sem tendencia primaria) ---
+  fDist20_200 := Abs(fMME20 - fMMA200) / Max(fMMA200, 0.01) * 100;
+  fSlope200   := Abs(fMMA200 - fMMA200_ant) / Max(fMMA200_ant, 0.01) * 100;
+  bLateral    := (fDist20_200 < DistMinPerc) or (fSlope200 < SlopeMinimoPerc);
+
+  // --- DISTANCIA ENTRE MME20 e MMA50 ---
+  // Atual e N barras atras para detectar expansao
+  fDist20_50_atual := Abs(fMME20 - fMMA50) / Max(fMMA50, 0.01) * 100;
+  fDist20_50_ant   := Abs(fMME20_ant - fMMA50_ant) / Max(fMMA50_ant, 0.01) * 100;
+
+  // --- ESTADOS DAS MEDIAS ---
+  // Compressao: medias muito proximas no passado
+  bEstavemComprimidas := (fDist20_50_ant < CompressaoMaximaPerc);
+
+  // Expansao para cima: MME20 se afasta da MMA50 para cima (alta)
+  bExpandindoAlta  := bEstavemComprimidas and
+                      (fMME20 > fMMA50) and
+                      (fDist20_50_atual > fDist20_50_ant + ExpansaoMinimaPerc);
+
+  // Expansao para baixo: MME20 se afasta da MMA50 para baixo (baixa)
+  bExpandindoBaixa := bEstavemComprimidas and
+                      (fMME20 < fMMA50) and
+                      (fDist20_50_atual > fDist20_50_ant + ExpansaoMinimaPerc);
+
+  // MMA200 nao contra o movimento
+  bMMA200Favoravel := IIf(bExpandindoAlta, fMMA200 <= fMMA50, fMMA200 >= fMMA50);
+
+  // --- CONVERGENCIA (sinal de saida por reversao de estado) ---
+  // Medias voltando a se aproximar
+  bConvergindo := (fDist20_50_atual < ConvReentradaPerc);
+
+  // --- PRICE ACTION DE CONFIRMACAO ---
+  fCorpo     := Abs(Close - Open);
+  fRange     := Max(High - Low, 1);
+  fPercCorpo := fCorpo / fRange;
+  bConfirmacaoPA := (fPercCorpo >= MinPercCorpoPA);
+
+  // --- ENTRADA ---
+  if (not IsBought) and (not IsSold) and (not bLateral) then
+  begin
+    if bExpandindoAlta and bMMA200Favoravel and (Close > Open) and bConfirmacaoPA then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada  := Close;
+      iBarrasPosicao := 0;
+    end;
+
+    if bExpandindoBaixa and bMMA200Favoravel and (Close < Open) and bConfirmacaoPA then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada  := Close;
+      iBarrasPosicao := 0;
+    end;
+  end;
+
+  // --- BARRAS EM POSICAO ---
+  if IsBought or IsSold then
+    iBarrasPosicao := iBarrasPosicao + 1
+  else
+    iBarrasPosicao := 0;
+
+  // --- SAIDA ---
+  // Sai por: stop, take, max barras, ou medias convergindo de novo
+  if IsBought then
+  begin
+    if (Close <= fPrecoEntrada - StopLossPontos) or
+       (Close >= fPrecoEntrada + TakeProfitPontos) or
+       (iBarrasPosicao >= MaxBarrasPosicao) or
+       (bConvergindo and (iBarrasPosicao > 5)) then  // expansao morreu
+      ClosePosition;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= fPrecoEntrada + StopLossPontos) or
+       (Close <= fPrecoEntrada - TakeProfitPontos) or
+       (iBarrasPosicao >= MaxBarrasPosicao) or
+       (bConvergindo and (iBarrasPosicao > 5)) then  // expansao morreu
+      ClosePosition;
+  end;
+end;

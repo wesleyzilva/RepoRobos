@@ -1,0 +1,119 @@
+================================================================
+ CATALOGO - MEDIAS 20/50/200 + PRICE ACTION  (versao 2)
+ Data: 05/03/2026
+ Autor: Wesley
+================================================================
+
+OBJETIVO
+---------
+Testar estrategias baseadas exclusivamente nas medias MME20, MMA50
+e MMA200, combinadas com price action e distancia entre medias,
+com filtro obrigatorio de lateralidade.
+
+Duas familias de setup:
+  [DT] Day Trade  - mais seguranca, stops curtos, janela de horario
+  [SW] Swing Trade - operacao mais longa, baseada em tendencia primaria
+
+LOGICA BASE (aplicada a todos)
+-------------------------------
+1. FILTRO DE LATERALIDADE (obrigatorio)
+   - Distancia entre MME20 e MMA200 < DistMinima% do preco = LATERAL, nao opera
+   - Inclinacao da MMA200 ao longo de N barras < SlopeMinimo% = PLANA, nao opera
+   - Quando lateral: aguardar alinhamento antes de entrar
+
+2. POSICAO DO PRICE ACTION
+   - Nota 4: Close > MME20 > MMA50 > MMA200  (tendencia alta plena)
+   - Nota 3: MMA50 > MMA200 mas preco entre 20 e 50 (pullback saudavel)
+   - Nota 2: MMA50 > MMA200 mas preco abaixo da 50 (fraqueza, risco)
+   - Nota 1: Medias misturadas (lateral ou transicao)
+   - Nota 0: MMA200 acima das outras (tendencia baixa plena)
+
+3. DISTANCIA ENTRE MEDIAS
+   - Dist 20x200 > DistGrande% = expansao (tendencia forte, cuidado com reversao)
+   - Dist 20x200 < DistPequena% = compressao (lateral ou acumulacao)
+   - Zona ideal de entrada: expansao moderada (entre os dois extremos)
+
+4. IDENTIFICACAO DE LATERALIDADE
+   - MMA200 slope proximo de zero (< SlopeMinimo)
+   - MME20 e MMA50 cruzando entre si sem direcao clara
+   - Preco oscilando entre as medias sem directionalidade
+
+ROBOS CRIADOS
+--------------
+
+[DT] robo_medias_v1_dt_pullback_mme20.txt
+  - Logica: pullback do preco ate a MME20 em tendencia confirmada
+  - Tendencia: MMA50 > MMA200 (alta) ou MMA50 < MMA200 (baixa)
+  - Entrada: preco volta para MME20 e fecha com corpo direcional
+  - Saida: stop pontos / take profit pontos / max barras
+  - Melhor TF: 15min, 30min, 60min
+  - Uso: DT com janela 09h-17h
+
+[DT] robo_medias_v2_dt_rompimento_mma50.txt
+  - Logica: rompimento da MMA50 com preco vindo de abaixo/acima
+  - Tendencia: MMA200 como filtro direcional absoluto
+  - Entrada: close cruza MMA50 com corpo forte (>= MinCorpoRomp)
+  - Saida: stop pontos / take profit pontos / max barras
+  - Melhor TF: 15min, 30min
+  - Uso: DT - captura momentum no rompimento
+
+[DT] robo_medias_v3_dt_rejeicao_mma200.txt
+  - Logica: preco entra na zona da MMA200 e rejeita com PA forte
+  - Pode ser compra ou venda dependendo da direcao da rejeicao
+  - Entrada: candle com corpo forte afastando-se da MMA200
+  - Saida: stop pontos / take profit pontos / max barras
+  - Melhor TF: 15min, 60min
+  - Uso: DT - ponto de decisao na media mais importante
+
+[SW] robo_medias_v4_sw_leque_alinhado.txt
+  - Logica: leque alinhado (MME20 > MMA50 > MMA200 ou inverso)
+  - Entrada: pullback do preco ate a MME20 com recuperacao direcional
+  - Saida: close quebra abaixo da MMA50 (tendencia comprometida)
+  - Melhor TF: 60min, 240min, diario
+  - Uso: SW - segue tendencia enquanto leque estiver aberto
+
+[SW] robo_medias_v5_sw_pullback_mma50.txt
+  - Logica: retorno do preco ate a MMA50 em tendencia primaria saudavel
+  - Tendencia primaria: MMA50 > MMA200 (alta) ou MMA50 < MMA200 (baixa)
+  - Entrada: preco dentro da zona da MMA50 (+/- Tolerancia) + PA confirma
+  - Saida: close rompe MMA200 (tendencia primaria comprometida)
+  - Melhor TF: 60min, 240min
+  - Uso: SW - entrada de qualidade em pullback profundo
+
+[SW] robo_medias_v6_sw_expansao_compressao.txt
+  - Logica: detectar compressao (20 e 50 proximas) e aguardar expansao
+  - Apos compressao: quando MME20 se afasta da MMA50 com direcao,
+    entra na direcao da expansao
+  - Saida: quando compressao retorna (medias se juntam novamente)
+  - Melhor TF: 60min, 240min
+  - Uso: SW - captura inicio de novo movimento direcional
+
+PARAMETROS PARA OTIMIZAR
+--------------------------
+- StopLossPontos     : pontos de stop (DT: 80-150 | SW: 200-400)
+- TakeProfitPontos   : pontos de alvo (DT: 120-250 | SW: 400-800)
+- DistMinima         : % minima distancia 20/200 para nao ser lateral (1.0-2.5%)
+- SlopeMinimo        : % minima inclinacao MMA200 para nao ser plana (0.05-0.2%)
+- BarrasSlope        : janela para calcular inclinacao (5-20 barras)
+- ToleranciaPontos   : zona ao redor das medias para PA (10-30 pts)
+- MinCorpoPA         : corpo minimo do candle de sinal (0.4-0.7 do range)
+- MaxBarrasPosicao   : max barras em posicao antes de forcar saida
+                       (DT: 8-20 | SW: 20-60)
+
+BATERIA DE BACKTESTS SUGERIDA
+-------------------------------
+Day Trade   : 5min, 15min, 30min, 60min
+Swing Trade : 60min, 240min, Diario
+Ativos      : WIN (mini indice), WDO (dolar)
+Periodo     : 12 a 24 meses
+Custos      : corretagem + emolumentos + slippage
+
+CRITERIOS DE APROVACAO (mesmos do rankingGeral)
+-------------------------------------------------
+- WinRate > 60%
+- Saldo > 0
+- DrawDown <= 700 pts (DT) | <= 1500 pts (SW)
+- Trades >= 5 no periodo
+- Patrimonio minimo = 2.5x DrawDown
+- Patrimonio conservador = 3.5x DrawDown
+================================================================

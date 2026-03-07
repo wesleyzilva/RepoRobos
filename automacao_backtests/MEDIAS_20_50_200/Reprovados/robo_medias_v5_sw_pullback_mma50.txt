@@ -1,0 +1,130 @@
+// ================================================================
+// Estrategia : robo_medias_v5_sw_pullback_mma50
+// Familia    : [SW] Swing Trade
+// Logica     : Pullback profundo ate a MMA50. Condicao minima: MMA50
+//              acima da MMA200 (tendencia primaria de alta) ou abaixo
+//              (baixa). O preco recui ate a zona da MMA50 e retoma a
+//              direcao com PA confirmando.
+//              Saida: preco rompe a MMA200 (tendencia primaria perdida)
+//              ou take/stop absoluto ou max barras.
+//              Para swing: use TF 60min, 240min ou Diario.
+// ================================================================
+
+input
+  PeriodoMME20(20);
+  PeriodoMMA50(50);
+  PeriodoMMA200(200);
+  StopLossPontos(300);
+  TakeProfitPontos(650);
+  ToleranciaPontos(30);
+  MinPercCorpoPA(0.42);
+  DistMinPerc(1.5);
+  SlopeMinimoPerc(0.04);
+  BarrasSlope(10);
+  MaxBarrasPosicao(60);
+
+var
+  fMME20, fMMA50, fMMA200 : float;
+  fMMA200_ant : float;
+  fDist50_200, fDist20_200, fSlope200 : float;
+  fCorpo, fRange, fPercCorpo : float;
+  fPrecoEntrada : float;
+  bTendenciaAlta, bTendenciaBaixa : boolean;
+  bNaZonaMMA50Alta, bNaZonaMMA50Baixa : boolean;
+  bConfirmacaoAlta, bConfirmacaoBaixa : boolean;
+  bLateral : boolean;
+  iBarrasPosicao : integer;
+
+begin
+  fMME20      := MediaExp(PeriodoMME20, Close);
+  fMMA50      := Media(PeriodoMMA50, Close);
+  fMMA200     := Media(PeriodoMMA200, Close);
+  fMMA200_ant := Media(PeriodoMMA200, Close)[BarrasSlope];
+
+  // --- FILTRO DE LATERALIDADE ---
+  fDist20_200 := Abs(fMME20 - fMMA200) / Max(fMMA200, 0.01) * 100;
+  fDist50_200 := Abs(fMMA50 - fMMA200) / Max(fMMA200, 0.01) * 100;
+  fSlope200   := Abs(fMMA200 - fMMA200_ant) / Max(fMMA200_ant, 0.01) * 100;
+
+  // Lateral: distancia pequena entre medias ou MMA200 praticamente plana
+  bLateral := (fDist20_200 < DistMinPerc) or
+              (fDist50_200 < DistMinPerc / 2) or
+              (fSlope200 < SlopeMinimoPerc);
+
+  // --- TENDENCIA PRIMARIA ---
+  // Alta: MMA50 acima da MMA200 com MMA200 em ascensao
+  bTendenciaAlta  := (fMMA50 > fMMA200) and (fMMA200 > fMMA200_ant);
+
+  // Baixa: MMA50 abaixo da MMA200 com MMA200 em queda
+  bTendenciaBaixa := (fMMA50 < fMMA200) and (fMMA200 < fMMA200_ant);
+
+  // --- ZONA DE PULLBACK NA MMA50 ---
+  // Alta: barra anterior desceu ate a zona da MMA50
+  //       preco atual ja esta acima da MMA50 (recuperou)
+  bNaZonaMMA50Alta := (Low[1] <= fMMA50 + ToleranciaPontos) and
+                      (Low[1] >= fMMA200) and    // nao perdeu a primaria
+                      (Close > fMMA50);           // fechou acima da 50
+
+  // Baixa: barra anterior subiu ate a zona da MMA50
+  bNaZonaMMA50Baixa := (High[1] >= fMMA50 - ToleranciaPontos) and
+                       (High[1] <= fMMA200) and   // nao recuperou a primaria
+                       (Close < fMMA50);           // fechou abaixo da 50
+
+  // --- PRICE ACTION DE CONFIRMACAO ---
+  fCorpo     := Abs(Close - Open);
+  fRange     := Max(High - Low, 1);
+  fPercCorpo := fCorpo / fRange;
+
+  // Candle bullish afastando da zona MMA50 com corpo relevante
+  bConfirmacaoAlta  := (Close > Open) and
+                       (Open >= fMMA50 - ToleranciaPontos) and
+                       (fPercCorpo >= MinPercCorpoPA);
+
+  // Candle bearish afastando da zona MMA50 com corpo relevante
+  bConfirmacaoBaixa := (Close < Open) and
+                       (Open <= fMMA50 + ToleranciaPontos) and
+                       (fPercCorpo >= MinPercCorpoPA);
+
+  // --- ENTRADA ---
+  if (not IsBought) and (not IsSold) and (not bLateral) then
+  begin
+    if bTendenciaAlta and bNaZonaMMA50Alta and bConfirmacaoAlta then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada  := Close;
+      iBarrasPosicao := 0;
+    end;
+
+    if bTendenciaBaixa and bNaZonaMMA50Baixa and bConfirmacaoBaixa then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada  := Close;
+      iBarrasPosicao := 0;
+    end;
+  end;
+
+  // --- BARRAS EM POSICAO ---
+  if IsBought or IsSold then
+    iBarrasPosicao := iBarrasPosicao + 1
+  else
+    iBarrasPosicao := 0;
+
+  // --- SAIDA ---
+  if IsBought then
+  begin
+    if (Close <= fPrecoEntrada - StopLossPontos) or
+       (Close >= fPrecoEntrada + TakeProfitPontos) or
+       (iBarrasPosicao >= MaxBarrasPosicao) or
+       (Close < fMMA200 - ToleranciaPontos) then  // tendencia primaria perdida
+      ClosePosition;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= fPrecoEntrada + StopLossPontos) or
+       (Close <= fPrecoEntrada - TakeProfitPontos) or
+       (iBarrasPosicao >= MaxBarrasPosicao) or
+       (Close > fMMA200 + ToleranciaPontos) then  // tendencia primaria perdida
+      ClosePosition;
+  end;
+end;

@@ -1,0 +1,120 @@
+// ================================================================
+// Estrategia : robo_medias_v2_dt_rompimento_mma50
+// Familia    : [DT] Day Trade
+// Logica     : Rompimento da MMA50 com PA confirmatório.
+//              MMA200 define a tendencia primaria permitida.
+//              Para compra: preco rompe MMA50 vindo de abaixo, MMA200 em alta.
+//              Para venda: preco rompe MMA50 vindo de acima, MMA200 em baixa.
+//              Filtro de lateralidade bloqueia entrada em mercado embolado.
+// Saida      : Stop/Take em pontos ou max barras.
+// ================================================================
+
+input
+  PeriodoMME20(20);
+  PeriodoMMA50(50);
+  PeriodoMMA200(200);
+  StopLossPontos(130);
+  TakeProfitPontos(220);
+  MinCorpoRompPontos(25);
+  MinPercCorpoPA(0.50);
+  DistMinPerc(1.0);
+  DistMax50_200Perc(8.0);
+  SlopeMinimoPerc(0.04);
+  BarrasSlope(10);
+  MaxBarrasPosicao(12);
+  HoraInicio(900);
+  HoraFim(1700);
+
+var
+  fMME20, fMMA50, fMMA200 : float;
+  fMMA200_ant, fMMA50_ant : float;
+  fDist20_200, fSlope200, fDist50_200 : float;
+  fCorpo, fRange, fPercCorpo : float;
+  fPrecoEntrada : float;
+  bLateral, bJanelaAtiva : boolean;
+  bTendAlta200, bTendBaixa200 : boolean;
+  bRompeAlta50, bRompeBaixa50 : boolean;
+  bPAForteAlta, bPAForteBaixa : boolean;
+  iBarrasPosicao : integer;
+
+begin
+  fMME20      := MediaExp(PeriodoMME20, Close);
+  fMMA50      := Media(PeriodoMMA50, Close);
+  fMMA200     := Media(PeriodoMMA200, Close);
+  fMMA200_ant := Media(PeriodoMMA200, Close)[BarrasSlope];
+  fMMA50_ant  := Media(PeriodoMMA50, Close)[BarrasSlope];
+
+  // --- FILTRO DE LATERALIDADE ---
+  fDist20_200 := Abs(fMME20 - fMMA200) / Max(fMMA200, 0.01) * 100;
+  fDist50_200 := Abs(fMMA50  - fMMA200) / Max(fMMA200, 0.01) * 100;
+  fSlope200   := Abs(fMMA200 - fMMA200_ant) / Max(fMMA200_ant, 0.01) * 100;
+  bLateral    := (fDist20_200 < DistMinPerc) or
+                 (fSlope200   < SlopeMinimoPerc) or
+                 (fDist50_200 > DistMax50_200Perc); // muito esticado = risco reversao
+
+  // --- TENDENCIA PRIMARIA (pela MMA200) ---
+  bTendAlta200  := (fMMA200 > fMMA200_ant) and (fMMA50 > fMMA200);
+  bTendBaixa200 := (fMMA200 < fMMA200_ant) and (fMMA50 < fMMA200);
+
+  // --- ROMPIMENTO DA MMA50 ---
+  // Alta: fechamento anterior abaixo da 50, atual acima
+  bRompeAlta50  := (Close[1] < fMMA50) and (Close > fMMA50) and
+                   (Close > Open) and ((Close - fMMA50) >= MinCorpoRompPontos);
+
+  // Baixa: fechamento anterior acima da 50, atual abaixo
+  bRompeBaixa50 := (Close[1] > fMMA50) and (Close < fMMA50) and
+                   (Close < Open) and ((fMMA50 - Close) >= MinCorpoRompPontos);
+
+  // --- PA FORTE (corpo proporcional) ---
+  fCorpo    := Abs(Close - Open);
+  fRange    := Max(High - Low, 1);
+  fPercCorpo := fCorpo / fRange;
+  bPAForteAlta  := (fPercCorpo >= MinPercCorpoPA) and (Close > Open);
+  bPAForteBaixa := (fPercCorpo >= MinPercCorpoPA) and (Close < Open);
+
+  // --- JANELA ---
+  bJanelaAtiva := (Time >= HoraInicio) and (Time <= HoraFim);
+
+  // --- ENTRADA ---
+  if (not IsBought) and (not IsSold) and bJanelaAtiva and (not bLateral) then
+  begin
+    if bTendAlta200 and bRompeAlta50 and bPAForteAlta then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada  := Close;
+      iBarrasPosicao := 0;
+    end;
+
+    if bTendBaixa200 and bRompeBaixa50 and bPAForteBaixa then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada  := Close;
+      iBarrasPosicao := 0;
+    end;
+  end;
+
+  // --- BARRAS EM POSICAO ---
+  if IsBought or IsSold then
+    iBarrasPosicao := iBarrasPosicao + 1
+  else
+    iBarrasPosicao := 0;
+
+  // --- SAIDA ---
+  if IsBought then
+  begin
+    if (Close <= fPrecoEntrada - StopLossPontos) or
+       (Close >= fPrecoEntrada + TakeProfitPontos) or
+       (iBarrasPosicao >= MaxBarrasPosicao) or
+       (Close < fMMA50) then   // perdeu o rompimento
+      ClosePosition;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= fPrecoEntrada + StopLossPontos) or
+       (Close <= fPrecoEntrada - TakeProfitPontos) or
+       (iBarrasPosicao >= MaxBarrasPosicao) or
+       (Close > fMMA50) then   // perdeu o rompimento
+      ClosePosition;
+  end;
+end;
