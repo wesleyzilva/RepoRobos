@@ -75,9 +75,8 @@ Scripts de backtest e catálogos de estratégias IFR.
 - `IFR_RSI/robos_IFR.txt` — índice de todas as versões testadas
 - `IFR_RSI/catalogo_50_opcoes_IFR.txt` — 50 variações catalogadas para priorização
 - `IFR_RSI/ntsl/` — scripts Profit `.ntsl` das versões de robô
-- `IFR_RSI/top10/` — os 10 melhores robôs IFR por desempenho
-- `IFR_RSI/resultadosAprovadosPorTimeframe/` — CSVs de resultados por timeframe
-- `IFR_RSI/Reprovados/` — versões descartadas
+- `IFR_RSI/resultsBackTestTimeframe/` — CSVs de resultados por timeframe
+- `IFR_RSI/reprovados/` — versões descartadas
 - `NeologicaProfitAPIbacktest.txt` — referência de API Neologica para automação
 
 ---

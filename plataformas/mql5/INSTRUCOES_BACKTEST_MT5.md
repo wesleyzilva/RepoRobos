@@ -145,7 +145,7 @@ Após aprovar em XAUUSD, repetir o Passo 4-6 para:
 ## Passo 9 — Exportar o Relatório
 
 1. Na aba **"Report"**: clique com botão direito → **"Save as Report"**
-2. Salvar como HTML na pasta: `automacao_backtests/POUCOSPONTOSVENCEDORES/resultados/`
+2. Salvar como HTML na pasta: `automacao_backtests/POUCOSPONTOSVENCEDORES/resultsBackTestTimeframe/`
 3. Nome sugerido: `PPV01_XAUUSD_M15_4anos_semgestao.html`
 
 ---
