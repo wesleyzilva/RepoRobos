@@ -1,0 +1,158 @@
+{
+  Robo:       mar_PPV_02_v1_breakeeven_alvo_fixo
+  Grupo:      POUCOSPONTOSVENCEDORES — #02
+  Descricao:  IFR entry com alvo fixo de pontos (nao depende de indicador para sair)
+              e break-even automatico agressivo. 
+              Filosofia: "pegar e sair" — nao aguardar mais.
+              Alvo 100 pts, be em 60 pts, max 4 barras.
+  Timeframe:  15min ou 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+}
+
+input
+  // ── IFR entry ─────────────────────────────────────────────────
+  PeriodoIFR(9);
+  IFRExtremoCompra(28);
+  IFREtornoCompra(33);
+  IFRExtremoVenda(72);
+  IFREtornoVenda(67);
+  // ── Alvos fixos ───────────────────────────────────────────────
+  AlvoFixoPontos(100.0);         // sair ao ganhar 100 pts
+  StopFixoPontos(80.0);          // stop de 80 pts
+  BreakEvenTrigger(60.0);        // ativar be com 60 pts a favor
+  BreakEvenOffset(5.0);          // be = entrada + 5 pts (garante mínimo)
+  // ── Trailing apos break-even ──────────────────────────────────
+  TrailingAposBE(40.0);          // trailing de 40 pts após ativar be
+  // ── Tempo ─────────────────────────────────────────────────────
+  MaxBarrasPosicao(4);
+  // ── Gestao de risco ───────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iBarrasEmPosicao       : integer;
+  fIFR                   : float;
+  fPrecoEntrada, fStop, fAlvo, fMelhorPreco : float;
+  bBreakEvenAtivo        : boolean;
+  iDirecaoPosicao        : integer;
+  fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    iBarrasEmPosicao := 0;
+    fResultadoDia    := 0;
+    bBloqueioDia     := false;
+    bBreakEvenAtivo  := false;
+    iDiaSemanaAtual  := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; bBreakEvenAtivo := false;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; bBreakEvenAtivo := false;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  fIFR := IFR(PeriodoIFR);
+
+  if (not IsBought) and (not IsSold)
+  and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close;
+      fStop         := Close - StopFixoPontos;
+      fAlvo         := Close + AlvoFixoPontos;
+      fMelhorPreco  := Close;
+      iDirecaoPosicao := 1;
+      bBreakEvenAtivo := false;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close;
+      fStop         := Close + StopFixoPontos;
+      fAlvo         := Close - AlvoFixoPontos;
+      fMelhorPreco  := Close;
+      iDirecaoPosicao := -1;
+      bBreakEvenAtivo := false;
+    end;
+  end;
+
+  if IsBought then
+  begin
+    iBarrasEmPosicao := iBarrasEmPosicao + 1;
+    if Close > fMelhorPreco then fMelhorPreco := Close;
+
+    // Ativar break-even
+    if (not bBreakEvenAtivo) and (fMelhorPreco >= fPrecoEntrada + BreakEvenTrigger) then
+    begin
+      fStop := fPrecoEntrada + BreakEvenOffset;
+      bBreakEvenAtivo := true;
+    end;
+
+    // Trailing apos be: stop sobe com fMelhorPreco
+    if bBreakEvenAtivo and ((fMelhorPreco - TrailingAposBE) > fStop) then
+      fStop := fMelhorPreco - TrailingAposBE;
+
+    if (Close >= fAlvo) or (Low <= fStop) or (iBarrasEmPosicao >= MaxBarrasPosicao) then
+      ClosePosition;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasEmPosicao := iBarrasEmPosicao + 1;
+    if Close < fMelhorPreco then fMelhorPreco := Close;
+
+    if (not bBreakEvenAtivo) and (fMelhorPreco <= fPrecoEntrada - BreakEvenTrigger) then
+    begin
+      fStop := fPrecoEntrada - BreakEvenOffset;
+      bBreakEvenAtivo := true;
+    end;
+
+    if bBreakEvenAtivo and ((fMelhorPreco + TrailingAposBE) < fStop) then
+      fStop := fMelhorPreco + TrailingAposBE;
+
+    if (Close <= fAlvo) or (High >= fStop) or (iBarrasEmPosicao >= MaxBarrasPosicao) then
+      ClosePosition;
+  end;
+
+  if not (IsBought or IsSold) then iBarrasEmPosicao := 0;
+end;
