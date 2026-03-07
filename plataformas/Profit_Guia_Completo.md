@@ -101,7 +101,7 @@
    - **Data Início:** 01/01/2020
    - **Data Fim:** 07/03/2026 (data atual)
    - **Quantidade:** 1 contrato
-   - **Capital inicial:** R$ 5.000
+   - **Capital inicial:** R$ 10.000
 
 ### 5.2 Parâmetros de realismo
 ```
@@ -220,7 +220,7 @@ Critério WFT (Walk-Forward Threshold):
 | Stop largo | 400 pts | R$ 80 |
 | Stop grande | 600 pts | R$ 120 |
 
-> **Dica:** Configure `RiscoDiaPct = 1.5` com `SaldoConta = 5000` → o robô trava sozinho ao atingir **R$ 75 de perda no dia**. Você só precisa checar se ele travou corretamente.
+> **Dica:** Configure `RiscoDiaPct = 1.5` com `SaldoConta = 10000` → o robô trava sozinho ao atingir **R$ 150 de perda no dia**. Você só precisa checar se ele travou corretamente.
 
 ---
 
@@ -239,10 +239,10 @@ Critério WFT (Walk-Forward Threshold):
 
 ### 9.2 Configuração inicial conservadora — 1 contrato
 ```
-SaldoConta:         5000          (capital de referência)
+SaldoConta:         10000         (capital de referência — R$ 10.000)
 Quantidade:         1             (FIXO — sempre 1 contrato)
-RiscoDiaPct:        1.5           (R$75 de perda máxima/dia)
-RiscoSemanaPct:     3.0           (R$150 máximo/semana)
+RiscoDiaPct:        1.5           (R$150 de perda máxima/dia)
+RiscoSemanaPct:     3.0           (R$300 máximo/semana)
 UsarHardLock:       true          (trava automática ao atingir limite)
 MultiplicadorAlvo:  1.5           (padrão)
 MaxBarrasPosicao:   8

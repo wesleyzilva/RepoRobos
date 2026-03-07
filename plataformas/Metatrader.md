@@ -39,13 +39,13 @@
    - Tipo: **Hedging** (MT5 padrão Forex)
    - Moeda da conta: USD
    - Alavancagem: **1:100** (para operar índices) ou 1:500 (Forex)
-   - Depósito virtual: USD 10.000
+   - Depósito virtual: USD 5.000
 7. Anote o **login** e **senha** gerados
 8. Clique em **"Concluir"** — conexão é automática
 
 ### 2.2 Verificando conexão demo
 - Canto inferior direito: deve mostrar o servidor e sinal verde
-- Na aba **"Terminal"** (Ctrl+T): saldo deve mostrar USD 10.000
+- Na aba **"Terminal"** (Ctrl+T): saldo deve mostrar USD 5.000
 - Status: `Autorizado` na aba Conexão
 
 ---
@@ -141,7 +141,7 @@ Modelo:            Every tick based on real ticks (mais realista)
                OU: 1 minute OHLC (mais rápido)
 Data (De):         01.01.2020
 Data (Até):        07.03.2026
-Depósito:          10000 USD
+Depósito:          5000 USD
 Alavancagem:       1:100
 ```
 
@@ -262,7 +262,7 @@ PASSOS RÁPIDOS:
    - Timeframe = M15
    - Modelo = 1 minute OHLC (rápido) ou Every tick (preciso)
    - Data: 01.01.2020 até hoje
-   - Depósito: 10000 USD
+   - Depósito: 5000 USD
 6. ▶ Iniciar
 7. Analisar: Profit Factor > 1.3, Drawdown < 20%
 8. Se aprovado → otimizar parâmetros
