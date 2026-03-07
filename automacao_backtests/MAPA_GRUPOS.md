@@ -119,6 +119,22 @@ automacao_backtests/
 └── HORARIO_ESPECIFICO/ ← NOVO
     ├── codigo_fonte/   → (pendente)
     └── mql5/           → (pendente)
+
+LABORATORIO_INDICADORES/ ← NOVO
+├── ADX/
+├── ESTOCASTICO/
+├── BOLLINGER/
+├── OBV/
+├── COMBOS/
+│   ├── IFR_ADX/
+│   ├── BOLLINGER_IFR/
+│   ├── VWAP_VOLUME/
+│   └── ATR_MME200/
+└── AVANCADOS/
+    ├── PARABOLIC_SAR/
+    ├── MACD/
+    ├── KELTNER/
+    └── WILLIAMS_R/
 ```
 
 ---
@@ -140,6 +156,36 @@ automacao_backtests/
 - [ ] RM_01 a RM_04 (`REVERSAO_MEDIA`)
 - [ ] HE_01 a HE_04 (`HORARIO_ESPECIFICO`)
 - [ ] Versões MQL5 dos principais grupos
+
+---
+
+## Laboratório de Indicadores
+
+> Pasta: `LABORATORIO_INDICADORES/`
+> Propósito: validar indicadores isoladamente antes de integrar nos grupos principais
+
+### Fluxo
+```
+Laboratório → backtest isolado → aprovado (+3pp acerto, drawdown ok) → integrar grupo
+                               → reprovado → documentar e arquivar
+```
+
+### Fila de Testes (ordem de prioridade)
+
+| # | Indicador/Combo | Pasta | Hipótese | Status |
+|---|----------------|-------|---------|--------|
+| 1 | **ADX(14)** | `ADX/` | ADX > 25 elimina stops falsos do IFR em tendência | ⬜ Pendente |
+| 2 | **Estocástico(5,3)** | `ESTOCASTICO/` | Mais rápido que IFR para saída e scalping | ⬜ Pendente |
+| 3 | **Bollinger(20,2σ)** | `BOLLINGER/` | Toque na banda + IFR extremo = alta confluência | ⬜ Pendente |
+| 4 | **OBV** | `OBV/` | Divergência OBV filtra fakeouts antes da entrada | ⬜ Pendente |
+| 5 | **IFR + ADX** | `COMBOS/IFR_ADX/` | ADX filtra os falsos do IFR sozinho | ⬜ Pendente |
+| 6 | **Bollinger + IFR** | `COMBOS/BOLLINGER_IFR/` | Confluência banda+IFR = reversão de alta prob. | ⬜ Pendente |
+| 7 | **VWAP + Volume** | `COMBOS/VWAP_VOLUME/` | Volume elevado na VWAP = entrada institucional | ⬜ Pendente |
+| 8 | **ATR + MME200** | `COMBOS/ATR_MME200/` | Stop ATR×1.5 além da MME200 = stop estrutural | ⬜ Pendente |
+| 9 | Parabolic SAR | `AVANCADOS/PARABOLIC_SAR/` | Trailing dinâmico superior ao ATR fixo | ⬜ Futuro |
+| 10 | MACD(12,26,9) | `AVANCADOS/MACD/` | Confirma momentum — evita entrar no fim do movimento | ⬜ Futuro |
+| 11 | Keltner Channel | `AVANCADOS/KELTNER/` | Menos fakeouts que Bollinger | ⬜ Futuro |
+| 12 | Williams %R | `AVANCADOS/WILLIAMS_R/` | Saída mais rápida que Estocástico | ⬜ Futuro |
 
 ---
 

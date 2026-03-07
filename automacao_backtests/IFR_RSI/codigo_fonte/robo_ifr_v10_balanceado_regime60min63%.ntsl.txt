@@ -1,0 +1,71 @@
+{
+  Estrategia: robo_ifr_v10_balanceado_regime
+  Autor: Wesley
+  Descricao: Abordagem balanceada com logica por regime de mercado.
+             Em tendencia usa pullback no IFR; em lateral usa reversao 30/70.
+}
+
+input
+  PeriodoIFR(9);
+  NivelPullbackCompra(45);
+  NivelPullbackVenda(55);
+  IFRExtremoCompra(30);
+  IFRExtremoVenda(70);
+  PeriodoMMERapida(9);
+  PeriodoMMELenta(21);
+  PeriodoMediaVolume(20);
+  FatorVolume(1.0);
+  UsarFiltroVolume(false);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(15);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fMME9, fMME9Anterior, fMME21, vMediaVol : float;
+  bVolumeAlto, bRegimeTendenciaAlta, bRegimeTendenciaBaixa, bRegimeLateral : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fMME9 := MediaExp(PeriodoMMERapida, Close);
+  fMME9Anterior := MediaExp(PeriodoMMERapida, Close)[1];
+  fMME21 := MediaExp(PeriodoMMELenta, Close);
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+
+  bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
+
+  bRegimeTendenciaAlta := (Close > fMME21) and (fMME9 > fMME21) and (fMME9 > fMME9Anterior);
+  bRegimeTendenciaBaixa := (Close < fMME21) and (fMME9 < fMME21) and (fMME9 < fMME9Anterior);
+  bRegimeLateral := (not bRegimeTendenciaAlta) and (not bRegimeTendenciaBaixa);
+
+  if (not IsBought) and (not IsSold) and bVolumeAlto then
+  begin
+    if bRegimeTendenciaAlta and (fIFR[1] <= NivelPullbackCompra) and (fIFR > NivelPullbackCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if bRegimeTendenciaBaixa and (fIFR[1] >= NivelPullbackVenda) and (fIFR < NivelPullbackVenda) then
+    begin
+      SellShortAtMarket;
+    end
+    else if bRegimeLateral and (fIFR[1] <= IFRExtremoCompra) and (fIFR > IFRExtremoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if bRegimeLateral and (fIFR[1] >= IFRExtremoVenda) and (fIFR < IFRExtremoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

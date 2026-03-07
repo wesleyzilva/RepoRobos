@@ -108,6 +108,7 @@ input DiaSemanaReset       = 2;      // 2 = segunda-feira
 ```
 
 Regras de uso:
+
 - `UsarGestaoRisco = false` → desativa todos os limites (uso em backtest para testar a lógica pura)
 - `UsarHardLock = false` → monitora os limites mas não força fechamento (apenas bloqueia novas entradas)
 - `UsarHardLock = true` → fecha posição aberta imediatamente ao atingir o limite (uso operacional)
