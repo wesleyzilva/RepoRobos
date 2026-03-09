@@ -1,2 +1,19 @@
 20260309:
+1robo_ifr_v6_saida_hibrida60min77% 2 operacoes 2 min -327,5 ps no dia. 3 min +77,5 pts
+3robo_ifr_v45_volume_por_horario60min75% 1 operação +1660pts
 robo_ifr_v4_divergencia_confirmada60min90% e robo_ifr_v28_ifr_adx_filtro são os primeiros a serem ativos
+
+robo_ifr_v28_ifr_adx_filtro 
+15 min -565 pts
+2 min 138,75 pts
+3 min337,5pts
+
+robo_ifr_v23_dupla_confirmacao15min87% 1min 55 pts
+
+
+--------Erros comuns:
+Compilando ...
+Parser[79,40]: No final da chamada da função deve vir " ) "
+Parser[80,42]: No final da chamada da função deve vir " ) "
+Parser[110,3]: O código deve começar com begin
+Erro de Sintaxe

@@ -61,8 +61,8 @@ begin
     bBloqueioDia      := false;
     fVWAPSoma         := 0;
     fVWAPVol          := 0;
-    iDiaSemanaAtual   := DayOfWeek(Date);
-    if iDiaSemanaAtual = DiaSemanaReset then
+    fMME200   := Media(PeriodoMME200, Close);
+    fMediaVol := Media(PeriodoMediaVol, Volume);
     begin
       fResultadoSemana := 0;
       bBloqueioSemana  := false;
@@ -77,7 +77,7 @@ begin
     fVWAPDiario := fVWAPSoma / fVWAPVol;
 
   fMME200   := Media(PeriodoMME200, 1, Close);
-  fMediaVol := Media(PeriodoMediaVol, Volume);
+  fMediaVol := Media(PeriodoMediaVol, 1, Volume);
 
   fLimiteDia    := SaldoConta * (RiscoDiaPct    / 100.0);
   fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
@@ -95,8 +95,8 @@ begin
   if UsarGestaoRisco and UsarHardLock and (bBloqueioDia or bBloqueioSemana) and (IsBought or IsSold) then
     ClosePosition;
 
-  if iCandleDia = 1 then
-  begin
+      fMME200   := Media(PeriodoMME200, Close);
+      fMediaVol := Media(PeriodoMediaVol, Volume);
     fMaxC1   := High;
     fMinC1   := Low;
     fAberDia := Open;
