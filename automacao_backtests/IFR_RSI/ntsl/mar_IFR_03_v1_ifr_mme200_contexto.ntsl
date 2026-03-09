@@ -1,0 +1,113 @@
+{
+  Robo:       mar_IFR_03_v1_ifr_mme200_contexto
+  Grupo:      IFR_RSI — Tier 1 (#03)
+  Descricao:  IFR reversao com filtro de contexto pela MME200.
+              Compra apenas acima da MME200 (tendencia de alta de longo prazo).
+              Venda apenas abaixo da MME200 (tendencia de baixa).
+              Referencia v25: ~69% acerto.
+  Timeframe:  60min (principal), 2min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoMME200(200);
+  UsarSaidaIFR(true);
+  NivelSaidaCompra(50);
+  NivelSaidaVenda(50);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(14);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(3);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iBarrasEmPosicao               : integer;
+  fIFR, fMME200                  : float;
+  bContextoCompra, bContextoVenda : boolean;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana  : boolean;
+  iDirecaoPosicao, iStopsConsec  : integer;
+  iDiaSemanaAtual                : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    iBarrasEmPosicao := 0;
+    fResultadoDia    := 0;
+    bBloqueioDia     := false;
+    iDiaSemanaAtual  := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  fIFR   := IFR(PeriodoIFR);
+  fMME200 := MediaExp(PeriodoMME200, Close);
+
+  bContextoCompra := Close > fMME200;
+  bContextoVenda  := Close < fMME200;
+
+  if (not IsBought) and (not IsSold)
+  and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+  begin
+    if bContextoCompra and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+    end
+    else if bContextoVenda and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+    end;
+  end;
+
+  if IsBought or IsSold then iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else iBarrasEmPosicao := 0;
+
+  if IsBought  and ((UsarSaidaIFR and (fIFR >= NivelSaidaCompra))
+                or  (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then ClosePosition;
+  if IsSold and ((UsarSaidaIFR and (fIFR <= NivelSaidaVenda))
+              or  (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then ClosePosition;
+end;

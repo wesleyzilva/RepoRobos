@@ -1,0 +1,129 @@
+{
+  Robo:       mar_5M1_02_v1_impulso_acumulado
+  Grupo:      50mais1 – Tier 1 (#02)
+  Descricao:  Detecta impulso acumulado: soma dos ultimos 3 candles na mesma
+              direcao >= 50 pontos. Confirma momentum sustentado antes de entrar.
+  Timeframe:  5min, 15min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 – marco/2026
+}
+
+input
+  PontosAcumulados(50);          // soma candles consecutivos para gating
+  BarrasContar(3);               // quantos candles consecutivos verificar
+  StopATR(14);
+  MultiplicadorStopATR(1.8);
+  MultiplicadorAlvoATR(2.5);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fATR             : float;
+  fSomaAlta        : float;
+  fSomaBaixa       : float;
+  fPrecoEntrada    : float;
+  fStop, fAlvo     : float;
+  fResultadoDia    : float;
+  fResultadoSemana : float;
+  fLimiteDia       : float;
+  fLimiteSemana    : float;
+  bBloqueioDia     : boolean;
+  bBloqueioSemana  : boolean;
+  iStopsConsec     : integer;
+  iDirecaoPosicao  : integer;
+  iDiaSemanaAtual  : integer;
+  i                : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then
+    begin
+      if IsBought then SellAtMarket;
+      if IsSold  then BuyAtMarket;
+      exit;
+    end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fATR := ATR(StopATR);
+
+  // Calcula soma de candles de alta/baixa consecutivos
+  fSomaAlta  := 0;
+  fSomaBaixa := 0;
+  for i := 1 to BarrasContar do
+  begin
+    if Close[i] > Open[i] then fSomaAlta  := fSomaAlta  + (Close[i] - Open[i])
+    else fSomaAlta := 0;  // quebra sequencia
+    if Close[i] < Open[i] then fSomaBaixa := fSomaBaixa + (Open[i] - Close[i])
+    else fSomaBaixa := 0;
+  end;
+
+  if IsBought then
+  begin
+    if Close >= fAlvo then SellAtMarket;
+    if Close <= fStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if Close <= fAlvo then BuyAtMarket;
+    if Close >= fStop then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if fSomaAlta >= PontosAcumulados then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada   := Close;
+      fStop           := Close - fATR * MultiplicadorStopATR;
+      fAlvo           := Close + fATR * MultiplicadorAlvoATR;
+      iDirecaoPosicao := 1;
+    end;
+    if fSomaBaixa >= PontosAcumulados then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada   := Close;
+      fStop           := Close + fATR * MultiplicadorStopATR;
+      fAlvo           := Close - fATR * MultiplicadorAlvoATR;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;

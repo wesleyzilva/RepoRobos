@@ -1,0 +1,126 @@
+// ============================================================
+// mar_ST_03_v1_candle_forca_stop_atr15x.ntsl
+// Grupo: STOPTOLERANTE | Versão: 1.0 | Timeframe: 60min
+// Descrição: Candle de força (corpo > 65% do range total) na
+//            direção da tendência + stop = ATR × 1.5 + alvo = ATR × 3.0
+// R:R mínimo: 1:2 | Taxa esperada: ~62%
+// Gestão: UsarGestaoRisco ativável | HardLock diário
+// ============================================================
+
+// ----- ENTRADAS -----
+input MME9_Periodo         = 9;
+input MME21_Periodo        = 21;
+input MME200_Periodo       = 200;
+input IFR_Periodo          = 9;
+input IFR_NeutroMin        = 40;   // IFR neutro — não entrar em extremo oposto
+input IFR_NeutroMax        = 70;
+input ATR_Periodo          = 14;
+input CorpoMinPct          = 65;   // Corpo mínimo = 65% do range total
+input Mult_Stop            = 1.5;  // Stop = ATR × 1.5
+input Mult_Alvo            = 3.0;  // Alvo = ATR × 3.0
+
+// Gestão de risco
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+// ----- VARIÁVEIS -----
+var mme9, mme21, mme200 : float;
+var ifr                 : float;
+var atr                 : float;
+var corpo, range_total  : float;
+var pcorpo              : float;
+var candleAlta          : boolean;
+var candleBaixa         : boolean;
+
+var perdaDiaria    : float;
+var perdaSemanal   : float;
+var stopsConsec    : integer;
+var diaUltimoReset : integer;
+var ultimoPnL      : float;
+var emOperacao     : boolean;
+
+// ----- INÍCIO -----
+begin
+  mme9   := MediaExp(MME9_Periodo, 0);
+  mme21  := MediaExp(MME21_Periodo, 0);
+  mme200 := MediaExp(MME200_Periodo, 0);
+  ifr    := IFR(IFR_Periodo, 0);
+  atr    := ATR(ATR_Periodo, 0);
+
+  // Força do candle
+  range_total := High - Low;
+  corpo       := Abs(Close - Open);
+  if range_total > 0 then
+    pcorpo := (corpo / range_total) * 100.0
+  else
+    pcorpo := 0;
+
+  candleAlta  := (Close > Open) and (pcorpo >= CorpoMinPct);
+  candleBaixa := (Close < Open) and (pcorpo >= CorpoMinPct);
+
+  // Gestão: reset semanal
+  if (UsarGestaoRisco) and (DayOfWeek = DiaSemanaReset) and (DayOfWeek <> diaUltimoReset) then
+  begin
+    perdaSemanal   := 0;
+    stopsConsec    := 0;
+    diaUltimoReset := DayOfWeek;
+  end;
+
+  if (IsBought or IsSold) then emOperacao := true
+  else begin
+    if emOperacao then
+    begin
+      ultimoPnL := NetProfit - ultimoPnL;
+      if ultimoPnL < 0 then
+      begin
+        perdaDiaria  := perdaDiaria  + Abs(ultimoPnL);
+        perdaSemanal := perdaSemanal + Abs(ultimoPnL);
+        stopsConsec  := stopsConsec + 1;
+      end else stopsConsec := 0;
+      ultimoPnL  := NetProfit;
+      emOperacao := false;
+    end;
+  end;
+
+  if (UsarHardLock) then
+  begin
+    if (perdaDiaria  >= (SaldoConta * RiscoDiaPct  / 100.0)) then exit;
+    if (perdaSemanal >= (SaldoConta * RiscoSemanaPct / 100.0)) then exit;
+    if (stopsConsec  >= MaxStopsConsecutivos) then exit;
+  end;
+
+  if IsBought or IsSold then exit;
+
+  // ===========================================================
+  // COMPRA: candle de força altista + tendência alta + IFR não sobrecomprado
+  // Contexto: MME9 > MME21 > MME200 (alinhamento de alta)
+  // ===========================================================
+  if candleAlta
+     and (mme9 > mme21) and (mme21 > mme200)
+     and (ifr < IFR_NeutroMax) then            // IFR não está em sobrecompra
+  begin
+    BuyAtMarket;
+    SetStopLoss(Close - atr * Mult_Stop);
+    SetTakeProfit(Close + atr * Mult_Alvo);
+  end;
+
+  // ===========================================================
+  // VENDA: candle de força baixista + tendência baixa + IFR não sobrevendido
+  // Contexto: MME9 < MME21 < MME200 (alinhamento de baixa)
+  // ===========================================================
+  if candleBaixa
+     and (mme9 < mme21) and (mme21 < mme200)
+     and (ifr > IFR_NeutroMin) then             // IFR não está em sobrevenda
+  begin
+    SellShortAtMarket;
+    SetStopLoss(Close + atr * Mult_Stop);
+    SetTakeProfit(Close - atr * Mult_Alvo);
+  end;
+
+end;

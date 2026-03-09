@@ -1,0 +1,168 @@
+{
+  Robo:       mar_PPV_04_v1_macd_momentum_saida_rapida
+  Grupo:      POUCOSPONTOSVENCEDORES — #04
+  Descricao:  MACD — entrada no cruzamento da linha zero (momentum acelerando).
+              Saida imediata quando MACD cruza de volta (nao aguarda divergencia).
+              Filtro: histograma crescente durante 2 barras (confirmacao).
+              Break-even em 60 pts + trailing ATR apos isso.
+  Timeframe:  15min ou 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+}
+
+input
+  // ── MACD ──────────────────────────────────────────────────────
+  PeriodoRapida(12);
+  PeriodoLenta(26);
+  PeriodoSinal(9);
+  // ── Filtro de confirmacao ─────────────────────────────────────
+  BarrasConfirmacaoHistograma(2); // histograma crescente por N barras
+  // ── ATR gestao ────────────────────────────────────────────────
+  PeriodoATR(14);
+  FatorStopInicial(0.8);
+  FatorTrailing(0.5);
+  BreakEvenTrigger(60.0);
+  BreakEvenOffset(5.0);
+  // ── Filtro MME200 ─────────────────────────────────────────────
+  UsarFiltroMME200(true);
+  PeriodoMME200(200);
+  // ── Tempo ─────────────────────────────────────────────────────
+  MaxBarrasPosicao(5);
+  // ── Gestao de risco ───────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iBarrasEmPosicao       : integer;
+  fMACD, fSinal, fHist   : float;
+  fATR, fMME200          : float;
+  fPrecoEntrada, fStop, fMelhorPreco : float;
+  bBreakEvenAtivo        : boolean;
+  bHistCrescenteAlta, bHistCrescenteBaixa : boolean;
+  bCruzouZeroAlta, bCruzouZeroBaixa      : boolean;
+  iDirecaoPosicao        : integer;
+  fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    iBarrasEmPosicao := 0;
+    fResultadoDia    := 0;
+    bBloqueioDia     := false;
+    bBreakEvenAtivo  := false;
+    iDiaSemanaAtual  := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; bBreakEvenAtivo := false;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; bBreakEvenAtivo := false;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  fMACD  := MACD(PeriodoRapida, PeriodoLenta, PeriodoSinal);
+  fSinal := MACDSinal(PeriodoRapida, PeriodoLenta, PeriodoSinal);
+  fHist  := fMACD - fSinal;
+  fATR   := ATR(PeriodoATR);
+  fMME200 := MediaExp(PeriodoMME200, Close);
+
+  // Histograma crescendo por N barras
+  bHistCrescenteAlta  := (fHist > 0) and (fHist > fHist[1]) and (fHist[1] > fHist[2]);
+  bHistCrescenteBaixa := (fHist < 0) and (fHist < fHist[1]) and (fHist[1] < fHist[2]);
+
+  // Cruzamento do MACD sobre a linha zero
+  bCruzouZeroAlta  := (fMACD[1] < 0) and (fMACD >= 0) and bHistCrescenteAlta;
+  bCruzouZeroBaixa := (fMACD[1] > 0) and (fMACD <= 0) and bHistCrescenteBaixa;
+
+  if (not IsBought) and (not IsSold)
+  and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+  begin
+    if bCruzouZeroAlta and ((not UsarFiltroMME200) or (Close > fMME200)) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close;
+      fStop         := Close - (fATR * FatorStopInicial);
+      fMelhorPreco  := Close;
+      iDirecaoPosicao := 1;
+      bBreakEvenAtivo := false;
+    end
+    else if bCruzouZeroBaixa and ((not UsarFiltroMME200) or (Close < fMME200)) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close;
+      fStop         := Close + (fATR * FatorStopInicial);
+      fMelhorPreco  := Close;
+      iDirecaoPosicao := -1;
+      bBreakEvenAtivo := false;
+    end;
+  end;
+
+  if IsBought then
+  begin
+    iBarrasEmPosicao := iBarrasEmPosicao + 1;
+    if Close > fMelhorPreco then fMelhorPreco := Close;
+
+    if (not bBreakEvenAtivo) and (fMelhorPreco >= fPrecoEntrada + BreakEvenTrigger) then
+    begin fStop := fPrecoEntrada + BreakEvenOffset; bBreakEvenAtivo := true; end;
+
+    if bBreakEvenAtivo and ((fMelhorPreco - fATR * FatorTrailing) > fStop) then
+      fStop := fMelhorPreco - (fATR * FatorTrailing);
+
+    // Saida: stop, tempo ou MACD cruza de volta abaixo de zero
+    if (Low <= fStop) or (iBarrasEmPosicao >= MaxBarrasPosicao)
+    or ((fMACD[1] >= 0) and (fMACD < 0)) then
+      ClosePosition;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasEmPosicao := iBarrasEmPosicao + 1;
+    if Close < fMelhorPreco then fMelhorPreco := Close;
+
+    if (not bBreakEvenAtivo) and (fMelhorPreco <= fPrecoEntrada - BreakEvenTrigger) then
+    begin fStop := fPrecoEntrada - BreakEvenOffset; bBreakEvenAtivo := true; end;
+
+    if bBreakEvenAtivo and ((fMelhorPreco + fATR * FatorTrailing) < fStop) then
+      fStop := fMelhorPreco + (fATR * FatorTrailing);
+
+    if (High >= fStop) or (iBarrasEmPosicao >= MaxBarrasPosicao)
+    or ((fMACD[1] <= 0) and (fMACD > 0)) then
+      ClosePosition;
+  end;
+
+  if not (IsBought or IsSold) then iBarrasEmPosicao := 0;
+end;

@@ -1,0 +1,131 @@
+// ============================================================
+// Robô: mar_TND_03_v1_macd_tendencia_mme200
+// Grupo: TENDENCIA_SEGUIR
+// Versão: v1 | Timeframe: 30min / 60min
+// Descrição: MACD cruza a linha de sinal na direção da tendência
+//            maior (preço acima/abaixo da MME200).
+//            Histograma crescente na mesma direção como confirmação.
+//            Stop: ATR×2. Alvo: 1:2.5.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 2.0;
+input RiscoSemanaPct       = 4.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input MACDRapida    = 12;
+input MACDLenta     = 26;
+input MACDSinal     = 9;
+input PeriodoMME200 = 200;
+input PeriodoATR    = 14;
+input MultATR       = 2.0;
+input RelacaoRR     = 2.5;
+input HoraIni       = 930;
+input HoraFim       = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  MACDLin, Sinal, Hist, MME200, ATR14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  MACDLin := MACD(MACDRapida, MACDLenta, MACDSinal);
+  Sinal   := MACDSignal(MACDRapida, MACDLenta, MACDSinal);
+  Hist    := MACDLin - Sinal;
+  MME200  := Media(PeriodoMME200, Close);
+  ATR14   := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: cruzamento MACD acima de zero + preço > MME200 + histograma crescendo
+    if (MACDLin[1] <= Sinal[1]) and (MACDLin > Sinal) and
+       (MACDLin > 0) and (Hist > Hist[1]) and (Close > MME200) then
+    begin
+      StopLoss   := Close - ATR14 * MultATR;
+      TakeProfit := Close + (Close - StopLoss) * RelacaoRR;
+      BuyAtMarket;
+    end;
+
+    // SHORT: cruzamento MACD abaixo de zero + preço < MME200 + histograma caindo
+    if (MACDLin[1] >= Sinal[1]) and (MACDLin < Sinal) and
+       (MACDLin < 0) and (Hist < Hist[1]) and (Close < MME200) then
+    begin
+      StopLoss   := Close + ATR14 * MultATR;
+      TakeProfit := Close - (StopLoss - Close) * RelacaoRR;
+      SellAtMarket;
+    end;
+  end;
+
+end;

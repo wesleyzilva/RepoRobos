@@ -1,0 +1,145 @@
+// ============================================================
+// Robô: mar_LAT_01_v1_ifr_range_diario
+// Grupo: LATERALIZACAO_DAYTRADE
+// Versão: v1 | Timeframe sugerido: 5min / 15min
+// Descrição: Opera dentro do range do dia. Define máx/mín das
+//            primeiras N barras como teto/piso. Usa IFR extremo
+//            para confirmar reversão: compra perto do piso,
+//            vende perto do teto. Alvo: centro do range.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input BarrasRangeInicial = 6;     // barras para definir range da manhã
+input PeriodoIFR         = 7;     // IFR rápido para DT
+input IFRSobVend         = 30;
+input IFRSobComp         = 70;
+input DistBanda          = 50;    // pts de distância da borda que aceita entrada
+input StopExtrapilapts   = 30;    // stop a X pontos além da borda
+input HoraIni            = 1000;  // só entra depois que range se formou
+input HoraFim            = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  RangeMax, RangeMin, CentroRange: float;
+  BarrasHoje: integer;
+  IFR7: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+
+  // ---- Reset diário ----
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    RangeMax  := 0;
+    RangeMin  := 999999;
+    BarrasHoje := 0;
+    DataAnterior := Date;
+  end;
+
+  BarrasHoje := BarrasHoje + 1;
+
+  // ---- Atualiza range das primeiras N barras ----
+  if (BarrasHoje <= BarrasRangeInicial) then
+  begin
+    if (High > RangeMax) then RangeMax := High;
+    if (Low  < RangeMin) then RangeMin := Low;
+  end;
+  CentroRange := (RangeMax + RangeMin) / 2;
+
+  // ---- Bloqueio de risco ----
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  IFR7      := IFR(PeriodoIFR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  // ---- Saídas ----
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  // ---- Entradas (após o range se formar) ----
+  if (not EmPosicao) and
+     (BarrasHoje > BarrasRangeInicial) and
+     (Time >= HoraIni) and (Time <= HoraFim) and
+     (RangeMax > RangeMin) then
+  begin
+    // LONG: perto do piso + IFR sobrevendido
+    if (Close <= RangeMin + DistBanda) and (IFR7 <= IFRSobVend) then
+    begin
+      StopLoss   := RangeMin - StopExtrapilapts;
+      TakeProfit := CentroRange;
+      BuyAtMarket;
+    end;
+
+    // SHORT: perto do teto + IFR sobrecomprado
+    if (Close >= RangeMax - DistBanda) and (IFR7 >= IFRSobComp) then
+    begin
+      StopLoss   := RangeMax + StopExtrapilapts;
+      TakeProfit := CentroRange;
+      SellAtMarket;
+    end;
+  end;
+
+end;

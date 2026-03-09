@@ -1,0 +1,83 @@
+{
+  Robo:       mar_HOR_05_v1_fechamento_b3
+  Grupo:      HORARIO_ESPECIFICO – Tier 1 (#05)
+  Descricao:  Opera somente das 17h00 as 17h45 (fechamento B3).
+              Captura o ajuste final do dia: institucionais fecham posicoes,
+              criam movimentos bruscos de curta duracao.
+  Timeframe:  1min, 5min | Versao: 1.0 – marco/2026
+}
+input
+  HoraInicio(1700); HoraFechamento(1745);
+  PeriodoMME(9);
+  StopFixo(40); AlvoFixo(80);   // movimentos menores no fechamento
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.0); RiscoSemanaPct(2.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fMME, fMMEAnterior : float;
+  fPrecoEntrada, fStop, fAlvo : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0); fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  // Fecha compulsoriamente no fechamento
+  if Time >= HoraFechamento then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+
+  fMME := Media(PeriodoMME, Close);
+
+  if IsBought then begin if Close >= fAlvo then SellAtMarket; if Close <= fStop then SellAtMarket; end;
+  if IsSold   then begin if Close <= fAlvo then BuyAtMarket;  if Close >= fStop then BuyAtMarket;  end;
+
+  // Opera apenas na janela de fechamento
+  if (Time >= HoraInicio) and (Time < HoraFechamento) then
+  begin
+    if (not IsBought) and (not IsSold) then
+    begin
+      // Impulsao de alta no fechamento
+      if (fMME > fMME[1]) and (Close > Open) and (Close > fMME) then
+      begin
+        BuyAtMarket; fPrecoEntrada := Close;
+        fStop := Close - StopFixo; fAlvo := Close + AlvoFixo;
+        iDirecaoPosicao := 1;
+      end;
+      // Impulsao de baixa no fechamento
+      if (fMME < fMME[1]) and (Close < Open) and (Close < fMME) then
+      begin
+        SellShortAtMarket; fPrecoEntrada := Close;
+        fStop := Close + StopFixo; fAlvo := Close - AlvoFixo;
+        iDirecaoPosicao := -1;
+      end;
+    end;
+  end;
+end;

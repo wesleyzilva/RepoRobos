@@ -1,0 +1,131 @@
+// ============================================================
+// Robô: mar_TND_02_v1_cruzamento_mme_volume
+// Grupo: TENDENCIA_SEGUIR
+// Versão: v1 | Timeframe: 15min / 30min
+// Descrição: Cruzamento de MME9 / MME21 com confirmação de volume.
+//            Entrada no cruzamento SE volume > 1.3× média.
+//            Trailing stop por ATR crescente. Alvo 1:2.
+//            Filtro: preço acima/abaixo da MME200.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 2.0;
+input RiscoSemanaPct       = 4.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoMME9   = 9;
+input PeriodoMME21  = 21;
+input PeriodoMME200 = 200;
+input PeriodoVolMedia = 20;
+input MultVolMin    = 1.3;
+input PeriodoATR    = 14;
+input MultATR       = 1.5;
+input RelacaoRR     = 2.0;
+input HoraIni       = 930;
+input HoraFim       = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  MME9, MME21, MME200, VolMedia, ATR14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  MME9     := Media(PeriodoMME9,   Close);
+  MME21    := Media(PeriodoMME21,  Close);
+  MME200   := Media(PeriodoMME200, Close);
+  VolMedia := Media(PeriodoVolMedia, Volume);
+  ATR14    := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (Volume >= VolMedia * MultVolMin) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: cruzamento altista + preço acima da MME200
+    if (MME9[1] <= MME21[1]) and (MME9 > MME21) and (Close > MME200) then
+    begin
+      StopLoss   := Close - ATR14 * MultATR;
+      TakeProfit := Close + (Close - StopLoss) * RelacaoRR;
+      BuyAtMarket;
+    end;
+
+    // SHORT: cruzamento baixista + preço abaixo da MME200
+    if (MME9[1] >= MME21[1]) and (MME9 < MME21) and (Close < MME200) then
+    begin
+      StopLoss   := Close + ATR14 * MultATR;
+      TakeProfit := Close - (StopLoss - Close) * RelacaoRR;
+      SellAtMarket;
+    end;
+  end;
+
+end;

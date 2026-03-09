@@ -1,0 +1,159 @@
+{
+  Robo:       mar_PPV_03_v1_estocastico_trailing
+  Grupo:      POUCOSPONTOSVENCEDORES — #03
+  Descricao:  Estocástico rápido (5,3) — crossover em zona extrema (<20 / >80).
+              Entrada no cruzamento %K sobre %D (compra) ou abaixo (venda).
+              Saida no primeiro sinal contrario ou trailing ATR.
+              Mais sensivel que IFR — captura movimentos de 1-3 barras.
+  Timeframe:  15min ou 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+}
+
+input
+  // ── Estocástico ───────────────────────────────────────────────
+  PeriodoK(5);
+  PeriodoD(3);
+  ZonaSobrevenda(20.0);          // %K < 20 = sobrevenda
+  ZonaSobrecompra(80.0);         // %K > 80 = sobrecompra
+  // ── ATR trailing ──────────────────────────────────────────────
+  PeriodoATR(14);
+  FatorStopInicial(0.7);
+  FatorTrailing(0.5);
+  BreakEvenTrigger(50.0);
+  BreakEvenOffset(5.0);
+  // ── Saida por indicador ───────────────────────────────────────
+  SairNoCruzamentoInverso(true); // sair quando %K cruza %D contra posicao
+  // ── Tempo ─────────────────────────────────────────────────────
+  MaxBarrasPosicao(4);
+  // ── Gestao de risco ───────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iBarrasEmPosicao       : integer;
+  fK, fD, fATR           : float;
+  fPrecoEntrada, fStop, fMelhorPreco : float;
+  bBreakEvenAtivo        : boolean;
+  bCruzouCompra, bCruzouVenda : boolean;
+  iDirecaoPosicao        : integer;
+  fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    iBarrasEmPosicao := 0;
+    fResultadoDia    := 0;
+    bBloqueioDia     := false;
+    bBreakEvenAtivo  := false;
+    iDiaSemanaAtual  := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; bBreakEvenAtivo := false;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; bBreakEvenAtivo := false;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // Profit nao tem funcao Stochastic nativa — usar IFR curto como aproximacao
+  // %K rapido = IFR(5), %D = Media(3, IFR(5)) via janela manual
+  fK   := IFR(PeriodoK);
+  fD   := Media(PeriodoD, IFR(PeriodoK));
+  fATR := ATR(PeriodoATR);
+
+  // Crossovers
+  bCruzouCompra := (fK[1] < fD[1]) and (fK >= fD) and (fK < ZonaSobrevenda);
+  bCruzouVenda  := (fK[1] > fD[1]) and (fK <= fD) and (fK > ZonaSobrecompra);
+
+  if (not IsBought) and (not IsSold)
+  and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+  begin
+    if bCruzouCompra then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close;
+      fStop         := Close - (fATR * FatorStopInicial);
+      fMelhorPreco  := Close;
+      iDirecaoPosicao := 1;
+      bBreakEvenAtivo := false;
+    end
+    else if bCruzouVenda then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close;
+      fStop         := Close + (fATR * FatorStopInicial);
+      fMelhorPreco  := Close;
+      iDirecaoPosicao := -1;
+      bBreakEvenAtivo := false;
+    end;
+  end;
+
+  if IsBought then
+  begin
+    iBarrasEmPosicao := iBarrasEmPosicao + 1;
+    if Close > fMelhorPreco then fMelhorPreco := Close;
+
+    if (not bBreakEvenAtivo) and (fMelhorPreco >= fPrecoEntrada + BreakEvenTrigger) then
+    begin fStop := fPrecoEntrada + BreakEvenOffset; bBreakEvenAtivo := true; end;
+
+    if bBreakEvenAtivo and ((fMelhorPreco - fATR * FatorTrailing) > fStop) then
+      fStop := fMelhorPreco - (fATR * FatorTrailing);
+
+    if (Low <= fStop) or (iBarrasEmPosicao >= MaxBarrasPosicao)
+    or (SairNoCruzamentoInverso and (fK[1] > fD[1]) and (fK <= fD)) then
+      ClosePosition;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasEmPosicao := iBarrasEmPosicao + 1;
+    if Close < fMelhorPreco then fMelhorPreco := Close;
+
+    if (not bBreakEvenAtivo) and (fMelhorPreco <= fPrecoEntrada - BreakEvenTrigger) then
+    begin fStop := fPrecoEntrada - BreakEvenOffset; bBreakEvenAtivo := true; end;
+
+    if bBreakEvenAtivo and ((fMelhorPreco + fATR * FatorTrailing) < fStop) then
+      fStop := fMelhorPreco + (fATR * FatorTrailing);
+
+    if (High >= fStop) or (iBarrasEmPosicao >= MaxBarrasPosicao)
+    or (SairNoCruzamentoInverso and (fK[1] < fD[1]) and (fK >= fD)) then
+      ClosePosition;
+  end;
+
+  if not (IsBought or IsSold) then iBarrasEmPosicao := 0;
+end;

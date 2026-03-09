@@ -1,0 +1,135 @@
+{
+  Robo:       mar_ST_05_v1_atr_dinamico_confluencia
+  Grupo:      STOPTOLERANTE – Tier 1 (#05)
+  Descricao:  Stop tolerante dinamico baseado em ATR × multiplicador amplo.
+              Entrada por confluencia de IFR + MME200 + candle de forca.
+              Stop largo permite absorver ruido sem ser estopado prematuramente.
+  Timeframe:  60min, 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 – marco/2026
+}
+
+input
+  // ── Indicadores ─────────────────────────────────────────────
+  PeriodoIFR(14);
+  NivelCompra(40);               // IFR sobe acima de 40 em tendencia de alta
+  NivelVenda(60);                // IFR cai abaixo de 60 em tendencia de baixa
+  PeriodoMME(200);
+  PeriodoATR(14);
+  MultiplicadorStop(2.5);        // stop = ATR × 2.5 (tolerante)
+  MultiplicadorAlvo(3.5);        // alvo = ATR × 3.5 (R/R ~1:1.4)
+  // ── Filtro de forca do candle ────────────────────────────────
+  MinBodyPct(0.55);              // corpo >= 55% do range
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR, fMME, fATR     : float;
+  fRange, fCorpo       : float;
+  fPrecoEntrada        : float;
+  fStop, fAlvo         : float;
+  fResultadoDia        : float;
+  fResultadoSemana     : float;
+  fLimiteDia           : float;
+  fLimiteSemana        : float;
+  bBloqueioDia         : boolean;
+  bBloqueioSemana      : boolean;
+  iStopsConsec         : integer;
+  iDirecaoPosicao      : integer;
+  iDiaSemanaAtual      : integer;
+
+begin
+  // ── RESET DIARIO ─────────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then
+      bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then
+    begin
+      if IsBought then SellAtMarket;
+      if IsSold  then BuyAtMarket;
+      exit;
+    end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  // ── INDICADORES ──────────────────────────────────────────────
+  fIFR   := RSI(Close, PeriodoIFR);
+  fMME   := Media(PeriodoMME, Close);
+  fATR   := ATR(PeriodoATR);
+  fRange := High - Low;
+  fCorpo := Abs(Close - Open);
+
+  // ── STOP/ALVO DINAMICO ───────────────────────────────────────
+  if IsBought then
+  begin
+    if Close >= fPrecoEntrada + fATR * MultiplicadorAlvo then SellAtMarket;
+    if Close <= fPrecoEntrada - fATR * MultiplicadorStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if Close <= fPrecoEntrada - fATR * MultiplicadorAlvo then BuyAtMarket;
+    if Close >= fPrecoEntrada + fATR * MultiplicadorStop then BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) then
+  begin
+    // Compra: preco acima MME200 + IFR cruzando 40 + candle de alta forte
+    if (Close > fMME) and
+       (fIFR[1] < NivelCompra) and (fIFR >= NivelCompra) and
+       (Close > Open) and (fRange > 0) and (fCorpo / fRange >= MinBodyPct) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada   := Close;
+      iDirecaoPosicao := 1;
+    end;
+    // Venda: preco abaixo MME200 + IFR cruzando 60 + candle de baixa forte
+    if (Close < fMME) and
+       (fIFR[1] > NivelVenda) and (fIFR <= NivelVenda) and
+       (Close < Open) and (fRange > 0) and (fCorpo / fRange >= MinBodyPct) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada   := Close;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;
