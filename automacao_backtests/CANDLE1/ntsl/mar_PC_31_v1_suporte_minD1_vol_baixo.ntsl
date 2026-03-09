@@ -109,7 +109,8 @@ begin
   begin
     bTestaMinD1     := fMinC1 <= fMinD1;
     bFechaAcima     := fFechC1 > fMinD1;
-    bVolFraco       := (fMediaVol > 0) and (fVolC1 <= fMediaVol * FatorVolumeMaximo);
+      bVolFraco       := (fMediaVol > 0) and (fVolC1 <= fMediaVol * FatorVolumeMaximo)
+       and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana)));
     bCorpoAltaOuDoji := fFechC1 >= fAberDia;
 
     bSinalCompra := bTestaMinD1 and bFechaAcima and bVolFraco and bCorpoAltaOuDoji;

@@ -43,10 +43,13 @@ var
   fResultadoPontos, fResultadoReais                : float;
   bBloqueioDia, bBloqueioSemana                    : boolean;
   iDiaSemanaAtual                                  : integer;
-
 begin
+<<<<<<< HEAD
   if CurrentBar = 1 then
     Print("Robo ativo: mar_PC_28_v1_gap_parcial_fecha_acima_maxD1");
+=======
+
+>>>>>>> 0a1df092980667974aaff93dc61a0ac442d8f2e8
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;
@@ -76,7 +79,7 @@ begin
     fVWAPDiario := fVWAPSoma / fVWAPVol;
 
   fMediaVol := Media(PeriodoMediaVol, Volume);
-  fATR      := ATR(PeriodoATR);
+  fATR      := Media(PeriodoATR, High - Low);
 
   fLimiteDia    := SaldoConta * (RiscoDiaPct    / 100.0);
   fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
@@ -108,14 +111,15 @@ begin
     fFechD1  := Close[1];
   end;
 
+  { Sinal de compra: gap parcial + fechamento acima da máxima D-1 }
   if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
-     and (not IsBought) and (not IsSold) then
+     and (not IsBought) and (not IsSold)
+     and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
   begin
-    // Gap parcial para cima: abertura entre o fechamento D-1 e a maxima D-1
-    bGapParcial      := (fAberDia > fFechD1) and (fAberDia < fMaxD1);
-    bFechaAcimaMaxD1 := fFechC1 > fMaxD1;
-    bCorpoAlta       := (fFechC1 > fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
-    bVolOK           := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeMinimo);
+    bGapParcial       := (fAberDia > fFechD1) and (fAberDia < fMaxD1);
+    bFechaAcimaMaxD1  := fFechC1 > fMaxD1;
+    bCorpoAlta        := (fFechC1 > fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
+    bVolOK            := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeMinimo);
 
     bSinalCompra := bGapParcial and bFechaAcimaMaxD1 and bCorpoAlta and bVolOK;
 
