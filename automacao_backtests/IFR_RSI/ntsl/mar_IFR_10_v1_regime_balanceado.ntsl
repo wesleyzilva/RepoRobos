@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_10_v1_regime_balanceado
   Grupo:      IFR_RSI — Tier 2 (#10)
   Descricao:  Detecta o regime de mercado (tendencia ou lateralidade) usando
@@ -58,6 +58,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_10_v1_regime_balanceado");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_LSW_02_v1_canal_paralelo_swing
 // Grupo: LATERALIZACAO_SWINGTRADE
 // Versão: v1 | Timeframe: 60min / 240min
@@ -33,6 +33,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LSW_02_v1_canal_paralelo_swing");
 
   if (Date <> DataAnterior) then
   begin

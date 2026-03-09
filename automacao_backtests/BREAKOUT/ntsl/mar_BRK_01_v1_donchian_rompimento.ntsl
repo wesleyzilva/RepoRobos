@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_BRK_01_v1_donchian_rompimento
   Grupo:      BREAKOUT – Tier 1 (#01)
   Descricao:  Rompimento do canal de Donchian: compra no novo maximo de N barras,
@@ -31,6 +31,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_BRK_01_v1_donchian_rompimento");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

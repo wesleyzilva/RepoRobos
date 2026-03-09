@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_DDZ_03_v1_trailing_apertado_imediato
   Grupo:      DRAWDOWNZERO – Tier 1 (#03)
   Descricao:  Trailing stop imediato desde a entrada (ATR × 1.0).
@@ -22,6 +22,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DDZ_03_v1_trailing_apertado_imediato");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

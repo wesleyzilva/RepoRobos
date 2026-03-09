@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // mar_ST_02_v1_divergencia_ifr_stop_pivo.ntsl
 // Grupo: STOPTOLERANTE | Versão: 1.0 | Timeframe: 60min
 // Descrição: Divergência IFR (preço faz nova mínima/máxima,
@@ -45,6 +45,8 @@ var emOperacao     : boolean;
 
 // ----- INÍCIO -----
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_ST_02_v1_divergencia_ifr_stop_pivo");
   ifr0   := IFR(IFR_Periodo, 0);
   ifr1   := IFR(IFR_Periodo, 1);
   ifr2   := IFR(IFR_Periodo, 2);

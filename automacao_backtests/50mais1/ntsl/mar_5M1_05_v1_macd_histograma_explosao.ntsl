@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_5M1_05_v1_macd_histograma_explosao
   Grupo:      50mais1 – Tier 1 (#05)
   Descricao:  Entra quando histograma MACD cresce >= X ticks consecutivos E candle
@@ -40,6 +40,8 @@ var
   i : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_5M1_05_v1_macd_histograma_explosao");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

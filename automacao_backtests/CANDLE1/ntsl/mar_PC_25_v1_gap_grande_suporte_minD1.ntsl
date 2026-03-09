@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_25_v1_gap_grande_suporte_minD1
   Catalogo:  #46 — Tier 3
   Descricao: Gap exaustao para BAIXO (> 1.5x ATR) + C1 encontra suporte na minima D-1 com
@@ -45,6 +45,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_25_v1_gap_grande_suporte_minD1");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // mar_ST_01_v1_ifr_mme200_stop_estrutural.ntsl
 // Grupo: STOPTOLERANTE | Versão: 1.0 | Timeframe: 60min
 // Descrição: IFR extremo (ZS/SO) + contexto MME200 + stop na
@@ -44,6 +44,8 @@ var emOperacao     : boolean;
 
 // ----- INÍCIO -----
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_ST_01_v1_ifr_mme200_stop_estrutural");
   ifr_atual    := IFR(IFR_Periodo, 0);
   ifr_anterior := IFR(IFR_Periodo, 1);
   mme200       := MediaExp(MME200_Periodo, 0);

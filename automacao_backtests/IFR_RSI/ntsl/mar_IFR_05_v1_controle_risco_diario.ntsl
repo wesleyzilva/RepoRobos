@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_05_v1_controle_risco_diario
   Grupo:      IFR_RSI — Tier 2 (#05)
   Descricao:  Controle rigoroso de risco diario com limite de trades e saidas
@@ -55,6 +55,8 @@ var
   bJanelaTempo, bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_05_v1_controle_risco_diario");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_17_v1_martelo_alta
   Catalogo:  #33 — Tier 2
   Descricao: Padrao Martelo no 1o candle: pavio inferior >= 60% do range + corpo na metade
@@ -47,6 +47,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_17_v1_martelo_alta");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

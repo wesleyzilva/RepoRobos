@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v6_saida_hibrida
   Autor: Wesley
   Descricao: Entrada por extremos de IFR e saida hibrida:
@@ -51,6 +51,8 @@ var
   iBarrasEmPosicao, iDirecaoPosicao, iDiasSemana, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: 1robo_ifr_v6_saida_hibrida60min77%");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0;

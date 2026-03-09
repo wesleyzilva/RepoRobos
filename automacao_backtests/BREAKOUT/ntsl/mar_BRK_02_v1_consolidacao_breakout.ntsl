@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_BRK_02_v1_consolidacao_breakout
   Grupo:      BREAKOUT – Tier 1 (#02)
   Descricao:  Detecta consolidacao (range interno < X pts por N barras) e
@@ -34,6 +34,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_BRK_02_v1_consolidacao_breakout");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

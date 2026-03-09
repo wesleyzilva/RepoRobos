@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_03_v1_gap_int_vwap_rompe_maxD1
   Catalogo:  #43 — Tier 1
   Descricao: Gap INTERNO + acima VWAP + corpo de alta + 1o candle fecha acima da máxima D-1
@@ -46,6 +46,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_03_v1_gap_int_vwap_rompe_maxD1");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

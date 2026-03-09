@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_15_v1_gap_parcial_fecha_acima_maxD1
   Catalogo:  #28 — Tier 2
   Descricao: 1o candle INTEIRAMENTE acima do range D-1 (gap + forca) + pullback e compras
@@ -49,6 +49,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_15_v1_gap_parcial_fecha_acima_maxD1");
   if Date <> Date[1] then
   begin
     iCandleDia            := 1;

@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v27_um_trade_por_direcao
   Autor: Wesley
   Descricao: IFR com limite de 1 trade por direcao por sessao e risco curto por tempo.
@@ -21,6 +21,8 @@ var
   bPodeComprar, bPodeVender : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v27_um_trade_por_direcao60min54%");
   fIFR := IFR(PeriodoIFR);
 
   if Date <> Date[1] then

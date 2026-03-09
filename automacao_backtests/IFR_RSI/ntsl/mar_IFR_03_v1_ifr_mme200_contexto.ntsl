@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_03_v1_ifr_mme200_contexto
   Grupo:      IFR_RSI — Tier 1 (#03)
   Descricao:  IFR reversao com filtro de contexto pela MME200.
@@ -42,6 +42,8 @@ var
   iDiaSemanaAtual                : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_03_v1_ifr_mme200_contexto");
   if Date <> Date[1] then
   begin
     iBarrasEmPosicao := 0;

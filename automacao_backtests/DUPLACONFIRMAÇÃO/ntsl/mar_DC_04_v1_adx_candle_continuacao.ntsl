@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_DC_04_v1_adx_candle_continuacao
   Grupo:      DUPLACONFIRMACAO – Tier 1 (#04)
   Descricao:  Dupla confirmacao: ADX acima de 25 (mercado em tendencia = 1a) +
@@ -23,6 +23,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DC_04_v1_adx_candle_continuacao");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v28_ifr_adx_filtro
   Autor: Wesley
   Descricao: IFR com filtro de forca de tendencia por ADX.
@@ -23,6 +23,8 @@ var
   bTendenciaValida : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v28_ifr_adx_filtro30min57%");
   fIFR := IFR(PeriodoIFR);
   fADX := ADX(PeriodoADX, PeriodoADX);
   bTendenciaValida := (fADX >= ADXMinimo);

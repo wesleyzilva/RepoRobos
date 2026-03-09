@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_04_v1_bandas_dinamicas
   Grupo:      IFR_RSI — Tier 2 (#04)
   Descricao:  Bandas dinamicas do IFR: calcula o percentil 25 (zona sobrevenda)
@@ -45,6 +45,8 @@ var
   iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_04_v1_bandas_dinamicas");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

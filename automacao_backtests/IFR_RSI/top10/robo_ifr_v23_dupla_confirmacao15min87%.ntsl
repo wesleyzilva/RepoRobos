@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v23_dupla_confirmacao
   Autor: Wesley
   Descricao: IFR com zona neutra (no-trade zone) e confirmacao por 2 candles.
@@ -23,6 +23,8 @@ var
   bConfirmacaoCompra, bConfirmacaoVenda, bForaZonaNeutra : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v23_dupla_confirmacao15min87%");
   fIFR := IFR(PeriodoIFR);
 
   bConfirmacaoCompra := (Close > Close[1]) and (Close[1] > Close[2]);

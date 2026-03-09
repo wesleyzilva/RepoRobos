@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_5M1_03_v1_gap_continuacao
   Grupo:      50mais1 – Tier 1 (#03)
   Descricao:  Entra no gap de abertura (diferenca entre abertura e fechamento anterior
@@ -40,6 +40,8 @@ var
   iDiaSemanaAtual  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_5M1_03_v1_gap_continuacao");
   if Date <> Date[1] then
   begin
     fResultadoDia   := 0;

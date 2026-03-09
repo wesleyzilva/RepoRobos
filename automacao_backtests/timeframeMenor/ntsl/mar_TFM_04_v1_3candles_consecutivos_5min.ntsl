@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_TFM_04_v1_3candles_consecutivos_5min
 // Grupo: timeframeMenor
 // Versão: v1 | Timeframe sugerido: 5min
@@ -33,6 +33,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TFM_04_v1_3candles_consecutivos_5min");
 
   if (Date <> DataAnterior) then
   begin

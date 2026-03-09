@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_02_v1_reversao_volume_relativo
   Grupo:      IFR_RSI — Tier 1 (#02)
   Descricao:  Reversao de IFR (extremo → retorno) com filtro de volume relativo.
@@ -46,6 +46,8 @@ var
   iDiaSemanaAtual                : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_02_v1_reversao_volume_relativo");
   if Date <> Date[1] then
   begin
     iBarrasEmPosicao := 0;

@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v5_regime_volatilidade
   Autor: Wesley
   Descricao: Ajusta extremos de IFR por regime de volatilidade (ATR relativo).
@@ -49,6 +49,8 @@ var
   iDirecaoPosicao, iDiasSemana, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: 2robo_ifr_v5_regime_volatilidade60min90%");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0;

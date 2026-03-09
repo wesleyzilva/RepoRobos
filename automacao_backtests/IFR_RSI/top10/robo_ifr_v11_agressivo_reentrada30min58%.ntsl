@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v11_agressivo_reentrada
   Autor: Wesley
   Descricao: Abordagem agressiva com zona IFR mais aberta e uma reentrada por direcao.
@@ -21,6 +21,8 @@ var
   fIFR : float;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v11_agressivo_reentrada30min58%");
   fIFR := IFR(PeriodoIFR);
 
   if (not IsBought) and (not IsSold) then

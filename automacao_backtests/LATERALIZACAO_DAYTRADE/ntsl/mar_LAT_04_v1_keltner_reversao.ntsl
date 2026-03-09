@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_LAT_04_v1_keltner_reversao
 // Grupo: LATERALIZACAO_DAYTRADE
 // Versão: v1 | Timeframe sugerido: 5min / 15min
@@ -36,6 +36,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAT_04_v1_keltner_reversao");
 
   if (Date <> DataAnterior) then
   begin

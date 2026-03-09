@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_27_v1_breakout_maxD1
   Catalogo:  #49 — Tier 3
   Descricao: Abertura proxima da maxima D-1 (zona de resistencia) + VWAP abaixo (suporte)
@@ -46,6 +46,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_27_v1_breakout_maxD1");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

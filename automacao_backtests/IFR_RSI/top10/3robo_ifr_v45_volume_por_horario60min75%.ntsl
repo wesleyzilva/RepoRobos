@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v45_volume_por_horario
   Autor: Wesley
   Descricao: IFR com filtro de volume relativo por janela horaria simples.
@@ -46,6 +46,8 @@ var
   iDirecaoPosicao, iDiasSemana, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: 3robo_ifr_v45_volume_por_horario60min75%");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0;

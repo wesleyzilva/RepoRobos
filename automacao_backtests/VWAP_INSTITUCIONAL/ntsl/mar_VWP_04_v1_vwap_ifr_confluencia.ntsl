@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_VWP_04_v1_vwap_ifr_confluencia
 // Grupo: VWAP_INSTITUCIONAL
 // Versão: v1 | Timeframe: 5min / 15min
@@ -36,6 +36,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_VWP_04_v1_vwap_ifr_confluencia");
 
   if (Date <> DataAnterior) then
   begin

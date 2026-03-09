@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_5M1_01_v1_candle_forca_50pts
   Grupo:      50mais1 – Tier 1 (#01)
   Descricao:  Entra quando candle atual tem range >= 50 pontos e fecha
@@ -40,6 +40,8 @@ var
   iDiaSemanaAtual  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_5M1_01_v1_candle_forca_50pts");
   if Date <> Date[1] then
   begin
     fResultadoDia   := 0;

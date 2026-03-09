@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_TND_04_v1_donchian_tendencia
 // Grupo: TENDENCIA_SEGUIR
 // Versão: v1 | Timeframe: 30min / 60min
@@ -35,6 +35,8 @@ var
   StopLoss: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TND_04_v1_donchian_tendencia");
 
   if (Date <> DataAnterior) then
   begin

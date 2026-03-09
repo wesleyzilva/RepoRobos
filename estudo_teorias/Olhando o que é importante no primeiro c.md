@@ -1,0 +1,2 @@
+Olhando o que é importante no primeiro candle do dia como posição da VWAP, qual a relação dele em relação a minima e maxima do dia anterior, qual o tipo de candle relacionado ao price action, qual a posição e tamanho do gap.
+Preciso criar 50 versoes de robos de trading que analisem esses fatores e tomem decisões de compra ou venda com base neles. Cada robô deve ser programado para identificar padrões específicos no primeiro candle do dia e agir de acordo com as regras pré-definidas.

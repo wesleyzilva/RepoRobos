@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v24_controle_risco_diario
   Autor: Wesley
   Descricao: IFR com controle diario de risco por limite de trades e saidas por tempo.
@@ -23,6 +23,8 @@ var
   bBloqueadoDia, bSaiuPorTempo : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v24_controle_risco_diario1min67%");
   fIFR := IFR(PeriodoIFR);
 
   if Date <> Date[1] then

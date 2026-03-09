@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_DDZ_05_v1_time_stop_nao_evoluiu
   Grupo:      DRAWDOWNZERO – Tier 1 (#05)
   Descricao:  Se posicao aberta nao evolui em X barras (preco nao avancou
@@ -24,6 +24,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DDZ_05_v1_time_stop_nao_evoluiu");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

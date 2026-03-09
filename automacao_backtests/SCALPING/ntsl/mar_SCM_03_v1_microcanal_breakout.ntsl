@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_SCM_03_v1_microcanal_breakout
 // Grupo: SCALPING
 // Versão: v1 | Timeframe: 2min / 5min
@@ -33,6 +33,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_SCM_03_v1_microcanal_breakout");
 
   if (Date <> DataAnterior) then
   begin

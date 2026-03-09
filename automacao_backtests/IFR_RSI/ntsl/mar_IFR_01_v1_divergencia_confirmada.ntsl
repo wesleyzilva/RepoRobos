@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_01_v1_divergencia_confirmada
   Grupo:      IFR_RSI — Tier 1 (#01)
   Descricao:  Divergencia bullish/bearish de IFR confirmada por candle de rejeicao
@@ -51,6 +51,8 @@ var
   iDiaSemanaAtual                : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_01_v1_divergencia_confirmada");
   // ── NOVO DIA: reset ──────────────────────────────────────────
   if Date <> Date[1] then
   begin

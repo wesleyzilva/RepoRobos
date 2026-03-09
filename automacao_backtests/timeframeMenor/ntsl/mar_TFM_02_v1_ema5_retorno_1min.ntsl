@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_TFM_02_v1_ema5_retorno_1min
 // Grupo: timeframeMenor
 // Versão: v1 | Timeframe sugerido: 1min
@@ -40,6 +40,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TFM_02_v1_ema5_retorno_1min");
 
   if (Date <> DataAnterior) then
   begin

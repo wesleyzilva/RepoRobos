@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_BRK_03_v1_bollinger_squeeze_expansao
   Grupo:      BREAKOUT – Tier 1 (#03)
   Descricao:  Bollinger Bands squeeze (largura < X%) + rompimento da banda.
@@ -20,6 +20,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_BRK_03_v1_bollinger_squeeze_expansao");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

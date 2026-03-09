@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_TFM_01_v1_abertura_impulso_2min
 // Grupo: timeframeMenor
 // Versão: v1 | Timeframe sugerido: 2min
@@ -34,6 +34,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TFM_01_v1_abertura_impulso_2min");
 
   if (Date <> DataAnterior) then
   begin

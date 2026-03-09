@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_LAB_05_v1_obv_divergencia
 // Grupo: LABORATORIO_INDICADORES
 // Versão: v1 | Timeframe sugerido: 15min / 30min
@@ -39,6 +39,8 @@ var
   DivergenciaBull, DivergenciaBear: boolean;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAB_05_v1_obv_divergencia");
 
   // ---- Reset diário ----
   if (Date <> DataAnterior) then

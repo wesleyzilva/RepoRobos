@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_20_v1_forca_pura_baixa
   Catalogo:  #40 — Tier 2
   Descricao: Corpo de baixa > 60% + fecha proximo da minima C1 (<= 5% do range) + gap interno
@@ -50,6 +50,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_20_v1_forca_pura_baixa");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_MED_03_v1_posicao_4_medias
   Grupo:      MEDIAS — Tier 1 (#03)
   Descricao:  Analisa a posicao relativa do preco em relacao as 4 medias moveis
@@ -52,6 +52,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_MED_03_v1_posicao_4_medias");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

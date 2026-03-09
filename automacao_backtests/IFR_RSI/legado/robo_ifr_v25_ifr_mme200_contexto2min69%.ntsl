@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v25_ifr_mme200_contexto
   Autor: Wesley
   Descricao: IFR com filtro de contexto pela MME200.
@@ -22,6 +22,8 @@ var
   bContextoCompra, bContextoVenda : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v25_ifr_mme200_contexto2min69%");
   fIFR := IFR(PeriodoIFR);
   fMME200 := MediaExp(PeriodoMMEContexto, Close);
 

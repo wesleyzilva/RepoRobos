@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_TND_05_v1_ifr_continuacao_tendencia
 // Grupo: TENDENCIA_SEGUIR
 // Versão: v1 | Timeframe: 30min / 60min
@@ -40,6 +40,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TND_05_v1_ifr_continuacao_tendencia");
 
   if (Date <> DataAnterior) then
   begin

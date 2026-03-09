@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_MED_02_v1_cruzamento_mme9_mma50
   Grupo:      MEDIAS — Tier 1 (#02)
   Descricao:  Cruzamento entre MME9 (curto prazo) e MMA50 (medio prazo).
@@ -52,6 +52,8 @@ var
   bAcimaConsecutivo : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_MED_02_v1_cruzamento_mme9_mma50");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

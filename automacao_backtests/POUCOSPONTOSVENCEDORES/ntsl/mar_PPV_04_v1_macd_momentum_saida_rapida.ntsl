@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_PPV_04_v1_macd_momentum_saida_rapida
   Grupo:      POUCOSPONTOSVENCEDORES — #04
   Descricao:  MACD — entrada no cruzamento da linha zero (momentum acelerando).
@@ -53,6 +53,8 @@ var
   iStopsConsec, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PPV_04_v1_macd_momentum_saida_rapida");
   if Date <> Date[1] then
   begin
     iBarrasEmPosicao := 0;

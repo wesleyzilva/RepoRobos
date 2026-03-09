@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_19_v1_forca_pura_alta
   Catalogo:  #39 — Tier 2
   Descricao: Corpo de alta > 60% + fecha proximo da maxima C1 (>= 98% do range) + gap interno
@@ -50,6 +50,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_19_v1_forca_pura_alta");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_HOR_03_v1_reversao_almoco
   Grupo:      HORARIO_ESPECIFICO – Tier 1 (#03)
   Descricao:  Opera das 12h00 as 13h30 (horario de almoco / baixa liquidez).
@@ -22,6 +22,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_HOR_03_v1_reversao_almoco");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_HOR_04_v1_abertura_ny_momentum
   Grupo:      HORARIO_ESPECIFICO – Tier 1 (#04)
   Descricao:  Opera das 15h30 as 17h00 (abertura bolsas EUA / alta volatilidade).
@@ -21,6 +21,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_HOR_04_v1_abertura_ny_momentum");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

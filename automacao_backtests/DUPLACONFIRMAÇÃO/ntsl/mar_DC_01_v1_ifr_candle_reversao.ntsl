@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_DC_01_v1_ifr_candle_reversao
   Grupo:      DUPLACONFIRMACAO – Tier 1 (#01)
   Descricao:  Dupla confirmacao: IFR em extremo (1a) + candle de reversao
@@ -23,6 +23,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DC_01_v1_ifr_candle_reversao");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

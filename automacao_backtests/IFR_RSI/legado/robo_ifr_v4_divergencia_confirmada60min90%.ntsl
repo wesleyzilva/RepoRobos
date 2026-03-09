@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v4_divergencia_confirmada
   Autor: Wesley
   Descricao: Divergencia simples de IFR com confirmacao por candle de rejeicao.
@@ -22,6 +22,8 @@ var
   bDivergenciaAlta, bDivergenciaBaixa : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v4_divergencia_confirmada60min90%");
   fIFR := IFR(PeriodoIFR);
   vMediaVol := Media(PeriodoMediaVolume, Volume);
   bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));

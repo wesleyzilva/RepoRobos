@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_09_v1_pullback_mme200
   Grupo:      IFR_RSI — Tier 1 (#09)
   Descricao:  Opera pullback do IFR quando o preco esta acima da MME200
@@ -54,6 +54,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_09_v1_pullback_mme200");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

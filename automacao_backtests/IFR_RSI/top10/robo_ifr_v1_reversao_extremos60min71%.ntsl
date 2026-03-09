@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v1_reversao_extremos
   Autor: Wesley
   Descricao: Reversao por extremos de IFR com candle de rejeicao + volume.
@@ -24,6 +24,8 @@ var
   bSinalCompra, bSinalVenda : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v1_reversao_extremos60min71%");
   fIFR := IFR(PeriodoIFR);
   vMediaVol := Media(PeriodoMediaVolume, Volume);
   bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));

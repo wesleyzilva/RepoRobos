@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_LSW_05_v1_macd_histograma_lateral
 // Grupo: LATERALIZACAO_SWINGTRADE
 // Versão: v1 | Timeframe: 60min / 240min
@@ -39,6 +39,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LSW_05_v1_macd_histograma_lateral");
 
   if (Date <> DataAnterior) then
   begin

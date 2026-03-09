@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_PPV_03_v1_estocastico_trailing
   Grupo:      POUCOSPONTOSVENCEDORES — #03
   Descricao:  Estocástico rápido (5,3) — crossover em zona extrema (<20 / >80).
@@ -49,6 +49,8 @@ var
   iStopsConsec, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PPV_03_v1_estocastico_trailing");
   if Date <> Date[1] then
   begin
     iBarrasEmPosicao := 0;

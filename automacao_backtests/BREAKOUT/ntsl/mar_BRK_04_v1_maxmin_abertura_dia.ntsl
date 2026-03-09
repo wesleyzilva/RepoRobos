@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_BRK_04_v1_maxmin_abertura_dia
   Grupo:      BREAKOUT – Tier 1 (#04)
   Descricao:  Mapeia range das primeiras N barras do dia e entra no rompimento.
@@ -23,6 +23,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_BRK_04_v1_maxmin_abertura_dia");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

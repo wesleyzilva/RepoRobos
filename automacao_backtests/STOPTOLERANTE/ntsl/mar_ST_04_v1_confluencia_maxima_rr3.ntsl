@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // mar_ST_04_v1_confluencia_maxima_rr3.ntsl
 // Grupo: STOPTOLERANTE | Versão: 1.0 | Timeframe: 60min
 // Descrição: Confluência máxima (IFR + MME200 + MME9/21 + volume)
@@ -48,6 +48,8 @@ var emOperacao     : boolean;
 
 // ----- INÍCIO -----
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_ST_04_v1_confluencia_maxima_rr3");
   ifr      := IFR(IFR_Periodo, 0);
   mme9     := MediaExp(MME9_Periodo, 0);
   mme21    := MediaExp(MME21_Periodo, 0);

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_HOR_02_v1_momentum_manha
   Grupo:      HORARIO_ESPECIFICO – Tier 1 (#02)
   Descricao:  Opera somente das 10h00 as 11h30 (leilao da manha).
@@ -23,6 +23,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_HOR_02_v1_momentum_manha");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

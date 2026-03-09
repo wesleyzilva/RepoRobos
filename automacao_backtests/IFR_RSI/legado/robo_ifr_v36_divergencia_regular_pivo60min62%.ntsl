@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v36_divergencia_regular_pivo
   Autor: Wesley
   Descricao: Divergencia regular de IFR com confirmacao por rompimento de pivo curto.
@@ -19,6 +19,8 @@ var
   bDivCompra, bDivVenda : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v36_divergencia_regular_pivo60min62%");
   fIFR := IFR(PeriodoIFR);
   fIFRAnt := IFR(PeriodoIFR)[1];
   fPivoAlta := Highest(High, LookbackPivo)[1];

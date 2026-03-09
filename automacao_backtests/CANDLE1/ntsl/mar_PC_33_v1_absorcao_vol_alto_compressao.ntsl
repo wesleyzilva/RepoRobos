@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_33_v1_absorcao_vol_alto_compressao
   Catalogo:  #60 — Tier 3
   Descricao: Range C1 < 20% do ATR (compressao extrema) + volume > 1.5x media = absorcao
@@ -45,6 +45,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_33_v1_absorcao_vol_alto_compressao");
   if Date <> Date[1] then
   begin
     iCandleDia          := 1;

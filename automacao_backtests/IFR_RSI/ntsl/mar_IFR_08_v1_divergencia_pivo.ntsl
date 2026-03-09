@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_08_v1_divergencia_pivo
   Grupo:      IFR_RSI — Tier 2 (#08)
   Descricao:  Divergencia regular do IFR + confirmacao de rompimento de pivo
@@ -50,6 +50,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_08_v1_divergencia_pivo");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

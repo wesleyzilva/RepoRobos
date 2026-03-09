@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // mar_ST_03_v1_candle_forca_stop_atr15x.ntsl
 // Grupo: STOPTOLERANTE | Versão: 1.0 | Timeframe: 60min
 // Descrição: Candle de força (corpo > 65% do range total) na
@@ -47,6 +47,8 @@ var emOperacao     : boolean;
 
 // ----- INÍCIO -----
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_ST_03_v1_candle_forca_stop_atr15x");
   mme9   := MediaExp(MME9_Periodo, 0);
   mme21  := MediaExp(MME21_Periodo, 0);
   mme200 := MediaExp(MME200_Periodo, 0);

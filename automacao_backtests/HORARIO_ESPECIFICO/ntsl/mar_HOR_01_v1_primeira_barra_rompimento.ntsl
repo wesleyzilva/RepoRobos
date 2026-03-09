@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_HOR_01_v1_primeira_barra_rompimento
   Grupo:      HORARIO_ESPECIFICO – Tier 1 (#01)
   Descricao:  Opera apenas na primeira hora (09:00-10:00). Mapeia range da
@@ -24,6 +24,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_HOR_01_v1_primeira_barra_rompimento");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

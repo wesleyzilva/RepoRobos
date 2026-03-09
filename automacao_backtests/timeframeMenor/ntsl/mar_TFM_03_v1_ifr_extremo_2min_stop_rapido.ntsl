@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_TFM_03_v1_ifr_extremo_2min_stop_rapido
 // Grupo: timeframeMenor
 // Versão: v1 | Timeframe sugerido: 2min
@@ -35,6 +35,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TFM_03_v1_ifr_extremo_2min_stop_rapido");
 
   if (Date <> DataAnterior) then
   begin

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_32_v1_absorcao_vol_medio
   Catalogo:  #55 — Tier 3
   Descricao: Volume 1.5x-3x a media + corpo pequeno (< 30% range) = absorcao/luta de preco.
@@ -45,6 +45,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_32_v1_absorcao_vol_medio");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v10_balanceado_regime
   Autor: Wesley
   Descricao: Abordagem balanceada com logica por regime de mercado.
@@ -26,6 +26,8 @@ var
   bVolumeAlto, bRegimeTendenciaAlta, bRegimeTendenciaBaixa, bRegimeLateral : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v10_balanceado_regime60min63%");
   fIFR := IFR(PeriodoIFR);
   fMME9 := MediaExp(PeriodoMMERapida, Close);
   fMME9Anterior := MediaExp(PeriodoMMERapida, Close)[1];

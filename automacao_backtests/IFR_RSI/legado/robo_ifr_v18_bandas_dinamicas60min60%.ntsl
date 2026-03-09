@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v18_bandas_dinamicas
   Autor: Wesley
   Descricao: Bandas dinamicas de IFR baseadas em range do proprio indicador.
@@ -19,6 +19,8 @@ var
   fIFR, fMinIFR, fMaxIFR, fRangeIFR, fNivelCompra, fNivelVenda : float;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v18_bandas_dinamicas60min60%");
   fIFR := IFR(PeriodoIFR);
   fMinIFR := Lowest(IFR(PeriodoIFR), LookbackBandas);
   fMaxIFR := Highest(IFR(PeriodoIFR), LookbackBandas);

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_LAB_04_v1_williams_r_pullback
 // Grupo: LABORATORIO_INDICADORES
 // Versão: v1 | Timeframe sugerido: 15min / 60min
@@ -35,6 +35,8 @@ var
   StopPcts: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAB_04_v1_williams_r_pullback");
 
   // ---- Reset diário ----
   if (Date <> DataAnterior) then

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_LAT_02_v1_bollinger_reversao_range
 // Grupo: LATERALIZACAO_DAYTRADE
 // Versão: v1 | Timeframe sugerido: 5min / 15min
@@ -34,6 +34,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAT_02_v1_bollinger_reversao_range");
 
   if (Date <> DataAnterior) then
   begin

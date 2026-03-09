@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v47_orb_confirmacao_dupla
   Autor: Wesley
   Descricao: ORB + IFR com dupla confirmacao de direcao por candles.
@@ -22,6 +22,8 @@ var
   bConfCompra, bConfVenda : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v47_orb_confirmacao_dupla60min66%");
   fIFR := IFR(PeriodoIFR);
 
   if Date <> Date[1] then

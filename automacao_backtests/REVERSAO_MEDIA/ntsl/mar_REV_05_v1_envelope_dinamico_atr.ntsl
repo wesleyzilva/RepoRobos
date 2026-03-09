@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_REV_05_v1_envelope_dinamico_atr
 // Grupo: REVERSAO_MEDIA
 // Versão: v1 | Timeframe: 15min / 30min
@@ -35,6 +35,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_REV_05_v1_envelope_dinamico_atr");
 
   if (Date <> DataAnterior) then
   begin

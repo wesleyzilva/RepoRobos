@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_04_v1_gap_int_vwap_rompe_minD1
   Catalogo:  #44 — Tier 1
   Descricao: Gap INTERNO + abaixo VWAP + corpo de baixa + 1o candle fecha abaixo da mínima D-1
@@ -46,6 +46,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_04_v1_gap_int_vwap_rompe_minD1");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_PPV_05_v1_parciais_multiplos
   Grupo:      POUCOSPONTOSVENCEDORES – Tier 1 (#05)
   Descricao:  Entrada por IFR extremo + saida em tres parciais progressivas.
@@ -48,6 +48,8 @@ var
   iDiaSemanaAtual      : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PPV_05_v1_parciais_multiplos");
   // ── NOVO DIA: reset ──────────────────────────────────────────
   if Date <> Date[1] then
   begin

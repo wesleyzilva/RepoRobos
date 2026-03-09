@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_01_v1_gap_ext_alta_vwap_vol
   Catalogo:  #41 — Tier 1
   Descricao: Gap externo para CIMA + preço acima VWAP diaria + corpo >70% + volume climático
@@ -57,6 +57,8 @@ var
   iDiaSemanaAtual                       : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_01_v1_gap_ext_alta_vwap_vol");
   // ── NOVO DIA: reset variáveis ────────────────────────────────
   if Date <> Date[1] then
   begin

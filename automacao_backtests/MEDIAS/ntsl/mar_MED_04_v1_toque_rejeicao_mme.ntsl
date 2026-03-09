@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_MED_04_v1_toque_rejeicao_mme
   Grupo:      MEDIAS — Tier 2 (#04)
   Descricao:  Opera toque e rejeicao em media movel exponencial de referencia
@@ -55,6 +55,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_MED_04_v1_toque_rejeicao_mme");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

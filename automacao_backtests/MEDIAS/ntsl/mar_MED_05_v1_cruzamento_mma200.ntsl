@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_MED_05_v1_cruzamento_mma200
   Grupo:      MEDIAS — Tier 1 (#05)
   Descricao:  Usa o cruzamento da MMA200 como filtro de tendencia de longo
@@ -49,6 +49,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_MED_05_v1_cruzamento_mma200");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

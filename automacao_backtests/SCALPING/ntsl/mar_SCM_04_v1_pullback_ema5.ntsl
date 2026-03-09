@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_SCM_04_v1_pullback_ema5
 // Grupo: SCALPING
 // Versão: v1 | Timeframe: 1min / 2min
@@ -34,6 +34,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_SCM_04_v1_pullback_ema5");
 
   if (Date <> DataAnterior) then
   begin

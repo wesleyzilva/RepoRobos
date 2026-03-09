@@ -1,13 +1,12 @@
-//+------------------------------------------------------------------+
-//|  mar_IFR_01_XAUUSD.mq5                                          |
-//|  Grupo: IFR_RSI — Versao MT5                                    |
-//|  Descricao: Divergencia bullish/bearish de IFR com candle de    |
-//|             rejeicao. Adaptado de mar_IFR_01 (Profit) para MT5. |
-//|             Funciona muito bem em XAUUSD pela volatilidade e    |
-//|             reversoes tecnicas frequentes no ouro.              |
-//|  Ativo: XAUUSD (Ouro) — tambem testavel em NAS100, US500       |
-//|  Timeframe: M30 / H1                                           |
-//|  Versao: 1.0 — marco/2026                                       |
+﻿//+------------------------------------------------------------------+
+//|  mar_MT5_PPV01_exemplo.mq5                                       |
+//|  Grupo: POUCOSPONTOSVENCEDORES — Versao MT5                      |
+//|  Descricao: IFR reversao + trailing ATR agressivo + break-even   |
+//|             Projeto de EXEMPLO para testar configuracao e        |
+//|             rodar o primeiro backtest antes do simulador.        |
+//|  Ativo sugerido: XAUUSD (Ouro) ou US30 (Dow Jones)              |
+//|  Timeframe: M15 ou M30                                           |
+//|  Versao: 1.0 — marco/2026                                        |
 //+------------------------------------------------------------------+
 
 #property copyright "Wesley — RepoRobos"
@@ -16,239 +15,382 @@
 
 #include <Trade\Trade.mqh>
 
+//--- Objeto de trade (encapsula ordens)
 CTrade trade;
 
 //+------------------------------------------------------------------+
-//| Parametros de entrada                                            |
+//| Parametros de entrada (aparecem no Strategy Tester)              |
 //+------------------------------------------------------------------+
 
-// ── IFR ───────────────────────────────────────────────────────────
-input int    PeriodoIFR         = 9;
-input int    LookbackDivergencia= 12;   // janela para comparar fundos/topos
-input double DeltaIFRMinimo     = 2.0;  // diferenca minima no IFR
+// ── IFR entry ─────────────────────────────────────────────────────
+input int    PeriodoIFR           = 9;     // Periodo do IFR
+input double IFRExtremoCompra     = 30.0;  // IFR atinge sobrevenda
+input double IFREtornoCompra      = 35.0;  // IFR sobe → sinal de compra
+input double IFRExtremoVenda      = 70.0;  // IFR atinge sobrecompra
+input double IFREtornoVenda       = 65.0;  // IFR cai → sinal de venda
 
-// ── Candle de rejeicao ────────────────────────────────────────────
-input double MultiplicadorPavio = 1.5;  // pavio >= corpo * mult
-input double MaxPavioOpostoCorpo= 1.2;
+// ── ATR gestao ────────────────────────────────────────────────────
+input int    PeriodoATR           = 14;    // Periodo do ATR
+input double FatorStopInicial     = 0.8;   // stop = 0.8 x ATR
+input double FatorAlvo            = 1.2;   // alvo = 1.2 x ATR
+input double FatorTrailing        = 0.5;   // trailing = 0.5 x ATR
 
-// ── Saida IFR ────────────────────────────────────────────────────
-input bool   UsarSaidaIFR       = true;
-input double NivelSaidaCompra   = 55.0;
-input double NivelSaidaVenda    = 45.0;
-input bool   UsarSaidaTempo     = true;
-input int    MaxBarrasPosicao   = 12;
+// ── Break-even ────────────────────────────────────────────────────
+input double BreakEvenTrigger     = 50.0;  // ativar be apos X pontos favoraveis
+input double BreakEvenOffset      = 5.0;   // be = entrada + X pontos
 
-// ── Trailing ─────────────────────────────────────────────────────
-input bool   UsarTrailing       = true;
-input double PontosTrailing     = 150.0; // em pontos do ativo (XAUUSD: 1.5 dolar)
+// ── Filtro MME200 ─────────────────────────────────────────────────
+input bool   UsarFiltroMME200     = true;  // filtro de tendencia
+input int    PeriodoMME200        = 200;
 
 // ── Gestao de risco ───────────────────────────────────────────────
-input bool   UsarGestaoRisco      = true;
+input bool   UsarGestaoRisco      = true;  // false = testar sem gestao
 input bool   UsarHardLock         = true;
-input double RiscoDiaPct          = 1.5;
+input double RiscoDiaPct          = 1.5;   // 1.5% do saldo = limite/dia
 input double RiscoSemanaPct       = 3.0;
-input int    MaxStopsConsecutivos = 2;
-input double VolumeLote           = 0.01;
+input int    MaxStopsConsecutivos = 2;     // 2 stops = trava o dia
+
+// ── Tamanho da posicao ────────────────────────────────────────────
+input double VolumeLote           = 0.01;  // SEMPRE 0.01 para conta $5000 demo
+
+// ── Tempo maximo em posicao ───────────────────────────────────────
+input int    MaxBarrasPosicao     = 4;
 
 //+------------------------------------------------------------------+
 //| Variaveis globais                                                |
 //+------------------------------------------------------------------+
-int    hIFR;
-double fPrecoEntrada;
-double fMelhorPreco;
-int    iDirecaoPosicao;
-int    iBarrasPosicao;
+int    hIFR;                    // handle do indicador IFR (RSI)
+int    hATR;                    // handle do ATR
+int    hMME200;                 // handle da MME200
+
+double fPrecoEntrada;           // preco de entrada da posicao corrente
+double fStop;                   // stop atual
+double fAlvo;                   // alvo atual
+double fMelhorPreco;            // melhor preco desde a entrada
+bool   bBreakEvenAtivo;         // be ja foi ativado?
+int    iDirecaoPosicao;         // 1=compra, -1=venda, 0=sem posicao
+int    iBarrasPosicao;          // barras em posicao
+
 double fResultadoDia;
 double fResultadoSemana;
 int    iStopsConsec;
 bool   bBloqueioDia;
 bool   bBloqueioSemana;
-datetime dtUltimoBar;
-datetime dtUltimoReset;
+
+datetime dtUltimoBar;           // controle de nova barra
+datetime dtUltimoDia;           // controle de novo dia
 
 //+------------------------------------------------------------------+
-//| OnInit                                                           |
+//| Inicializacao                                                    |
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   hIFR = iRSI(_Symbol, _Period, PeriodoIFR, PRICE_CLOSE);
-   if(hIFR == INVALID_HANDLE) { Print("Erro ao criar handle IFR"); return INIT_FAILED; }
+   // Criar handles dos indicadores
+   hIFR   = iRSI(_Symbol, PERIOD_CURRENT, PeriodoIFR, PRICE_CLOSE);
+   hATR   = iATR(_Symbol, PERIOD_CURRENT, PeriodoATR);
+   hMME200 = iMA(_Symbol, PERIOD_CURRENT, PeriodoMME200, 0, MODE_EMA, PRICE_CLOSE);
+
+   if(hIFR == INVALID_HANDLE || hATR == INVALID_HANDLE || hMME200 == INVALID_HANDLE)
+   {
+      Print("[ERRO] Falha ao criar indicadores. Verifique o ativo e timeframe.");
+      return INIT_FAILED;
+   }
+
+   // Configurar objeto de trade
+   trade.SetExpertMagicNumber(202601);     // ID unico deste EA
+   trade.SetDeviationInPoints(10);         // slippage max 10 pontos
+   trade.SetTypeFilling(ORDER_FILLING_IOC);
+
+   // Reset variaveis
+   fPrecoEntrada   = 0;
+   fStop           = 0;
+   fAlvo           = 0;
+   bBreakEvenAtivo = false;
+   iDirecaoPosicao = 0;
+   iBarrasPosicao  = 0;
+   fResultadoDia   = 0;
+   fResultadoSemana = 0;
+   iStopsConsec    = 0;
+   bBloqueioDia    = false;
+   bBloqueioSemana = false;
+   dtUltimoBar     = 0;
+   dtUltimoDia     = 0;
+
+   Print("[INIT] mar_MT5_PPV01 carregado — Ativo: ", _Symbol, " TF: ", EnumToString(Period()));
+   Print("EA iniciado: " + MQLInfoString(MQL_PROGRAM_NAME) + " | " + _Symbol + " | " + EnumToString(Period()));
    return INIT_SUCCEEDED;
 }
 
 //+------------------------------------------------------------------+
-//| OnDeinit                                                         |
+//| Desinicializacao                                                 |
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
    IndicatorRelease(hIFR);
+   IndicatorRelease(hATR);
+   IndicatorRelease(hMME200);
+   Print("[DEINIT] EA finalizado.");
 }
 
 //+------------------------------------------------------------------+
-//| Helpers                                                          |
+//| Funcao auxiliar: verifica se ha posicao aberta deste EA          |
 //+------------------------------------------------------------------+
-bool NovaBarraIniciou()
+bool TemPosicao()
 {
-   datetime dtAtual = iTime(_Symbol, _Period, 0);
-   if(dtAtual != dtUltimoBar) { dtUltimoBar = dtAtual; return true; }
-   return false;
+   return PositionSelectByTicket(trade.RequestOrder()) ||
+          PositionSelect(_Symbol);
 }
 
-double GetIFR(int deslocamento)
+bool EstaComprado()
 {
-   double buf[]; ArraySetAsSeries(buf, true);
-   if(CopyBuffer(hIFR, 0, deslocamento, 1, buf) < 1) return 50;
-   return buf[0];
+   if(!PositionSelect(_Symbol)) return false;
+   return PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY
+       && PositionGetInteger(POSITION_MAGIC) == 202601;
 }
 
-bool TenhoCompra()  { return PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY;  }
-bool TenhoVenda()   { return PositionSelect(_Symbol) && PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL; }
-double PrecoAtualPosicao() { return PositionSelect(_Symbol) ? PositionGetDouble(POSITION_PRICE_OPEN) : 0; }
-
-//+------------------------------------------------------------------+
-//| ResetDiario                                                      |
-//+------------------------------------------------------------------+
-void ResetDiario()
+bool EstaVendido()
 {
-   MqlDateTime dt; TimeToStruct(TimeCurrent(), dt);
-   MqlDateTime dtR; TimeToStruct(dtUltimoReset, dtR);
-   if(dt.day != dtR.day)
-   {
-      fResultadoDia = 0;
-      bBloqueioDia  = false;
-      dtUltimoReset = TimeCurrent();
-      if(dt.day_of_week == 1) // segunda-feira
-      {
-         fResultadoSemana = 0;
-         bBloqueioSemana  = false;
-      }
-   }
+   if(!PositionSelect(_Symbol)) return false;
+   return PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL
+       && PositionGetInteger(POSITION_MAGIC) == 202601;
 }
 
 //+------------------------------------------------------------------+
-//| GestaoRisco: atualiza resultados e bloqueios                     |
-//+------------------------------------------------------------------+
-void AtualizarGestaoRisco()
-{
-   double saldo = AccountInfoDouble(ACCOUNT_BALANCE);
-   double limiteDia    = saldo * RiscoDiaPct    / 100.0;
-   double limiteSemana = saldo * RiscoSemanaPct / 100.0;
-
-   // Detecta fechamento de posicao
-   if(iDirecaoPosicao != 0 && !TenhoCompra() && !TenhoVenda() && fPrecoEntrada > 0)
-   {
-      double preco = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      double resultado;
-      if(iDirecaoPosicao == 1)
-         resultado = (preco - fPrecoEntrada) * VolumeLote * 100; // xauusd: $1/pip por 0.01 lot
-      else
-         resultado = (fPrecoEntrada - preco) * VolumeLote * 100;
-
-      fResultadoDia    += resultado;
-      fResultadoSemana += resultado;
-      if(resultado < 0) iStopsConsec++; else iStopsConsec = 0;
-      fPrecoEntrada = 0; iDirecaoPosicao = 0; iBarrasPosicao = 0;
-   }
-
-   if(UsarHardLock)
-   {
-      if(fResultadoDia    <= -limiteDia)    bBloqueioDia    = true;
-      if(fResultadoSemana <= -limiteSemana) bBloqueioSemana = true;
-      if(iStopsConsec     >= MaxStopsConsecutivos) bBloqueioDia = true;
-   }
-}
-
-//+------------------------------------------------------------------+
-//| OnTick                                                           |
+//| Funcao principal — rodada a cada tick                            |
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   if(!NovaBarraIniciou()) return;
-   ResetDiario();
-   if(UsarGestaoRisco) AtualizarGestaoRisco();
+   // ── SÓ PROCESSA EM NOVA BARRA ────────────────────────────────
+   datetime dtBarAtual = iTime(_Symbol, PERIOD_CURRENT, 0);
+   if(dtBarAtual == dtUltimoBar) return;
+   dtUltimoBar = dtBarAtual;
 
-   double fIFR    = GetIFR(1);
-   double fIFRAnt = GetIFR(2);
+   // ── BUFFERS DOS INDICADORES ───────────────────────────────────
+   double arrIFR[3], arrATR[2], arrMME200[2];
+   if(CopyBuffer(hIFR,    0, 0, 3, arrIFR)    < 3) return;
+   if(CopyBuffer(hATR,    0, 0, 2, arrATR)    < 2) return;
+   if(CopyBuffer(hMME200, 0, 0, 2, arrMME200) < 2) return;
 
-   // Dados do candle fechado (barra 1)
-   double highB1  = iHigh(_Symbol,  _Period, 1);
-   double lowB1   = iLow(_Symbol,   _Period, 1);
-   double openB1  = iOpen(_Symbol,  _Period, 1);
-   double closeB1 = iClose(_Symbol, _Period, 1);
+   // Barra [1] = barra fechada mais recente (usada para sinais)
+   double fIFR0    = arrIFR[1];      // barra atual fechada
+   double fIFR1    = arrIFR[2];      // barra anterior
+   double fATRval  = arrATR[1];
+   double fMME200v = arrMME200[1];
 
-   double range   = highB1 - lowB1;
-   double corpo   = MathAbs(openB1 - closeB1);
-   double pavioSup= highB1 - MathMax(openB1, closeB1);
-   double pavioInf= MathMin(openB1, closeB1) - lowB1;
+   // Precos da barra fechada
+   double fOpen1  = iOpen (_Symbol, PERIOD_CURRENT, 1);
+   double fHigh1  = iHigh (_Symbol, PERIOD_CURRENT, 1);
+   double fLow1   = iLow  (_Symbol, PERIOD_CURRENT, 1);
+   double fClose1 = iClose(_Symbol, PERIOD_CURRENT, 1);
 
-   bool bMartelo = (range > 0) && (corpo > 0)
-                && (pavioInf >= corpo * MultiplicadorPavio)
-                && (pavioSup <= corpo * MaxPavioOpostoCorpo);
+   // ── NOVO DIA: RESET ───────────────────────────────────────────
+   MqlDateTime dt; TimeToStruct(dtBarAtual, dt);
+   MqlDateTime dtAnterior; TimeToStruct(dtUltimoDia, dtAnterior);
 
-   bool bEstrela = (range > 0) && (corpo > 0)
-                && (pavioSup >= corpo * MultiplicadorPavio)
-                && (pavioInf <= corpo * MaxPavioOpostoCorpo);
-
-   // Fundos/topos minimos/maximos nos ultimos LookbackDivergencia barras
-   double lowMin = lowB1, ifrMinimo = fIFR;
-   double highMax= highB1, ifrMaximo = fIFR;
-   for(int k = 2; k <= LookbackDivergencia; k++)
+   if(dt.day != dtAnterior.day)
    {
-      double l = iLow(_Symbol, _Period, k);
-      double h = iHigh(_Symbol, _Period, k);
-      double r = GetIFR(k);
-      if(l < lowMin)  { lowMin   = l; ifrMinimo = r; }
-      if(h > highMax) { highMax  = h; ifrMaximo = r; }
+      dtUltimoDia      = dtBarAtual;
+      fResultadoDia    = 0;
+      bBloqueioDia     = false;
+
+      // Reset semanal na segunda-feira
+      if(dt.day_of_week == 1)
+      {
+         fResultadoSemana = 0;
+         bBloqueioSemana  = false;
+         iStopsConsec     = 0;
+      }
+      Print("[DIA] Novo dia — resultado resetado.");
    }
 
-   bool bDivAlta  = (lowB1  < lowMin)  && (fIFR > ifrMinimo + DeltaIFRMinimo);
-   bool bDivBaixa = (highB1 > highMax) && (fIFR < ifrMaximo - DeltaIFRMinimo);
+   // ── DETECTA FECHAMENTO DE POSICAO ────────────────────────────
+   if(UsarGestaoRisco)
+   {
+      if(iDirecaoPosicao == 1 && !EstaComprado() && fPrecoEntrada > 0)
+      {
+         double resultado = (fClose1 - fPrecoEntrada) * VolumeLote * 
+                            SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE) /
+                            SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+         fResultadoDia    += resultado;
+         fResultadoSemana += resultado;
+         if(resultado < 0) iStopsConsec++; else iStopsConsec = 0;
+         Print("[FECHOU COMPRA] Resultado: $", DoubleToString(resultado, 2),
+               " | Dia: $", DoubleToString(fResultadoDia, 2));
+         fPrecoEntrada = 0; iDirecaoPosicao = 0; bBreakEvenAtivo = false;
+      }
+      if(iDirecaoPosicao == -1 && !EstaVendido() && fPrecoEntrada > 0)
+      {
+         double resultado = (fPrecoEntrada - fClose1) * VolumeLote *
+                            SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE) /
+                            SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+         fResultadoDia    += resultado;
+         fResultadoSemana += resultado;
+         if(resultado < 0) iStopsConsec++; else iStopsConsec = 0;
+         Print("[FECHOU VENDA] Resultado: $", DoubleToString(resultado, 2),
+               " | Dia: $", DoubleToString(fResultadoDia, 2));
+         fPrecoEntrada = 0; iDirecaoPosicao = 0; bBreakEvenAtivo = false;
+      }
 
-   // ── SAIDAS ──────────────────────────────────────────────────
-   if(TenhoCompra())
+      // Verificar limites
+      double saldo      = AccountInfoDouble(ACCOUNT_BALANCE);
+      double limiteDia  = saldo * (RiscoDiaPct / 100.0);
+      double limiteSem  = saldo * (RiscoSemanaPct / 100.0);
+
+      if(UsarHardLock)
+      {
+         if(fResultadoDia <= -limiteDia)
+         { bBloqueioDia = true; Print("[LOCK] Limite do dia atingido: $", DoubleToString(fResultadoDia, 2)); }
+         if(fResultadoSemana <= -limiteSem)
+         { bBloqueioSemana = true; Print("[LOCK] Limite da semana atingido."); }
+         if(iStopsConsec >= MaxStopsConsecutivos)
+         { bBloqueioDia = true; Print("[LOCK] ", MaxStopsConsecutivos, " stops consecutivos — bloqueado."); }
+      }
+   }
+
+   // ── GESTAO DA POSICAO ABERTA ─────────────────────────────────
+   if(EstaComprado())
    {
       iBarrasPosicao++;
-      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      if(bid > fMelhorPreco) fMelhorPreco = bid;
 
-      bool sair = false;
-      if(UsarSaidaIFR   && fIFR >= NivelSaidaCompra)        sair = true;
-      if(UsarSaidaTempo && iBarrasPosicao >= MaxBarrasPosicao) sair = true;
-      if(UsarTrailing   && fMelhorPreco > 0 && bid < fMelhorPreco - PontosTrailing * _Point) sair = true;
-      if(sair) trade.PositionClose(_Symbol);
+      // Preco atual para gestao
+      double fAtual = fClose1;
+      if(fAtual > fMelhorPreco) fMelhorPreco = fAtual;
+
+      // Break-even
+      if(!bBreakEvenAtivo && (fMelhorPreco >= fPrecoEntrada + BreakEvenTrigger))
+      {
+         fStop = fPrecoEntrada + BreakEvenOffset;
+         bBreakEvenAtivo = true;
+         trade.PositionModify(_Symbol, fStop, fAlvo);
+         Print("[BE] Break-even ativado em ", DoubleToString(fStop, _Digits));
+      }
+
+      // Trailing apos be
+      if(bBreakEvenAtivo)
+      {
+         double novoStop = fMelhorPreco - (fATRval * FatorTrailing);
+         if(novoStop > fStop)
+         {
+            fStop = novoStop;
+            trade.PositionModify(_Symbol, fStop, fAlvo);
+         }
+      }
+
+      // Saida por tempo
+      if(iBarrasPosicao >= MaxBarrasPosicao)
+      {
+         trade.PositionClose(_Symbol);
+         Print("[SAIDA TEMPO] ", MaxBarrasPosicao, " barras — fechando.");
+         iBarrasPosicao = 0;
+      }
    }
-
-   if(TenhoVenda())
+   else if(EstaVendido())
    {
       iBarrasPosicao++;
-      double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      if(fMelhorPreco == 0 || ask < fMelhorPreco) fMelhorPreco = ask;
+      double fAtual = fClose1;
+      if(fAtual < fMelhorPreco) fMelhorPreco = fAtual;
 
-      bool sair = false;
-      if(UsarSaidaIFR   && fIFR <= NivelSaidaVenda)           sair = true;
-      if(UsarSaidaTempo && iBarrasPosicao >= MaxBarrasPosicao) sair = true;
-      if(UsarTrailing   && fMelhorPreco > 0 && ask > fMelhorPreco + PontosTrailing * _Point) sair = true;
-      if(sair) trade.PositionClose(_Symbol);
+      if(!bBreakEvenAtivo && (fMelhorPreco <= fPrecoEntrada - BreakEvenTrigger))
+      {
+         fStop = fPrecoEntrada - BreakEvenOffset;
+         bBreakEvenAtivo = true;
+         trade.PositionModify(_Symbol, fStop, fAlvo);
+         Print("[BE] Break-even ativado em ", DoubleToString(fStop, _Digits));
+      }
+
+      if(bBreakEvenAtivo)
+      {
+         double novoStop = fMelhorPreco + (fATRval * FatorTrailing);
+         if(novoStop < fStop)
+         {
+            fStop = novoStop;
+            trade.PositionModify(_Symbol, fStop, fAlvo);
+         }
+      }
+
+      if(iBarrasPosicao >= MaxBarrasPosicao)
+      {
+         trade.PositionClose(_Symbol);
+         Print("[SAIDA TEMPO] ", MaxBarrasPosicao, " barras — fechando.");
+         iBarrasPosicao = 0;
+      }
    }
-
-   // ── ENTRADAS ────────────────────────────────────────────────
-   if(!TenhoCompra() && !TenhoVenda())
+   else
    {
       iBarrasPosicao = 0;
-      if(UsarGestaoRisco && (bBloqueioDia || bBloqueioSemana)) return;
+   }
 
-      double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   // ── ENTRADA — SO SE NAO TIVER POSICAO ────────────────────────
+   if(!EstaComprado() && !EstaVendido()
+   && !(UsarGestaoRisco && (bBloqueioDia || bBloqueioSemana)))
+   {
+      bool bContextoCompra = !UsarFiltroMME200 || (fClose1 > fMME200v);
+      bool bContextoVenda  = !UsarFiltroMME200 || (fClose1 < fMME200v);
 
-      if(bDivAlta && bMartelo)
+      // Sinal de COMPRA: IFR estava em sobrevenda e subiu de volta
+      if(bContextoCompra && (fIFR1 <= IFRExtremoCompra) && (fIFR0 >= IFREtornoCompra))
       {
-         trade.Buy(VolumeLote, _Symbol, ask, 0, 0, "IFR_div_alta");
-         fPrecoEntrada = ask; iDirecaoPosicao = 1; fMelhorPreco = ask;
+         double sl = iLow(_Symbol, PERIOD_CURRENT, 1) - (fATRval * FatorStopInicial);
+         double tp = iClose(_Symbol, PERIOD_CURRENT, 0) + (fATRval * FatorAlvo);
+
+         // Normalizar precos para o ativo
+         sl = NormalizeDouble(sl, _Digits);
+         tp = NormalizeDouble(tp, _Digits);
+
+         if(trade.Buy(VolumeLote, _Symbol, 0, sl, tp, "mar_IFR_01_XAUUSD"))
+         {
+            fPrecoEntrada   = trade.ResultPrice();
+            fStop           = sl;
+            fAlvo           = tp;
+            fMelhorPreco    = fPrecoEntrada;
+            bBreakEvenAtivo = false;
+            iDirecaoPosicao = 1;
+            iBarrasPosicao  = 0;
+            Print("[ENTRADA COMPRA] IFR=", DoubleToString(fIFR0, 1),
+                  " Preco=", DoubleToString(fPrecoEntrada, _Digits),
+                  " SL=", DoubleToString(sl, _Digits),
+                  " TP=", DoubleToString(tp, _Digits));
+         }
       }
-      else if(bDivBaixa && bEstrela)
+      // Sinal de VENDA: IFR estava em sobrecompra e caiu de volta
+      else if(bContextoVenda && (fIFR1 >= IFRExtremoVenda) && (fIFR0 <= IFREtornoVenda))
       {
-         trade.Sell(VolumeLote, _Symbol, bid, 0, 0, "IFR_div_baixa");
-         fPrecoEntrada = bid; iDirecaoPosicao = -1; fMelhorPreco = bid;
+         double sl = iHigh(_Symbol, PERIOD_CURRENT, 1) + (fATRval * FatorStopInicial);
+         double tp = iClose(_Symbol, PERIOD_CURRENT, 0) - (fATRval * FatorAlvo);
+
+         sl = NormalizeDouble(sl, _Digits);
+         tp = NormalizeDouble(tp, _Digits);
+
+         if(trade.Sell(VolumeLote, _Symbol, 0, sl, tp, "mar_IFR_01_XAUUSD"))
+         {
+            fPrecoEntrada   = trade.ResultPrice();
+            fStop           = sl;
+            fAlvo           = tp;
+            fMelhorPreco    = fPrecoEntrada;
+            bBreakEvenAtivo = false;
+            iDirecaoPosicao = -1;
+            iBarrasPosicao  = 0;
+            Print("[ENTRADA VENDA] IFR=", DoubleToString(fIFR0, 1),
+                  " Preco=", DoubleToString(fPrecoEntrada, _Digits),
+                  " SL=", DoubleToString(sl, _Digits),
+                  " TP=", DoubleToString(tp, _Digits));
+         }
       }
    }
 }
+
+//+------------------------------------------------------------------+
+//| Evento de trade (log de cada operacao executada)                 |
+//+------------------------------------------------------------------+
+void OnTradeTransaction(const MqlTradeTransaction &trans,
+                        const MqlTradeRequest &request,
+                        const MqlTradeResult &result)
+{
+   if(trans.type == TRADE_TRANSACTION_DEAL_ADD)
+   {
+      Print("[TRADE] Deal executado — Tipo: ", EnumToString((ENUM_DEAL_TYPE)trans.deal_type),
+            " | Volume: ", DoubleToString(trans.volume, 2),
+            " | Price: ", DoubleToString(trans.price, _Digits));
+   }
+}
+//+------------------------------------------------------------------+

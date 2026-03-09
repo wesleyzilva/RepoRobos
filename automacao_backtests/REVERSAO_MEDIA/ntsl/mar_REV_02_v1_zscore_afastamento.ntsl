@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_REV_02_v1_zscore_afastamento
 // Grupo: REVERSAO_MEDIA
 // Versão: v1 | Timeframe: 15min / 30min
@@ -34,6 +34,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_REV_02_v1_zscore_afastamento");
 
   if (Date <> DataAnterior) then
   begin

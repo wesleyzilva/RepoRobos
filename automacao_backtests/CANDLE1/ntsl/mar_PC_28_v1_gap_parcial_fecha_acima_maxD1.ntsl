@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_28_v1_gap_parcial_fecha_acima_maxD1_simples
   Catalogo:  #8 — Tier 3
   Descricao: Gap parcial para cima (abertura entre fechD1 e maxD1) + 1o candle fecha ACIMA
@@ -45,6 +45,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_28_v1_gap_parcial_fecha_acima_maxD1");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_LAB_02_v1_estocastico_cruzamento
   Grupo:      LABORATORIO_INDICADORES – Tier 1 (#02)
   Descricao:  Estocastico Lento: %K cruza %D em zonas extremas (oversold < 20,
@@ -22,6 +22,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAB_02_v1_estocastico_cruzamento");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

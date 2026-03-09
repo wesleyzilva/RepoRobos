@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_DC_02_v1_medias_volume
   Grupo:      DUPLACONFIRMACAO – Tier 1 (#02)
   Descricao:  Dupla confirmacao: cruzamento MME9/MME21 (1a) + volume acima
@@ -21,6 +21,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DC_02_v1_medias_volume");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

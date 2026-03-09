@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_31_v1_suporte_minD1_vol_baixo
   Catalogo:  #26 — Tier 3
   Descricao: 1o candle TESTA a minima D-1 (Low toca minD1) mas FECHA ACIMA dela
@@ -43,6 +43,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_31_v1_suporte_minD1_vol_baixo");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

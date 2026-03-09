@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_06_v1_um_trade_por_direcao
   Grupo:      IFR_RSI — Tier 2 (#06)
   Descricao:  Protetor de sobre-operacao: limita a exatamente 1 trade de compra
@@ -52,6 +52,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_06_v1_um_trade_por_direcao");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

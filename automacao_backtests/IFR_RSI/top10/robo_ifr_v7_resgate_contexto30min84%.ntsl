@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v7_resgate_contexto
   Autor: Wesley
   Descricao: Versao de resgate com filtro de contexto para reduzir falso sinal.
@@ -36,6 +36,8 @@ var
   bArmarCompra, bArmarVenda : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v7_resgate_contexto30min84%");
   iHoraAtualHHMM := Time;
   if iHoraAtualHHMM > 2400 then
     iHoraAtualHHMM := Round(iHoraAtualHHMM / 100);

@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v31_reversao_volume_relativo
   Autor: Wesley
   Descricao: Reversao IFR com filtro de volume relativo.
@@ -23,6 +23,8 @@ var
   bVolumeAlto : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v31_reversao_volume_relativo60min72%");
   fIFR := IFR(PeriodoIFR);
   vMediaVol := Media(PeriodoMediaVolume, Volume);
   bVolumeAlto := (Volume >= (vMediaVol * FatorVolume));

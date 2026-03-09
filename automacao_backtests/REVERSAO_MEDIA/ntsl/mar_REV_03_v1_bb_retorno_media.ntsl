@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Robô: mar_REV_03_v1_bb_retorno_media
 // Grupo: REVERSAO_MEDIA
 // Versão: v1 | Timeframe: 15min / 30min
@@ -33,6 +33,8 @@ var
   StopLoss, TakeProfit: float;
   EmPosicao: boolean;
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_REV_03_v1_bb_retorno_media");
 
   if (Date <> DataAnterior) then
   begin

@@ -1,4 +1,4 @@
-{
+﻿{
   Estrategia: robo_ifr_v20_ifr_assimetrico_lado
   Autor: Wesley
   Descricao: IFR com niveis assimetricos para compra e venda.
@@ -42,6 +42,8 @@ var
   iDirecaoPosicao, iDiasSemana, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: 4robo_ifr_v20_ifr_assimetrico_lado30min62%");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0;

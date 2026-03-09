@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_5M1_02_v1_impulso_acumulado
   Grupo:      50mais1 – Tier 1 (#02)
   Descricao:  Detecta impulso acumulado: soma dos ultimos 3 candles na mesma
@@ -41,6 +41,8 @@ var
   i                : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_5M1_02_v1_impulso_acumulado");
   if Date <> Date[1] then
   begin
     fResultadoDia   := 0;

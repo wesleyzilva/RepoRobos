@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_LAB_01_v1_bollinger_reversao
   Grupo:      LABORATORIO_INDICADORES – Tier 1 (#01)
   Descricao:  Reversao nas Bandas de Bollinger: compra ao tocar banda inferior,
@@ -23,6 +23,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAB_01_v1_bollinger_reversao");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

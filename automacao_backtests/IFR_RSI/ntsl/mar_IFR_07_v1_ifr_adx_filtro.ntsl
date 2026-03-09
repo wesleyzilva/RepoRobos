@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_IFR_07_v1_ifr_adx_filtro
   Grupo:      IFR_RSI — Tier 2 (#07)
   Descricao:  Combina sinal IFR com filtro de ADX: so opera reversao quando
@@ -52,6 +52,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_07_v1_ifr_adx_filtro");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

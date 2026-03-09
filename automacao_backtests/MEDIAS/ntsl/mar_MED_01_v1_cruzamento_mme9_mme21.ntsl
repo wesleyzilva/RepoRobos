@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_MED_01_v1_cruzamento_mme9_mme21
   Grupo:      MEDIAS — Tier 1 (#01)
   Descricao:  Cruzamento das medias moveis exponenciais de curto prazo:
@@ -49,6 +49,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_MED_01_v1_cruzamento_mme9_mme21");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

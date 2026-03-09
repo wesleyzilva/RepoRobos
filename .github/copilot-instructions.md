@@ -157,6 +157,42 @@ and  or  not               { booleanos }
 - Inputs de risco espelham o NTSL: `UsarGestaoRisco`, `UsarHardLock`, `SaldoConta`, `RiscoDiaPct`, `RiscoSemanaPct`, `MaxStopsConsecutivos`, `ValorPorPonto`
 - Salvar em `GRUPO/mql5/` ao lado da pasta `ntsl/`
 
+### Identificação de Ordens e Rastreabilidade
+
+**Regra obrigatória:** todo robô NTSL e MQL5 deve logar seu nome no momento da ativação, para permitir rastrear qual robô gerou cada ordem em ambiente de simulação com múltiplos robôs rodando simultaneamente.
+
+#### NTSL — Profit
+
+Adicionar **sempre como primeira instrução** dentro do `begin` principal:
+
+```ntsl
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_GRUPO_NN_descricao_timeframe");
+```
+
+> **Como visualizar:** Ferramentas → Log do sistema no Profit. O campo "Estratégia" nas abas Ordens/Posições também exibe o nome definido em `Estrategia:` no cabeçalho.
+
+#### MQL5 — MetaTrader 5
+
+Adicionar **ao final do `OnInit()`**, imediatamente antes de `return INIT_SUCCEEDED;`:
+
+```mql5
+Print("EA iniciado: " + MQLInfoString(MQL_PROGRAM_NAME) + " | " + _Symbol + " | " + EnumToString(Period()));
+return INIT_SUCCEEDED;
+```
+
+> **Como visualizar:** aba **Journal/Experts** no Terminal do MT5.
+
+**Regra obrigatória — comment em toda ordem:** passar sempre o nome do robô no campo `comment` de `trade.Buy` e `trade.Sell`. O comment fica gravado permanentemente no histórico de deals (coluna "Comentário"), permitindo rastrear a origem da ordem mesmo após reinício do terminal:
+
+```mql5
+trade.Buy(LotePadrao, _Symbol, 0, sl, tp, "mar_GRUPO_NN_descricao");
+trade.Sell(LotePadrao, _Symbol, 0, sl, tp, "mar_GRUPO_NN_descricao");
+```
+
+---
+
 ### Scripts Python (Backtest)
 
 - Usar Python 3.10 (`C:/Program Files/Python310/python.exe`)

@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_DDZ_01_v1_breakeven_11
   Grupo:      DRAWDOWNZERO – Tier 1 (#01)
   Descricao:  Entrada por IFR extremo. Assim que preco atinge 1:1 (alvo = stop),
@@ -25,6 +25,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DDZ_01_v1_breakeven_11");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

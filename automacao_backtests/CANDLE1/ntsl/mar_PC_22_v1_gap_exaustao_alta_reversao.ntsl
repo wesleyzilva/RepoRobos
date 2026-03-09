@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_22_v1_gap_exaustao_alta_reversao
   Catalogo:  #3 — Tier 3
   Descricao: Gap externo para CIMA + 1o candle: pavio superior > 50% do range + fecha ABAIXO
@@ -45,6 +45,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_22_v1_gap_exaustao_alta_reversao");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;

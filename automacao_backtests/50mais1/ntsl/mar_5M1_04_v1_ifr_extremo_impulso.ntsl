@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_5M1_04_v1_ifr_extremo_impulso
   Grupo:      50mais1 – Tier 1 (#04)
   Descricao:  IFR em extremo + candle de impulso (range >= 50pts na mesma barra
@@ -35,6 +35,8 @@ var
   iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_5M1_04_v1_ifr_extremo_impulso");
   if Date <> Date[1] then
   begin
     fResultadoDia := 0; bBloqueioDia := false;

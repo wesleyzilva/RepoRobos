@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:       mar_MED_06_v1_golden_death_cross
   Grupo:      MEDIAS — Tier 1 (#06)
   Descricao:  Golden Cross (MME50 cruza acima MMA200) e Death Cross
@@ -53,6 +53,8 @@ var
   bEncerramento : boolean;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_MED_06_v1_golden_death_cross");
   // ── RESET DIARIO ─────────────────────────────────────────────
   if Date <> Date[1] then
   begin

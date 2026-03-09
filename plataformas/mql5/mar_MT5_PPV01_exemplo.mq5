@@ -1,4 +1,4 @@
-//+------------------------------------------------------------------+
+﻿//+------------------------------------------------------------------+
 //|  mar_MT5_PPV01_exemplo.mq5                                       |
 //|  Grupo: POUCOSPONTOSVENCEDORES — Versao MT5                      |
 //|  Descricao: IFR reversao + trailing ATR agressivo + break-even   |
@@ -117,6 +117,7 @@ int OnInit()
    dtUltimoDia     = 0;
 
    Print("[INIT] mar_MT5_PPV01 carregado — Ativo: ", _Symbol, " TF: ", EnumToString(Period()));
+   Print("EA iniciado: " + MQLInfoString(MQL_PROGRAM_NAME) + " | " + _Symbol + " | " + EnumToString(Period()));
    return INIT_SUCCEEDED;
 }
 
@@ -336,7 +337,7 @@ void OnTick()
          sl = NormalizeDouble(sl, _Digits);
          tp = NormalizeDouble(tp, _Digits);
 
-         if(trade.Buy(VolumeLote, _Symbol, 0, sl, tp, "PPV01_COMPRA"))
+         if(trade.Buy(VolumeLote, _Symbol, 0, sl, tp, "mar_MT5_PPV01_exemplo"))
          {
             fPrecoEntrada   = trade.ResultPrice();
             fStop           = sl;
@@ -360,7 +361,7 @@ void OnTick()
          sl = NormalizeDouble(sl, _Digits);
          tp = NormalizeDouble(tp, _Digits);
 
-         if(trade.Sell(VolumeLote, _Symbol, 0, sl, tp, "PPV01_VENDA"))
+         if(trade.Sell(VolumeLote, _Symbol, 0, sl, tp, "mar_MT5_PPV01_exemplo"))
          {
             fPrecoEntrada   = trade.ResultPrice();
             fStop           = sl;

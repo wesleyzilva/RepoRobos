@@ -1,4 +1,4 @@
-{
+﻿{
   Robo:      mar_PC_09_v1_volume_iniciativa
   Catalogo:  #51 — Tier 1
   Descricao: Volume >3x média — qualquer formação. Operar na direção do fechamento do 1o candle.
@@ -44,6 +44,8 @@ var
   iDiaSemanaAtual                                  : integer;
 
 begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_09_v1_volume_iniciativa");
   if Date <> Date[1] then
   begin
     iCandleDia        := 1;
