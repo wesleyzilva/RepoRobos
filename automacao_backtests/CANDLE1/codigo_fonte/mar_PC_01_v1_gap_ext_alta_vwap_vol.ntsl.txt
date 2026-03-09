@@ -1,72 +1,18 @@
-{
-  Robo:      mar_PC_01_v1_gap_ext_alta_vwap_vol
-  Catalogo:  #41 — Tier 1
-  Descricao: Gap externo para CIMA + preço acima VWAP diaria + corpo >70% + volume climático
-             Entrada compra no 2o candle. Maior confluência possível.
-  Timeframe: 15min ou 30min
-  Ativo:     WIN (minicontrato de índice)
-  Versao:    1.0 — marco/2026
-}
+// mar_PC_01_v1_gap_ext_alta_vwap_vol
+// Catalogo:  #41 — Tier 1
+// Descricao: Gap externo para CIMA + preço acima VWAP diaria + corpo >70% + volume climático
+// Entrada compra no 2o candle. Maior confluência possível.
+// Timeframe: 15min ou 30min
+// Ativo: WIN (minicontrato de índice)
+// Versao: 1.0 — marco/2026
 
 input
-  // ── Filtros do 1o candle ─────────────────────────────────────
-  PctCorpoMinimo(0.70);         // corpo mínimo do 1o candle (% do range)
-  FatorVolumeClimatico(1.5);    // volume mínimo vs média para ser "climático"
-  PeriodoMediaVol(20);          // período da média de volume
-  // ── Filtro MME200 ────────────────────────────────────────────
-  UsarFiltroMME200(true);       // exigir preço acima da MME200
-  PeriodoMME200(200);
-  // ── Gestão de posição ────────────────────────────────────────
-  MultiplicadorAlvo(1.5);       // alvo = MultiplicadorAlvo * range do 1o candle
-  UsarOCO(true);
-  UsarBreakEven(false);
-  BreakEvenTriggerPontos(80.0);
-  BreakEvenOffsetPontos(5.0);
-  MaxBarrasPosicao(8);          // saída por tempo
-  // ── Gestão de risco ──────────────────────────────────────────
-  UsarGestaoRisco(true);
-  UsarHardLock(true);
-  SaldoConta(3500.0);
-  RiscoDiaPct(1.0);
-  RiscoSemanaPct(3.0);
-  ValorPorPonto(0.2);
-  DiaSemanaReset(2);            // 2 = segunda-feira
-
+PctCorpoMinimo(0.70);
+FatorVolumeClimatico(1.5);
+PeriodoMediaVol(20);
+UsarFiltroMME200(true);
 var
-  // Controle de candle do dia
-  iCandleDia : integer;
-  // Dados do 1o candle
-  fMaxC1, fMinC1, fAberDia, fFechC1 : float;
-  fRangeC1, fCorpoC1, fVolC1        : float;
-  // VWAP diário acumulado
-  fVWAPSoma, fVWAPVol, fVWAPDiario  : float;
-  // Indicadores
-  fMME200, fMediaVol                : float;
-  // Sinais
-  bGapExtCima, bCorpoAlta, bVolClimatico, bAcimaMME200 : boolean;
-  bSinalCompra, bEntradaExecutada                       : boolean;
-  // Gestão de posição
-  fPrecoEntrada, fStopAtual, fAlvoAtual : float;
-  iBarrasEmPosicao, iDirecaoPosicao     : integer;
-  bBreakEvenAtivo, bEstavaPosicionado   : boolean;
-  // Gestão de risco
-  fResultadoDia, fResultadoSemana       : float;
-  fLimiteDia, fLimiteSemana             : float;
-  fResultadoPontos, fResultadoReais     : float;
-  bBloqueioDia, bBloqueioSemana         : boolean;
-  iDiaSemanaAtual                       : integer;
-
-begin
-  // ── NOVO DIA: reset variáveis ────────────────────────────────
-  if Date <> Date[1] then
-  begin
-    iCandleDia        := 1;
-    fMaxC1            := 0;
-    fMinC1            := 0;
-    fRangeC1          := 0;
-    fCorpoC1          := 0;
-    fVolC1            := 0;
-    bEntradaExecutada := false;
+iCandleDia : integer;
     fResultadoDia     := 0;
     bBloqueioDia      := false;
     // Reset VWAP diário
@@ -91,11 +37,12 @@ begin
 
   // ── INDICADORES ──────────────────────────────────────────────
   fMME200   := Media(PeriodoMME200, 1, Close);
-  fMediaVol := Media(PeriodoMediaVol, Volume);
+  fMediaVol := Media(PeriodoMediaVol, 1, Volume);
 
   // ── LIMITES DE RISCO ─────────────────────────────────────────
   fLimiteDia    := SaldoConta * (RiscoDiaPct    / 100.0);
   fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
 
   // ── TRACKING DE RESULTADO ────────────────────────────────────
   if bEstavaPosicionado and (not IsBought) and (not IsSold) then
@@ -121,56 +68,7 @@ begin
     fFechC1  := Close;
     fRangeC1 := High - Low;
     fCorpoC1 := Abs(Close - Open);
-    fVolC1   := Volume;
-  end;
-
-  // ── LÓGICA DE SINAL (apenas no 2o candle em diante) ─────────
-  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0) then
-  begin
-    // Gap externo para cima: abertura acima da máxima do dia anterior
-    // High[2] = máxima de D-1 quando estamos no candle 2 (High[1] = 1o candle hoje)
-    bGapExtCima    := fAberDia > High[2];
-    // Corpo de alta > PctCorpoMinimo do range
-    bCorpoAlta     := (fFechC1 > fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
-    // Volume climático
-    bVolClimatico  := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeClimatico);
-    // Preço acima da MME200
-    bAcimaMME200   := (not UsarFiltroMME200) or (Close > fMME200);
-    // Preço acima da VWAP diária (calculada até o 1o candle)
-    // fVWAPDiario aqui está com o valor após o 2o candle; usar Close[1] vs VWAP[1] aprox
-    bSinalCompra   := bGapExtCima and bCorpoAlta and bVolClimatico and bAcimaMME200
-                      and (fFechC1 > fVWAPDiario);
-
-    if bSinalCompra then
-    begin
-      fStopAtual  := fMinC1;
-      fAlvoAtual  := fMaxC1 + (fRangeC1 * MultiplicadorAlvo);
-      BuyAtMarket;
-      bEntradaExecutada := true;
-    end;
-  end;
-
-  // ── GESTÃO DE POSIÇÃO ────────────────────────────────────────
-  if IsBought or IsSold then
-    iBarrasEmPosicao := iBarrasEmPosicao + 1
-  else
-  begin
-    iBarrasEmPosicao := 0;
-    bBreakEvenAtivo  := false;
-  end;
-
-  if IsBought and bEstavaPosicionado then
-  begin
-    if UsarBreakEven and (not bBreakEvenAtivo) and ((High - fPrecoEntrada) >= BreakEvenTriggerPontos) then
-      bBreakEvenAtivo := true;
-
-    if UsarBreakEven and bBreakEvenAtivo then
-      fStopAtual := Max(fStopAtual, fPrecoEntrada + BreakEvenOffsetPontos);
-
-    if UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual)) then
-      ClosePosition
-    else if iBarrasEmPosicao >= MaxBarrasPosicao then
-      ClosePosition;
+    // ...existing code...
   end;
 
   // ── REGISTRO DE ENTRADA ──────────────────────────────────────
