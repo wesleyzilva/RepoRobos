@@ -125,6 +125,26 @@ begin
       bEntradaExecutada := true;
     end;
   end;
+    { Sinal de venda: gap parcial + fechamento abaixo da mínima D-1 }
+    if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+       and (not IsBought) and (not IsSold)
+       and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+    begin
+      bGapParcial       := (fAberDia < fFechD1) and (fAberDia > fMinD1);
+      bFechaAbaixoMinD1 := fFechC1 < fMinD1;
+      bCorpoBaixa       := (fFechC1 < fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
+      bVolOK            := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeMinimo);
+
+      bSinalVenda := bGapParcial and bFechaAbaixoMinD1 and bCorpoBaixa and bVolOK;
+
+      if bSinalVenda then
+      begin
+        fStopAtual  := fAberDia;
+        fAlvoAtual  := fFechC1 - (fATR * MultiplicadorAlvo);
+        SellShortAtMarket;
+        bEntradaExecutada := true;
+      end;
+    end;
 
   if IsBought or IsSold then
     iBarrasEmPosicao := iBarrasEmPosicao + 1

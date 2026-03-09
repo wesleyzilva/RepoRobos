@@ -11,9 +11,3 @@ robo_ifr_v28_ifr_adx_filtro
 robo_ifr_v23_dupla_confirmacao15min87% 1min 55 pts
 
 
---------Erros comuns:
-Compilando ...
-Parser[79,40]: No final da chamada da função deve vir " ) "
-Parser[80,42]: No final da chamada da função deve vir " ) "
-Parser[110,3]: O código deve começar com begin
-Erro de Sintaxe

@@ -1,0 +1,16 @@
+--------Erros comuns de sintaxe
+Compilando ...
+Parser[79,40]: No final da chamada da função deve vir " ) "
+Parser[80,42]: No final da chamada da função deve vir " ) "
+Parser[110,3]: O código deve começar com begin
+Erro de Sintaxe
+
+Compilando ...
+Parser[78,16]: Função ou variável inválida: ATR
+Parser[177,1]: O código deve começar com begin
+Erro de Sintaxe
+
+Compilando ...
+Parser[156,1]: Bloco incompleto
+Parser[156,1]: Bloco incompleto
+Erro de Sintaxe

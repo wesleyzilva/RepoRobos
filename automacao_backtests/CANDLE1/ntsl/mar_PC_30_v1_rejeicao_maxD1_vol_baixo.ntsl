@@ -105,12 +105,12 @@ begin
   if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
      and (not IsBought) and (not IsSold) then
   begin
-    // C1 testou a maxima D-1 (maxima do candle toca ou supera)
-    bTestaMaxD1      := fMaxC1 >= fMaxD1;
-    // Mas fechou abaixo da maxima D-1 (rejeicao)
-    bFechaAbaixo     := fFechC1 < fMaxD1;
-    bVolFraco        := (fMediaVol > 0) and (fVolC1 <= fMediaVol * FatorVolumeMaximo);
-    bCorpoBaixaOuDoji := fFechC1 <= fAberDia;  // neutro ou baixista
+     { Sinal de venda: rejeição na máxima D-1 + volume baixo }
+     bTestaMaxD1      := fMaxC1 >= fMaxD1;
+     bFechaAbaixo     := fFechC1 < fMaxD1;
+     bVolFraco        := (fMediaVol > 0) and (fVolC1 <= fMediaVol * FatorVolumeMaximo);
+     bCorpoBaixaOuDoji := fFechC1 <= fAberDia;  // neutro ou baixista
+     if (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
 
     bSinalVenda := bTestaMaxD1 and bFechaAbaixo and bVolFraco and bCorpoBaixaOuDoji;
 

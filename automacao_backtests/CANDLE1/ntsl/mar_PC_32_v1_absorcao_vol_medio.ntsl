@@ -110,27 +110,29 @@ begin
   end;
 
   // Aguarda rompimento apos absorcao
-  if bAbsorcao and (not bEntradaExecutada) and (not IsBought) and (not IsSold)
-     and (iCandleDia >= 2) and (iCandleDia <= (1 + MaxCandlesAguardaRompimento)) then
-  begin
-    bSinalCompra := Close > fMaxC1;
-    bSinalVenda  := Close < fMinC1;
+    { Aguarda rompimento após compressão }
+    if bCompressaoIntensa and (not bEntradaExecutada) and (not IsBought) and (not IsSold)
+       and (iCandleDia >= 2) and (iCandleDia <= (1 + MaxCandlesAguardaRompimento))
+       and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+    begin
+      bSinalCompra := Close > fMaxC1;
+      bSinalVenda  := Close < fMinC1;
 
-    if bSinalCompra then
-    begin
-      fStopAtual  := fMinC1;
-      fAlvoAtual  := Close + (fATR * MultiplicadorAlvo);
-      BuyAtMarket;
-      bEntradaExecutada := true;
-    end
-    else if bSinalVenda then
-    begin
-      fStopAtual  := fMaxC1;
-      fAlvoAtual  := Close - (fATR * MultiplicadorAlvo);
-      SellShortAtMarket;
-      bEntradaExecutada := true;
+      if bSinalCompra then
+      begin
+        fStopAtual  := fMinC1;
+        fAlvoAtual  := Close + (fATR * MultiplicadorAlvo);
+        BuyAtMarket;
+        bEntradaExecutada := true;
+      end
+      else if bSinalVenda then
+      begin
+        fStopAtual  := fMaxC1;
+        fAlvoAtual  := Close - (fATR * MultiplicadorAlvo);
+        SellShortAtMarket;
+        bEntradaExecutada := true;
+      end;
     end;
-  end;
 
   if IsBought or IsSold then
     iBarrasEmPosicao := iBarrasEmPosicao + 1

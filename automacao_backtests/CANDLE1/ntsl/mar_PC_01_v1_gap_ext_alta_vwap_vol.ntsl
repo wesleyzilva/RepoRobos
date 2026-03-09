@@ -1,30 +1,32 @@
-// mar_PC_01_v1_gap_ext_alta_vwap_vol
-// Catalogo:  #41 — Tier 1
-// Descricao: Gap externo para CIMA + preço acima VWAP diaria + corpo >70% + volume climático
-// Entrada compra no 2o candle. Maior confluência possível.
-// Timeframe: 15min ou 30min
-// Ativo: WIN (minicontrato de índice)
-// Versao: 1.0 — marco/2026
+
+{
+  Robo:      mar_PC_01_v1_gap_ext_alta_vwap_vol
+  Grupo:     CANDLE1 — Tier 1 (#41)
+  Descricao: Gap externo para CIMA + preço acima VWAP diária + corpo >70% + volume climático. Entrada compra no 2º candle.
+  Timeframe: 15min ou 30min
+  Ativo:     WIN (minicontrato de índice)
+  Versao:    1.0 — marco/2026
+}
 
 input
-PctCorpoMinimo(0.70);
-FatorVolumeClimatico(1.5);
-PeriodoMediaVol(20);
-UsarFiltroMME200(true);
-PeriodoMME200(200);
-MultiplicadorAlvo(1.5);
-UsarOCO(true);
-UsarBreakEven(false);
-BreakEvenTriggerPontos(80.0);
-BreakEvenOffsetPontos(5.0);
-MaxBarrasPosicao(8);
-UsarGestaoRisco(true); // false = backtest puro, ignora limites de risco
-UsarHardLock(true);
-SaldoConta(3500.0);
-RiscoDiaPct(1.0);
-RiscoSemanaPct(3.0);
-ValorPorPonto(0.2);
-DiaSemanaReset(2);
+  PctCorpoMinimo(0.70);
+  FatorVolumeClimatico(1.5);
+  PeriodoMediaVol(20);
+  UsarFiltroMME200(true);
+  PeriodoMME200(200);
+  MultiplicadorAlvo(1.5);
+  UsarOCO(true);
+  UsarBreakEven(false);
+  BreakEvenTriggerPontos(80.0);
+  BreakEvenOffsetPontos(5.0);
+  MaxBarrasPosicao(8);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(3500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
 
 var
 // Declarações apenas, sem inicialização
@@ -116,21 +118,15 @@ begin
     fVolC1   := Volume;
   end;
 
-  // ── LÓGICA DE SINAL (apenas no 2o candle em diante) ─────────
+  { ── LÓGICA DE SINAL (apenas no 2º candle em diante) ── }
   if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
-     and (not IsBought) and (not IsSold) then
+     and (not IsBought) and (not IsSold)
+     and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
   begin
-    // Gap externo para cima: abertura acima da máxima do dia anterior
-    // High[2] = máxima de D-1 quando estamos no candle 2 (High[1] = 1o candle hoje)
     bGapExtCima    := fAberDia > High[2];
-    // Corpo de alta > PctCorpoMinimo do range
     bCorpoAlta     := (fFechC1 > fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
-    // Volume climático
     bVolClimatico  := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeClimatico);
-    // Preço acima da MME200
     bAcimaMME200   := (not UsarFiltroMME200) or (Close > fMME200);
-    // Preço acima da VWAP diária (calculada até o 1o candle)
-    // fVWAPDiario aqui está com o valor após o 2o candle; usar Close[1] vs VWAP[1] aprox
     bSinalCompra   := bGapExtCima and bCorpoAlta and bVolClimatico and bAcimaMME200
                       and (fFechC1 > fVWAPDiario);
 
