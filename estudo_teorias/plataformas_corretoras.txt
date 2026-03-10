@@ -1,0 +1,206 @@
+PLATAFORMAS E CORRETORAS - GUIA IMPARCIAL (B3 AGORA, INTERNACIONAL DEPOIS)
+
+Objetivo
+- Separar claramente o que é plataforma e o que é corretora.
+- Mapear qual corretora oferece qual plataforma para uso de robô.
+- Fase 1: B3 agora. Fase 2: internacional depois.
+
+==================================================
+1) O QUE É PLATAFORMA vs O QUE É CORRETORA
+==================================================
+
+Plataforma (software de análise/execução/automação)
+- Profit
+- MetaTrader
+- TradingView
+
+Corretora / exchange (intermedia a execução no mercado)
+- Toro
+- XP
+- Avenue
+- Tickmill
+- Binance (exchange de cripto, papel equivalente a corretora no ecossistema cripto)
+
+==================================================
+2) MAPA PRÁTICO: CORRETORA -> PLATAFORMA PARA ROBÔ
+==================================================
+
+Observação importante
+- Integrações e planos podem mudar por contrato, perfil e data.
+- Sempre confirmar no comercial/suporte antes de decidir.
+
+Toro (B3)
+- Plataforma própria/app: SIM.
+- Profit: pode existir via parceria/plano (confirmar disponibilidade e custo).
+- MetaTrader: não é o fluxo padrão para B3 na corretora.
+- TradingView com execução direta: depende de integração vigente (confirmar).
+
+XP (B3)
+- Plataforma própria/app: SIM.
+- Profit: normalmente disponível por plano/parceria (confirmar pacote e custo).
+- MetaTrader: não é o fluxo padrão para B3.
+- TradingView com execução direta: depende de integração vigente (confirmar).
+
+Avenue (internacional)
+- Plataforma própria/app: SIM.
+- Profit: não é a integração padrão.
+- MetaTrader: não é o fluxo padrão.
+- TradingView com execução direta: depende de integrações vigentes (confirmar).
+
+Tickmill (internacional/forex/CFD)
+- MetaTrader (MT4/MT5): normalmente SIM (fluxo principal).
+- Plataforma própria/web: pode existir.
+- Profit: não é integração padrão.
+- TradingView com execução direta: depende de integração vigente (confirmar).
+
+Binance (cripto)
+- Plataforma própria (web/app): SIM.
+- API para robô: SIM.
+- TradingView (gráfico/alerta): normalmente SIM para análise; execução por robô costuma usar API.
+- Profit / MetaTrader: não é o fluxo principal no ambiente Binance.
+
+==================================================
+3) TOP 5 OPÇÕES - B3
+==================================================
+
+Observação
+- Lista de opções práticas para comparar (não é ranking absoluto).
+- A melhor escolha depende de custo efetivo real, execução e integração do seu robô.
+
+Top 5 (B3)
+1) XP + Profit
+- Forte em ecossistema B3 e uso com automação no ambiente Profit (validar pacote/plano).
+
+2) Toro + Profit
+- Opção local B3 com potencial de pacote competitivo (validar integração e custo final).
+
+3) BTG Pactual + Profit
+- Opção usada por traders B3, com boa estrutura de execução (validar custos e perfil).
+
+4) Clear + Profit
+- Opção focada em trader ativo na B3 (validar política atual de custos/plataforma).
+
+5) Rico + Profit
+- Opção de varejo B3 com possibilidade de integração/plano (validar condições vigentes).
+
+==================================================
+4) TOP 5 OPÇÕES - INTERNACIONAL
+==================================================
+
+Observação
+- Lista de opções para internacional por perfis diferentes (ações globais, cripto, forex/CFD).
+
+Top 5 (Internacional)
+1) Interactive Brokers (IBKR) + plataforma própria/API
+- Forte para multiativos globais e automação via API.
+
+2) Avenue + plataforma própria
+- Foco em acesso internacional para ações/ETFs, com experiência simplificada.
+
+3) Binance + API (e TradingView para análise)
+- Forte para cripto e automação 24/7 com API.
+
+4) Tickmill + MetaTrader (MT4/MT5)
+- Forte para forex/CFD com ecossistema MetaTrader.
+
+5) Tastytrade + plataforma própria
+- Opção relevante para derivativos e ações nos EUA (validar aderência ao seu estilo).
+
+==================================================
+5) LEITURA POR FASE (SEU PLANO)
+==================================================
+
+Fase 1 - B3 (agora)
+- Escolher uma corretora B3 com boa execução e custo total competitivo.
+- Escolher plataforma com melhor aderência ao seu robô atual.
+- Se objetivo é menor atrito de implantação, manter stack já validada pode reduzir tempo de migração.
+
+Fase 2 - Internacional (depois)
+- Definir primeiro o mercado alvo (ações globais, cripto ou forex/CFD).
+- Depois escolher corretora + plataforma desse mercado.
+- Migrar robô com validação nova de risco, custo e execução.
+
+==================================================
+6) CHECKLIST DE DECISÃO (IMPARCIAL)
+==================================================
+
+1) Custo total por 100 operações (corretagem + taxas + plataforma).
+2) Estabilidade real de execução (rejeição, slippage, latência prática).
+3) Compatibilidade técnica com o robô (linguagem/API/ordens).
+4) Qualidade de suporte em incidente operacional.
+5) Facilidade de escala (mais contas, mais ativos, mais contratos).
+
+Regra final
+- Não existe “melhor” universal.
+- Existe a melhor combinação para o seu mercado-alvo, seu robô e seu custo efetivo real.
+
+==================================================
+7) COMO DESCOBRIR O CUSTO TOTAL DE CADA CORRETORA
+==================================================
+
+Objetivo
+- Comparar corretoras no mesmo padrão para achar custo real (não só taxa anunciada).
+
+Dados que você deve pedir para cada corretora (mesmo formato)
+1) Corretagem
+- Por ordem, por contrato ou pacote mensal.
+- Regra de isenção/desconto e validade da promoção.
+
+2) Taxas de mercado
+- Emolumentos e taxas B3 (o que é repassado e o que está incluso).
+
+3) Plataforma
+- Custo do Profit (ou outra plataforma): mensalidade, isenção por volume, pacote trader.
+
+4) Custos indiretos
+- Slippage médio estimado.
+- Taxas extras operacionais (se houver).
+
+5) Benefícios operacionais
+- Qualidade e velocidade do suporte.
+- Estabilidade de execução em horários críticos.
+- Integração para automação/API.
+
+Fórmula prática de comparação
+- CustoTotalMensal = Corretagem + TaxasMercado + Plataforma + CustosFixos + SlippageEstimado
+
+Como comparar de forma justa
+- Use a mesma base para todas: 100 operações/mês, mesmo ativo e mesmo número médio de contratos.
+- Faça teste de 2 a 4 semanas para validar execução real.
+
+Sinais de alerta
+- Promoção sem clareza de prazo/regra.
+- Custo de plataforma “oculto” no pacote.
+- Suporte lento para problema de ordem/robô.
+
+==================================================
+8) PLANILHA-MODELO (PREENCHER)
+==================================================
+
+Campos
+- Corretora
+- Mercado (B3 / Internacional)
+- Corretagem mensal estimada (R$)
+- Taxas de mercado estimadas (R$)
+- Plataforma mensal (R$)
+- Custos fixos extras (R$)
+- Slippage estimado (R$)
+- Custo total mensal (R$)
+- Benefícios (suporte, estabilidade, automação)
+- Observações
+
+Tabela (exemplo de preenchimento)
+Corretora | Mercado | Corretagem | Taxas | Plataforma | Fixos | Slippage | Custo Total | Benefícios | Observações
+XP | B3 |  |  |  |  |  |  |  | 
+Toro | B3 |  |  |  |  |  |  |  | 
+BTG Pactual | B3 |  |  |  |  |  |  |  | 
+Clear | B3 |  |  |  |  |  |  |  | 
+Rico | B3 |  |  |  |  |  |  |  | 
+IBKR | Internacional |  |  |  |  |  |  |  | 
+Avenue | Internacional |  |  |  |  |  |  |  | 
+Binance | Internacional |  |  |  |  |  |  |  | 
+Tickmill | Internacional |  |  |  |  |  |  |  | 
+Tastytrade | Internacional |  |  |  |  |  |  |  | 
+
+Regra prática de decisão
+- Escolha a opção com menor custo total real + execução mais estável + melhor aderência ao seu robô.

@@ -1,0 +1,229 @@
+﻿{
+  Estrategia: robos_medias_v37_compressao
+  Autor: Wesley
+  Descricao: Filtro de compressao 20x200 com entrada na saida da compressao direcional.
+}
+
+input
+  ModoEstrategia(4);
+  DistanciaMinimaLequePontos(15);
+  DistanciaCompressao20x200(90);
+  DistanciaMaximaPrecoMME20(200);
+  DistanciaToqueMME20(80);
+  MinBarrasConfirmacao(2);
+  ConfirmacoesRompimento(2);
+  MinPercCorpoPA(0.6);
+  FatorPavioRejeicao(1.55);
+  UsarConfirmacaoCandle(true);
+  UsarOCO(true);
+  StopLossPontos(225);
+  TakeProfitPontos(405);
+  UsarSaidaPorTempo(true);
+  MaxBarrasPosicao(9);
+
+var
+  mme9, mme20, mma50, mma200 : float;
+  slope20, slope50, slope200 : float;
+  dist920, dist2050, dist50200, dist20200, distPreco20 : float;
+  topoLookback, fundoLookback : float;
+  rangeCandle, corpoCandle, pavioSup, pavioInf : float;
+  iAlta, iBaixa, iBarrasPosicao : integer;
+  bCompressao, bLequeAlta, bLequeBaixa : boolean;
+  bAcimaTodas, bAbaixoTodas, bEntre9e20, bEntre20e50, bEntre50e200, bZonaNeutra : boolean;
+  bCandleForcaAlta, bCandleForcaBaixa, bRejeicaoAlta, bRejeicaoBaixa : boolean;
+  bPullbackCompra, bPullbackVenda, bRompAlta, bRompBaixa, bSaindoCompressao : boolean;
+  bCompra, bVenda, bConfCompra, bConfVenda : boolean;
+  bEstavaPosicionado, bSaidaOCOCompra, bSaidaOCOVenda : boolean;
+  fPrecoEntrada, fStopAtual, fAlvoAtual : float;
+
+begin
+  mme9 := MediaExp(9, Close);
+  mme20 := MediaExp(20, Close);
+  mma50 := Media(50, Close);
+  mma200 := Media(200, Close);
+
+  slope20 := mme20 - mme20[1];
+  slope50 := mma50 - mma50[1];
+  slope200 := mma200 - mma200[1];
+
+  dist920 := Abs(mme9 - mme20);
+  dist2050 := Abs(mme20 - mma50);
+  dist50200 := Abs(mma50 - mma200);
+  dist20200 := Abs(mme20 - mma200);
+  distPreco20 := Abs(Close - mme20);
+
+  topoLookback := Highest(High, 12);
+  fundoLookback := Lowest(Low, 12);
+
+  rangeCandle := Max(High - Low, 0.01);
+  corpoCandle := Abs(Close - Open);
+  pavioSup := High - Max(Open, Close);
+  pavioInf := Min(Open, Close) - Low;
+
+  bAcimaTodas := (Close > mme9) and (Close > mme20) and (Close > mma50) and (Close > mma200);
+  bAbaixoTodas := (Close < mme9) and (Close < mme20) and (Close < mma50) and (Close < mma200);
+
+  bEntre9e20 := ((Close <= mme9) and (Close >= mme20)) or ((Close >= mme9) and (Close <= mme20));
+  bEntre20e50 := ((Close <= mme20) and (Close >= mma50)) or ((Close >= mme20) and (Close <= mma50));
+  bEntre50e200 := ((Close <= mma50) and (Close >= mma200)) or ((Close >= mma50) and (Close <= mma200));
+  bZonaNeutra := bEntre9e20 or bEntre20e50 or bEntre50e200;
+
+  bCompressao := dist20200 <= DistanciaCompressao20x200;
+  bSaindoCompressao := (dist20200 > DistanciaCompressao20x200) and
+                      ((dist20200[1] <= DistanciaCompressao20x200) or
+                       (dist20200[2] <= DistanciaCompressao20x200) or
+                       (dist20200[3] <= DistanciaCompressao20x200));
+
+  bLequeAlta := bAcimaTodas and (mme9 > mme20) and (mme20 > mma50) and (mma50 > mma200)
+                and (slope20 > 0) and (slope50 > 0) and (slope200 >= 0)
+                and (dist920 >= DistanciaMinimaLequePontos)
+                and (dist2050 >= DistanciaMinimaLequePontos)
+                and (dist50200 >= DistanciaMinimaLequePontos);
+
+  bLequeBaixa := bAbaixoTodas and (mme9 < mme20) and (mme20 < mma50) and (mma50 < mma200)
+                 and (slope20 < 0) and (slope50 < 0) and (slope200 <= 0)
+                 and (dist920 >= DistanciaMinimaLequePontos)
+                 and (dist2050 >= DistanciaMinimaLequePontos)
+                 and (dist50200 >= DistanciaMinimaLequePontos);
+
+  bCandleForcaAlta := (Close > Open) and ((corpoCandle / rangeCandle) >= MinPercCorpoPA);
+  bCandleForcaBaixa := (Close < Open) and ((corpoCandle / rangeCandle) >= MinPercCorpoPA);
+
+  bRejeicaoAlta := (Close > Open)
+                   and ((pavioInf >= (corpoCandle * FatorPavioRejeicao)) or (Low <= Low[1]))
+                   and (Close > mme20);
+
+  bRejeicaoBaixa := (Close < Open)
+                    and ((pavioSup >= (corpoCandle * FatorPavioRejeicao)) or (High >= High[1]))
+                    and (Close < mme20);
+
+  bPullbackCompra := (not bCompressao)
+                     and (mma50 > mma200)
+                     and (slope20 > 0)
+                     and (Abs(Low - mme20) <= DistanciaToqueMME20)
+                     and bRejeicaoAlta;
+
+  bPullbackVenda := (not bCompressao)
+                    and (mma50 < mma200)
+                    and (slope20 < 0)
+                    and (Abs(High - mme20) <= DistanciaToqueMME20)
+                    and bRejeicaoBaixa;
+
+  bRompAlta := (Close > mma200) and (Close[1] <= mma200)
+               and (Close >= topoLookback[1])
+               and (mme9 > mme20)
+               and bCandleForcaAlta;
+
+  bRompBaixa := (Close < mma200) and (Close[1] >= mma200)
+                and (Close <= fundoLookback[1])
+                and (mme9 < mme20)
+                and bCandleForcaBaixa;
+
+  bConfCompra := (not UsarConfirmacaoCandle) or bCandleForcaAlta;
+  bConfVenda := (not UsarConfirmacaoCandle) or bCandleForcaBaixa;
+
+  if bLequeAlta or bPullbackCompra or bRompAlta then
+    iAlta := iAlta + 1
+  else
+    iAlta := 0;
+
+  if bLequeBaixa or bPullbackVenda or bRompBaixa then
+    iBaixa := iBaixa + 1
+  else
+    iBaixa := 0;
+
+  bCompra := false;
+  bVenda := false;
+
+  if ModoEstrategia = 1 then
+  begin
+    bCompra := bLequeAlta and (not bCompressao) and (not bZonaNeutra)
+               and (distPreco20 <= DistanciaMaximaPrecoMME20)
+               and bConfCompra and (iAlta >= MinBarrasConfirmacao);
+
+    bVenda := bLequeBaixa and (not bCompressao) and (not bZonaNeutra)
+              and (distPreco20 <= DistanciaMaximaPrecoMME20)
+              and bConfVenda and (iBaixa >= MinBarrasConfirmacao);
+  end
+  else if ModoEstrategia = 2 then
+  begin
+    bCompra := bPullbackCompra and bConfCompra and (iAlta >= MinBarrasConfirmacao);
+    bVenda := bPullbackVenda and bConfVenda and (iBaixa >= MinBarrasConfirmacao);
+  end
+  else if ModoEstrategia = 3 then
+  begin
+    bCompra := bRompAlta and (iAlta >= ConfirmacoesRompimento);
+    bVenda := bRompBaixa and (iBaixa >= ConfirmacoesRompimento);
+  end
+  else if ModoEstrategia = 4 then
+  begin
+    bCompra := (not bCompressao) and bSaindoCompressao and bLequeAlta and bConfCompra;
+    bVenda := (not bCompressao) and bSaindoCompressao and bLequeBaixa and bConfVenda;
+  end
+  else
+  begin
+    bCompra := (not bCompressao) and (not bZonaNeutra)
+               and ((bPullbackCompra and bConfCompra) or (bRompAlta and (iAlta >= ConfirmacoesRompimento)));
+
+    bVenda := (not bCompressao) and (not bZonaNeutra)
+              and ((bPullbackVenda and bConfVenda) or (bRompBaixa and (iBaixa >= ConfirmacoesRompimento)));
+  end;
+
+  if IsBought or IsSold then
+    iBarrasPosicao := iBarrasPosicao + 1
+  else
+    iBarrasPosicao := 0;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bCompra then
+      BuyAtMarket
+    else if bVenda then
+      SellShortAtMarket;
+  end;
+
+  bSaidaOCOCompra := false;
+  bSaidaOCOVenda := false;
+
+  if IsBought and bEstavaPosicionado then
+  begin
+    fStopAtual := fPrecoEntrada - StopLossPontos;
+    fAlvoAtual := fPrecoEntrada + TakeProfitPontos;
+    bSaidaOCOCompra := UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual));
+  end;
+
+  if IsSold and bEstavaPosicionado then
+  begin
+    fStopAtual := fPrecoEntrada + StopLossPontos;
+    fAlvoAtual := fPrecoEntrada - TakeProfitPontos;
+    bSaidaOCOVenda := UsarOCO and ((High >= fStopAtual) or (Low <= fAlvoAtual));
+  end;
+
+  if IsBought and (
+      bCompressao
+      or bZonaNeutra
+      or (Close < mme20)
+      or bCandleForcaBaixa
+      or (UsarSaidaPorTempo and (iBarrasPosicao >= MaxBarrasPosicao))
+      or bSaidaOCOCompra
+     ) then
+    ClosePosition;
+
+  if IsSold and (
+      bCompressao
+      or bZonaNeutra
+      or (Close > mme20)
+      or bCandleForcaAlta
+      or (UsarSaidaPorTempo and (iBarrasPosicao >= MaxBarrasPosicao))
+      or bSaidaOCOVenda
+     ) then
+    ClosePosition;
+
+  if (not bEstavaPosicionado) and IsBought then
+    fPrecoEntrada := Close;
+
+  if (not bEstavaPosicionado) and IsSold then
+    fPrecoEntrada := Close;
+
+  bEstavaPosicionado := IsBought or IsSold;
+end;

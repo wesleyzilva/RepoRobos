@@ -1,0 +1,54 @@
+{
+  Estrategia: robo_ifr_v44_vwap_distancia_dupla
+  Autor: Wesley
+  Descricao: IFR com filtro de distancia minima e maxima da VWAP.
+             Evita operar muito colado ou muito esticado da VWAP.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoVWAP(20);
+  DistanciaMin(30.0);
+  DistanciaMax(180.0);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(13);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fVWAPAprox, fDistancia : float;
+  bDistanciaValida : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fVWAPAprox := Media(PeriodoVWAP, Close * Volume) / Media(PeriodoVWAP, Volume);
+  fDistancia := Abs(Close - fVWAPAprox);
+  bDistanciaValida := (fDistancia >= DistanciaMin) and (fDistancia <= DistanciaMax);
+
+  if (not IsBought) and (not IsSold) and bDistanciaValida then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

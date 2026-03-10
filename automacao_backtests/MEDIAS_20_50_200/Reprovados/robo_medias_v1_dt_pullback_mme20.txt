@@ -1,0 +1,126 @@
+// ================================================================
+// Estrategia : robo_medias_v1_dt_pullback_mme20
+// Familia    : [DT] Day Trade
+// Logica     : Pullback do preco ate a MME20 em tendencia confirmada.
+//              Tendencia: MMA50 vs MMA200 define direcao.
+//              Filtro de lateralidade por distancia e inclinacao.
+//              Entrada na recuperacao do preco sobre/sob a MME20 com PA.
+// Saida      : Stop/Take em pontos ou max barras.
+// ================================================================
+
+input
+  PeriodoMME20(20);
+  PeriodoMMA50(50);
+  PeriodoMMA200(200);
+  StopLossPontos(120);
+  TakeProfitPontos(200);
+  ToleranciaPontos(20);
+  MinPercCorpoPA(0.45);
+  DistMinPerc(1.2);
+  SlopeMinimoPerc(0.05);
+  BarrasSlope(10);
+  MaxBarrasPosicao(15);
+  HoraInicio(900);
+  HoraFim(1700);
+
+var
+  fMME20, fMMA50, fMMA200 : float;
+  fMMA200_ant : float;
+  fDist20_200, fSlope200 : float;
+  fCorpo, fRange, fPercCorpo : float;
+  fPrecoEntrada : float;
+  bTendenciaAlta, bTendenciaBaixa : boolean;
+  bLateral, bJanelaAtiva : boolean;
+  bPrecoNaMME20Alta, bPrecoNaMME20Baixa : boolean;
+  bPAConfirmaAlta, bPAConfirmaBaixa : boolean;
+  bEntradaAlta, bEntradaBaixa : boolean;
+  iBarrasPosicao : integer;
+
+begin
+  fMME20    := MediaExp(PeriodoMME20, Close);
+  fMMA50    := Media(PeriodoMMA50, Close);
+  fMMA200   := Media(PeriodoMMA200, Close);
+  fMMA200_ant := Media(PeriodoMMA200, Close)[BarrasSlope];
+
+  // --- FILTRO DE LATERALIDADE ---
+  fDist20_200 := Abs(fMME20 - fMMA200) / Max(fMMA200, 0.01) * 100;
+  fSlope200   := Abs(fMMA200 - fMMA200_ant) / Max(fMMA200_ant, 0.01) * 100;
+  bLateral    := (fDist20_200 < DistMinPerc) or (fSlope200 < SlopeMinimoPerc);
+
+  // --- TENDENCIA ---
+  bTendenciaAlta  := (fMMA50 > fMMA200) and (fMME20 > fMMA50);
+  bTendenciaBaixa := (fMMA50 < fMMA200) and (fMME20 < fMMA50);
+
+  // --- PRICE ACTION DO CANDLE ATUAL ---
+  fCorpo    := Abs(Close - Open);
+  fRange    := Max(High - Low, 1);
+  fPercCorpo := fCorpo / fRange;
+
+  // --- ZONA DE PULLBACK NA MME20 ---
+  // Alta: preco veio de acima, tocou a MME20 e recuperou subindo
+  bPrecoNaMME20Alta := (Low[1] <= fMME20 + ToleranciaPontos) and
+                       (Low[1] >= fMME20 - ToleranciaPontos) and
+                       (Close[1] < fMME20 + ToleranciaPontos);
+
+  // Baixa: preco veio de abaixo, tocou a MME20 e recuperou caindo
+  bPrecoNaMME20Baixa := (High[1] >= fMME20 - ToleranciaPontos) and
+                        (High[1] <= fMME20 + ToleranciaPontos) and
+                        (Close[1] > fMME20 - ToleranciaPontos);
+
+  // --- CONFIRMACAO DE PA ---
+  bPAConfirmaAlta  := (Close > Open) and (fPercCorpo >= MinPercCorpoPA) and
+                      (Close > fMME20) and (Low > fMMA50 - ToleranciaPontos);
+
+  bPAConfirmaBaixa := (Close < Open) and (fPercCorpo >= MinPercCorpoPA) and
+                      (Close < fMME20) and (High < fMMA50 + ToleranciaPontos);
+
+  // --- JANELA DE HORARIO (DT) ---
+  bJanelaAtiva := (Time >= HoraInicio) and (Time <= HoraFim);
+
+  // --- SINAIS DE ENTRADA ---
+  bEntradaAlta  := bTendenciaAlta  and bPrecoNaMME20Alta  and bPAConfirmaAlta;
+  bEntradaBaixa := bTendenciaBaixa and bPrecoNaMME20Baixa and bPAConfirmaBaixa;
+
+  // --- ENTRADA ---
+  if (not IsBought) and (not IsSold) and bJanelaAtiva and (not bLateral) then
+  begin
+    if bEntradaAlta then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close;
+      iBarrasPosicao := 0;
+    end;
+
+    if bEntradaBaixa then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close;
+      iBarrasPosicao := 0;
+    end;
+  end;
+
+  // --- CONTROLE DE BARRAS EM POSICAO ---
+  if IsBought or IsSold then
+    iBarrasPosicao := iBarrasPosicao + 1
+  else
+    iBarrasPosicao := 0;
+
+  // --- SAIDA ---
+  if IsBought then
+  begin
+    if (Close <= fPrecoEntrada - StopLossPontos) or
+       (Close >= fPrecoEntrada + TakeProfitPontos) or
+       (iBarrasPosicao >= MaxBarrasPosicao) or
+       (Close < fMMA50 - ToleranciaPontos) then
+      ClosePosition;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= fPrecoEntrada + StopLossPontos) or
+       (Close <= fPrecoEntrada - TakeProfitPontos) or
+       (iBarrasPosicao >= MaxBarrasPosicao) or
+       (Close > fMMA50 + ToleranciaPontos) then
+      ClosePosition;
+  end;
+end;

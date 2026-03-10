@@ -1,0 +1,8 @@
+Conta: 103166893
+Titular: Wesley Gomes Da Silva
+Data Inicial: 05/03/2025
+Data Final: 05/03/2026
+
+Ativo;Abertura;Fechamento;Tempo Operação;Qtd Compra;Qtd Venda;Lado;Preço Compra;Preço Venda;Preço de Mercado;Médio;Res. Intervalo Bruto;Res. Intervalo (%);Número Operação;Res. Operação;Res. Operação (%);Drawdown;Ganho Max.;Perda Max.;TET;Total
+WINJ26;17/12/2025 10:40:00;17/12/2025 12:20:00;1h40min;1;1;V;163.790,00;163.165,00;186.120,00;Não;-125,00;-625,00;1;-125,00;-625,00;0,00;0,00;0,00; - ;-125,00
+WINJ26;03/03/2026 12:20:00;03/03/2026 14:00:00;1h40min;1;1;V;185.590,00;183.675,00;186.120,00;Sim;-383,00;-1.915,00;2;-383,00;-1.915,00;0,00;0,00;0,00;2m14d1h;-508,00

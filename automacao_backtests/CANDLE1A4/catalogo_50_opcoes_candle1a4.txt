@@ -1,0 +1,70 @@
+﻿CATÁLOGO - 50 ROBÔS CANDLE1A4 (CANDLE 1 -> CANDLE 2 CONFIRMAÇÃO -> CANDLE 3/PRÓXIMA REJEIÇÃO SAÍDA)
+
+Objetivo
+- Estratégias para timeframes menores focadas exclusivamente na leitura do Candle 1 do dia.
+- Entrada no Candle 2 por confirmação da direção do Candle 1.
+- Saída por rejeição a partir do Candle 3; se não houver, mantém até próxima rejeição (com limite de barras).
+
+1. robo_candle1a4_v01_cm1_rm1_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=1 | MinPercCorpoC1=0,35 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=6
+2. robo_candle1a4_v02_cm2_rm1_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=1 | MinPercCorpoC1=0,4 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=7
+3. robo_candle1a4_v03_cm3_rm1_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=1 | MinPercCorpoC1=0,45 | MinRangeC1=12 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=8
+4. robo_candle1a4_v04_cm1_rm2_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=2 | MinPercCorpoC1=0,5 | MinRangeC1=14 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=9
+5. robo_candle1a4_v05_cm2_rm2_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=2 | MinPercCorpoC1=0,55 | MinRangeC1=16 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=10
+6. robo_candle1a4_v06_cm3_rm2_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=2 | MinPercCorpoC1=0,35 | MinRangeC1=18 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=11
+7. robo_candle1a4_v07_cm1_rm3_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=3 | MinPercCorpoC1=0,4 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=12
+8. robo_candle1a4_v08_cm2_rm3_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=3 | MinPercCorpoC1=0,45 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=13
+9. robo_candle1a4_v09_cm3_rm3_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=3 | MinPercCorpoC1=0,5 | MinRangeC1=12 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=6
+10. robo_candle1a4_v10_cm1_rm1_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=1 | MinPercCorpoC1=0,55 | MinRangeC1=14 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=7
+11. robo_candle1a4_v11_cm2_rm1_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=1 | MinPercCorpoC1=0,35 | MinRangeC1=16 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=8
+12. robo_candle1a4_v12_cm3_rm1_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=1 | MinPercCorpoC1=0,4 | MinRangeC1=18 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=9
+13. robo_candle1a4_v13_cm1_rm2_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=2 | MinPercCorpoC1=0,45 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=10
+14. robo_candle1a4_v14_cm2_rm2_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=2 | MinPercCorpoC1=0,5 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=11
+15. robo_candle1a4_v15_cm3_rm2_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=2 | MinPercCorpoC1=0,55 | MinRangeC1=12 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=12
+16. robo_candle1a4_v16_cm1_rm3_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=3 | MinPercCorpoC1=0,35 | MinRangeC1=14 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=13
+17. robo_candle1a4_v17_cm2_rm3_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=3 | MinPercCorpoC1=0,4 | MinRangeC1=16 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=6
+18. robo_candle1a4_v18_cm3_rm3_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=3 | MinPercCorpoC1=0,45 | MinRangeC1=18 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=7
+19. robo_candle1a4_v19_cm1_rm1_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=1 | MinPercCorpoC1=0,5 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=8
+20. robo_candle1a4_v20_cm2_rm1_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=1 | MinPercCorpoC1=0,55 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=9
+21. robo_candle1a4_v21_cm3_rm1_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=1 | MinPercCorpoC1=0,35 | MinRangeC1=12 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=10
+22. robo_candle1a4_v22_cm1_rm2_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=2 | MinPercCorpoC1=0,4 | MinRangeC1=14 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=11
+23. robo_candle1a4_v23_cm2_rm2_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=2 | MinPercCorpoC1=0,45 | MinRangeC1=16 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=12
+24. robo_candle1a4_v24_cm3_rm2_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=2 | MinPercCorpoC1=0,5 | MinRangeC1=18 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=13
+25. robo_candle1a4_v25_cm1_rm3_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=3 | MinPercCorpoC1=0,55 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=6
+26. robo_candle1a4_v26_cm2_rm3_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=3 | MinPercCorpoC1=0,35 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=7
+27. robo_candle1a4_v27_cm3_rm3_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=3 | MinPercCorpoC1=0,4 | MinRangeC1=12 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=8
+28. robo_candle1a4_v28_cm1_rm1_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=1 | MinPercCorpoC1=0,45 | MinRangeC1=14 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=9
+29. robo_candle1a4_v29_cm2_rm1_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=1 | MinPercCorpoC1=0,5 | MinRangeC1=16 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=10
+30. robo_candle1a4_v30_cm3_rm1_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=1 | MinPercCorpoC1=0,55 | MinRangeC1=18 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=11
+31. robo_candle1a4_v31_cm1_rm2_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=2 | MinPercCorpoC1=0,35 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=12
+32. robo_candle1a4_v32_cm2_rm2_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=2 | MinPercCorpoC1=0,4 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=13
+33. robo_candle1a4_v33_cm3_rm2_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=2 | MinPercCorpoC1=0,45 | MinRangeC1=12 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=6
+34. robo_candle1a4_v34_cm1_rm3_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=3 | MinPercCorpoC1=0,5 | MinRangeC1=14 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=7
+35. robo_candle1a4_v35_cm2_rm3_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=3 | MinPercCorpoC1=0,55 | MinRangeC1=16 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=8
+36. robo_candle1a4_v36_cm3_rm3_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=3 | MinPercCorpoC1=0,35 | MinRangeC1=18 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=9
+37. robo_candle1a4_v37_cm1_rm1_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=1 | MinPercCorpoC1=0,4 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=10
+38. robo_candle1a4_v38_cm2_rm1_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=1 | MinPercCorpoC1=0,45 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=11
+39. robo_candle1a4_v39_cm3_rm1_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=1 | MinPercCorpoC1=0,5 | MinRangeC1=12 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=12
+40. robo_candle1a4_v40_cm1_rm2_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=2 | MinPercCorpoC1=0,55 | MinRangeC1=14 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=13
+41. robo_candle1a4_v41_cm2_rm2_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=2 | MinPercCorpoC1=0,35 | MinRangeC1=16 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=6
+42. robo_candle1a4_v42_cm3_rm2_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=2 | MinPercCorpoC1=0,4 | MinRangeC1=18 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=7
+43. robo_candle1a4_v43_cm1_rm3_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=3 | MinPercCorpoC1=0,45 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=8
+44. robo_candle1a4_v44_cm2_rm3_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=3 | MinPercCorpoC1=0,5 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=9
+45. robo_candle1a4_v45_cm3_rm3_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=3 | MinPercCorpoC1=0,55 | MinRangeC1=12 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=10
+46. robo_candle1a4_v46_cm1_rm1_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=1 | MinPercCorpoC1=0,35 | MinRangeC1=14 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=11
+47. robo_candle1a4_v47_cm2_rm1_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=1 | MinPercCorpoC1=0,4 | MinRangeC1=16 | ConfirmacaoC2MinPerc=0,5 | RazaoPavio=1,6 | MaxBarrasPosicao=12
+48. robo_candle1a4_v48_cm3_rm1_tfcurto | ConfirmacaoModo=3 | RejeicaoModo=1 | MinPercCorpoC1=0,45 | MinRangeC1=18 | ConfirmacaoC2MinPerc=0,55 | RazaoPavio=1,8 | MaxBarrasPosicao=13
+49. robo_candle1a4_v49_cm1_rm2_tfcurto | ConfirmacaoModo=1 | RejeicaoModo=2 | MinPercCorpoC1=0,5 | MinRangeC1=8 | ConfirmacaoC2MinPerc=0,4 | RazaoPavio=1,2 | MaxBarrasPosicao=6
+50. robo_candle1a4_v50_cm2_rm2_tfcurto | ConfirmacaoModo=2 | RejeicaoModo=2 | MinPercCorpoC1=0,55 | MinRangeC1=10 | ConfirmacaoC2MinPerc=0,45 | RazaoPavio=1,4 | MaxBarrasPosicao=7
+
+
+Para saber se foram aprovados tem que ter resultado.
+O resultado tem que ser maior que 60% de operações vencedoras.
+O drawdown tem que ser pequeno.
+o saldo sempre tem que ser positivo
+Um ponto mais positivo seria a quantidade de operações por pequena com a maior taxa de acerto.
+
+e tb preciso ter uma noção do tamanho do patrimonio necessário.
+
+No final quero um top 10 e depois um top 5 para operar.
+Métodos mais consistentes
+Robôs mais consistentes entre timeframes

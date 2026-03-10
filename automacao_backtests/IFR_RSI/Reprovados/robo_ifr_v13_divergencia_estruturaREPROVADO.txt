@@ -1,0 +1,55 @@
+{
+  Estrategia: robo_ifr_v13_divergencia_estrutura
+  Autor: Wesley
+  Descricao: Busca divergencia simples de IFR com confirmação por quebra de estrutura curta.
+             Compra em fundo mais baixo no preco com IFR mais alto; venda no oposto.
+}
+
+input
+  PeriodoIFR(9);
+  LookbackEstrutura(5);
+  DeltaIFRMinimo(2.0);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fIFRAnterior, fMinLookback, fMaxLookback : float;
+  bDivergenciaCompra, bDivergenciaVenda, bQuebraAlta, bQuebraBaixa : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fIFRAnterior := IFR(PeriodoIFR)[1];
+  fMinLookback := Lowest(Low, LookbackEstrutura);
+  fMaxLookback := Highest(High, LookbackEstrutura);
+
+  bDivergenciaCompra := (Low < Low[1]) and (fIFR > (fIFRAnterior + DeltaIFRMinimo));
+  bDivergenciaVenda := (High > High[1]) and (fIFR < (fIFRAnterior - DeltaIFRMinimo));
+
+  bQuebraAlta := (Close > High[1]) and (Low <= fMinLookback);
+  bQuebraBaixa := (Close < Low[1]) and (High >= fMaxLookback);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bDivergenciaCompra and bQuebraAlta then
+    begin
+      BuyAtMarket;
+    end
+    else if bDivergenciaVenda and bQuebraBaixa then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

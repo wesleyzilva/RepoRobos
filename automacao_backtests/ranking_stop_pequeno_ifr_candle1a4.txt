@@ -1,0 +1,29 @@
+﻿RANKING STOP PEQUENO - IFR_RSI E CANDLE1A4
+Gerado em: 04/03/2026 21:57:57
+Criterios base: WinRate > 60; Saldo > 0; Drawdown <= 700; ordenacao por menor drawdown.
+
+TOP 10 CANDLE1A4 (STOP PEQUENO)
+Pos | Robo | TFAprov | TradesAprov | WinRateAprov | SaldoAprov | DrawdownPiorAprov | DrawdownMedioAprov
+1 | robo_candle1a4_v21_cm3_rm1_tfcurto | 3 | 17 | 76.47 | 1222 | 178 | 61.67
+2 | robo_candle1a4_v37_cm1_rm1_tfcurto | 1 | 19 | 63.16 | 350 | 186 | 186
+3 | robo_candle1a4_v22_cm1_rm2_tfcurto | 2 | 25 | 64 | 490 | 197 | 119
+4 | robo_candle1a4_v31_cm1_rm2_tfcurto | 1 | 19 | 63.16 | 289 | 197 | 197
+5 | robo_candle1a4_v01_cm1_rm1_tfcurto | 2 | 39 | 69.23 | 1239 | 243 | 125
+6 | robo_candle1a4_v02_cm2_rm1_tfcurto | 2 | 55 | 65.45 | 746 | 257 | 255.5
+7 | robo_candle1a4_v34_cm1_rm3_tfcurto | 2 | 26 | 61.54 | 266 | 272 | 234.5
+8 | robo_candle1a4_v07_cm1_rm3_tfcurto | 2 | 25 | 64 | 352 | 272 | 270
+9 | robo_candle1a4_v19_cm1_rm1_tfcurto | 2 | 27 | 62.96 | 409 | 277 | 237
+10 | robo_candle1a4_v12_cm3_rm1_tfcurto | 3 | 34 | 67.65 | 1830 | 422 | 202.33
+
+TOP 10 IFR_RSI (STOP PEQUENO)
+Pos | Robo | TFAprov | TradesAprov | WinRateAprov | SaldoAprov | DrawdownPiorAprov | DrawdownMedioAprov
+1 | robo_ifr_v4_divergencia_confirmada | 1 | 10 | 90 | 988 | 0 | 0
+2 | robo_ifr_v47_orb_confirmacao_dupla | 2 | 5 | 80 | 915 | 0 | 0
+3 | robo_ifr_v23_dupla_confirmacao | 1 | 16 | 87.5 | 1253 | 59 | 59
+4 | robo_ifr_v7_resgate_contexto | 2 | 17 | 82.35 | 1955 | 105 | 52.5
+5 | robo_ifr_v36_divergencia_regular_pivo | 1 | 29 | 62.07 | 882 | 274 | 274
+6 | robo_ifr_v5_regime_volatilidade | 1 | 11 | 90.91 | 1563 | 392 | 392
+7 | robo_ifr_v45_volume_por_horario | 2 | 141 | 68.79 | 3124 | 544 | 488
+8 | robo_ifr_v1_reversao_extremos | 2 | 86 | 66.28 | 1916 | 545 | 468.5
+9 | robo_ifr_v25_ifr_mme200_contexto | 3 | 143 | 69.23 | 1740 | 636 | 575.67
+10 | robo_ifr_v6_saida_hibrida | 2 | 45 | 80 | 4569 | 662 | 501.5

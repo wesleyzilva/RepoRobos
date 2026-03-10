@@ -1,0 +1,273 @@
+﻿==========================================================================
+  RESUMO CONSOLIDADO  -  CANDLE1A4 + IFR_RSI
+  Periodo backtest  : aprox 252 dias uteis
+  Projecao marco    : 21 dias uteis (21 dias uteis em marco/2026)
+  Criterios aprov.  : WR>60% | Saldo>0 | DD<=700 | Trades>=5 por TF
+  Score ponderado   : 40%risco + 25%consist + 15%WR + 10%saldo + 10%amostra
+  Gerado em         : 05/03/2026 08:28
+==========================================================================
+
+  UNIVERSO ANALISADO
+  Robos CANDLE1A4             : 35
+  Robos IFR_RSI               : 18
+  Total combinacoes (robo+TF) : 311
+  Combinacoes aprovadas       : 87
+  Robos elegiveis (>=1 TF ok) : 33
+
+  LEGENDA
+  Ops    = operacoes no backtest  |  Ops/Dia = media por dia util no backtest
+  OpsMAR = projecao ops para marco (21 dias uteis)
+  ValBT  = saldo acumulado backtest  |  ValMAR = projecao saldo marco
+  PatMin = 2.5x DrawDown  |  PatCons = 3.5x DrawDown (recomendado)
+==========================================================================
+
+#1  [IFR_RSI]  V7_RESGATE_CONTEXTO
+    Score       : 0.6932    Perfil: STOP SEGURO + ALTA PRECISAO + ALTO RETORNO
+    TFs testados: 5  |  Aprovados: 2/5 (40%)  |  TFs OK: [2min, 30min]
+    WR medio    : 82.8%   DD maximo : 105 pts
+    Saldo BT    : R$1955   Trades aprovados: 17
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~1.4 ops
+    Saldo estimado      : R$163  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1000  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [OK]  2min       10    0,04     0,8     R$664     R$55    105  OK
+  [--]  5min       12   0,048       1   R$-1354   R$-113   1457  WR 33.3% | saldo neg | DD alto
+  [--]  15min       7   0,028     0,6      R$44      R$4    322  WR 57.1%
+  [OK]  30min       7   0,028     0,6    R$1291    R$108      8  OK
+  [--]  60min       4   0,016     0,3    R$-449    R$-37    979  saldo neg | DD alto | poucos trades
+
+========================================================================
+
+#2  [CANDLE1A4]  V42_CM3_RM2
+    Score       : 0.5269    Perfil: STOP SEGURO + ALTA PRECISAO + CONSISTENTE
+    TFs testados: 5  |  Aprovados: 3/5 (60%)  |  TFs OK: [1min, 30min, 60min]
+    WR medio    : 73%   DD maximo : 278 pts
+    Saldo BT    : R$907   Trades aprovados: 19
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~1.6 ops
+    Saldo estimado      : R$75  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1000  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [OK]  1min        6   0,024     0,5     R$266     R$22    108  OK
+  [--]  5min       10    0,04     0,8    R$-180    R$-15    297  WR 30% | saldo neg
+  [--]  15min      11   0,044     0,9    R$-223    R$-19    328  WR 45.5% | saldo neg
+  [OK]  30min       6   0,024     0,5      R$59      R$5    150  OK
+  [OK]  60min       7   0,028     0,6     R$582     R$48    278  OK
+
+========================================================================
+
+#3  [CANDLE1A4]  V40_CM1_RM2
+    Score       : 0.5124    Perfil: STOP SEGURO + CONSISTENTE
+    TFs testados: 5  |  Aprovados: 3/5 (60%)  |  TFs OK: [1min, 30min, 60min]
+    WR medio    : 71.6%   DD maximo : 278 pts
+    Saldo BT    : R$642   Trades aprovados: 21
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~1.8 ops
+    Saldo estimado      : R$53  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1000  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [OK]  1min        8   0,032     0,7       R$1      R$0    276  OK
+  [--]  5min        9   0,036     0,8    R$-318    R$-26    356  WR 22.2% | saldo neg
+  [--]  15min      10    0,04     0,8    R$-200    R$-17    328  WR 50% | saldo neg
+  [OK]  30min       6   0,024     0,5      R$59      R$5    150  OK
+  [OK]  60min       7   0,028     0,6     R$582     R$48    278  OK
+
+========================================================================
+
+#4  [CANDLE1A4]  V21_CM3_RM1
+    Score       : 0.4703    Perfil: STOP SEGURO
+    TFs testados: 8  |  Aprovados: 2/8 (25%)  |  TFs OK: [1min, 2min]
+    WR medio    : 69.1%   DD maximo : 178 pts
+    Saldo BT    : R$533   Trades aprovados: 13
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~1.1 ops
+    Saldo estimado      : R$44  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1000  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [OK]  1min        6   0,024     0,5     R$278     R$23    178  OK
+  [OK]  2min        7   0,028     0,6     R$255     R$21     79  OK
+  [--]  3min       22   0,087     1,8     R$750     R$62    178  WR 50%
+  [--]  4min       24   0,095       2    R$-311    R$-26    688  WR 41.7% | saldo neg
+  [--]  5min       20   0,079     1,7    R$-215    R$-18    431  WR 30% | saldo neg
+  [--]  15min      22   0,087     1,8    R$-185    R$-15    340  WR 54.5% | saldo neg
+  [--]  30min       2   0,008     0,2     R$-38     R$-3     41  WR 50% | saldo neg | poucos trades
+  [--]  60min       4   0,016     0,3     R$689     R$57      0  poucos trades
+
+========================================================================
+
+#5  [CANDLE1A4]  V01_CM1_RM1
+    Score       : 0.4669    Perfil: STOP SEGURO + BOA AMOSTRA
+    TFs testados: 8  |  Aprovados: 2/8 (25%)  |  TFs OK: [2min, 30min]
+    WR medio    : 70.1%   DD maximo : 243 pts
+    Saldo BT    : R$1239   Trades aprovados: 39
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~3.3 ops
+    Saldo estimado      : R$103  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1000  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [--]  1min       12   0,048       1     R$295     R$25    277  WR 58.3%
+  [OK]  2min        7   0,028     0,6     R$255     R$21     79  OK
+  [--]  3min       25   0,099     2,1     R$814     R$68    178  WR 52%
+  [--]  4min       26   0,103     2,2     R$315     R$26    199  WR 50%
+  [--]  5min       29   0,115     2,4     R$215     R$18    368  WR 44.8%
+  [--]  15min      34   0,135     2,8    R$-190    R$-16    525  WR 58.8% | saldo neg
+  [OK]  30min      32   0,127     2,7     R$984     R$82    243  OK
+  [--]  60min      42   0,167     3,5     R$708     R$59   1136  WR 52.4% | DD alto
+
+========================================================================
+
+#6  [CANDLE1A4]  V22_CM1_RM2
+    Score       : 0.4442    Perfil: STOP SEGURO
+    TFs testados: 8  |  Aprovados: 2/8 (25%)  |  TFs OK: [2min, 30min]
+    WR medio    : 66.2%   DD maximo : 197 pts
+    Saldo BT    : R$490   Trades aprovados: 25
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~2.1 ops
+    Saldo estimado      : R$41  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1000  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [--]  1min        9   0,036     0,8    R$-158    R$-13    290  WR 55.6% | saldo neg
+  [OK]  2min        7   0,028     0,6     R$339     R$28     97  OK
+  [--]  3min       22   0,087     1,8     R$674     R$56    197  WR 50%
+  [--]  4min       19   0,075     1,6    R$-345    R$-29    503  WR 42.1% | saldo neg
+  [--]  5min       21   0,083     1,7    R$-240    R$-20    372  WR 33.3% | saldo neg
+  [--]  15min      24   0,095       2    R$-149    R$-12    340  WR 58.3% | saldo neg
+  [OK]  30min      18   0,071     1,5     R$151     R$13    197  OK
+  [--]  60min      26   0,103     2,2     R$964     R$80    793  DD alto
+
+========================================================================
+
+#7  [CANDLE1A4]  V43_CM1_RM3
+    Score       : 0.4351    Perfil: STOP SEGURO + CONSISTENTE
+    TFs testados: 4  |  Aprovados: 2/4 (50%)  |  TFs OK: [1min, 30min]
+    WR medio    : 64.6%   DD maximo : 260 pts
+    Saldo BT    : R$202   Trades aprovados: 14
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~1.2 ops
+    Saldo estimado      : R$17  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1000  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [OK]  1min        8   0,032     0,7     R$143     R$12    260  OK
+  [--]  5min        9   0,036     0,8     R$-56     R$-5    156  WR 33.3% | saldo neg
+  [--]  15min      10    0,04     0,8    R$-200    R$-17    328  WR 50% | saldo neg
+  [OK]  30min       6   0,024     0,5      R$59      R$5    150  OK
+
+========================================================================
+
+#8  [CANDLE1A4]  V02_CM2_RM1
+    Score       : 0.4251    Perfil: STOP SEGURO + BOA AMOSTRA
+    TFs testados: 8  |  Aprovados: 2/8 (25%)  |  TFs OK: [15min, 30min]
+    WR medio    : 65.5%   DD maximo : 257 pts
+    Saldo BT    : R$746   Trades aprovados: 55
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~4.5 ops
+    Saldo estimado      : R$62  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1000  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [--]  1min       11   0,044     0,9      R$50      R$4    277  WR 54.5%
+  [--]  2min       23   0,091     1,9     R$479     R$40    188  WR 52.2%
+  [--]  3min       23   0,091     1,9     R$883     R$74    178  WR 56.5%
+  [--]  4min       21   0,083     1,7     R$182     R$15    270  WR 42.9%
+  [--]  5min       27   0,107     2,2      R$-4      R$0    501  WR 40.7% | saldo neg
+  [OK]  15min      28   0,111     2,3      R$88      R$7    257  OK
+  [OK]  30min      27   0,107     2,2     R$658     R$55    254  OK
+  [--]  60min      40   0,159     3,3     R$790     R$66   1058  WR 55% | DD alto
+
+========================================================================
+
+#9  [IFR_RSI]  V45_VOLUME_POR_HORARIO
+    Score       : 0.4205    Perfil: ALTO RETORNO + BOA AMOSTRA
+    TFs testados: 5  |  Aprovados: 2/5 (40%)  |  TFs OK: [2min, 60min]
+    WR medio    : 71.6%   DD maximo : 544 pts
+    Saldo BT    : R$3124   Trades aprovados: 141
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~11.8 ops
+    Saldo estimado      : R$260  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1360  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1904  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [OK]  2min      129   0,512    10,8    R$1481    R$123    432  OK
+  [--]  5min       72   0,286       6    R$-219    R$-18    804  WR 59.7% | saldo neg | DD alto
+  [--]  15min      40   0,159     3,3     R$327     R$27    865  WR 57.5% | DD alto
+  [--]  30min      20   0,079     1,7     R$306     R$25   1607  DD alto
+  [OK]  60min      12   0,048       1    R$1643    R$137    544  OK
+
+========================================================================
+
+#10  [CANDLE1A4]  V48_CM3_RM1
+    Score       : 0.4134    Perfil: ALTA PRECISAO + ALTO RETORNO
+    TFs testados: 5  |  Aprovados: 2/5 (40%)  |  TFs OK: [1min, 60min]
+    WR medio    : 74.1%   DD maximo : 410 pts
+    Saldo BT    : R$1665   Trades aprovados: 27
+
+    PROJECAO MARCO 2026 (21 dias uteis)
+    Operacoes estimadas : ~2.2 ops
+    Saldo estimado      : R$138  (proporcional ao historico)
+    Patrimonio MINIMO   : R$1025  (2.5 x DrawDown)
+    Patrimonio CONSERV  : R$1500  (3.5 x DrawDown)  << recomendado
+
+    TF        Ops Ops/Dia  OpsMAR     ValBT   ValMAR     DD  Status
+    --------------------------------------------------------------------
+  [OK]  1min        5    0,02     0,4     R$365     R$30    174  OK
+  [--]  5min       19   0,075     1,6    R$-297    R$-25    407  WR 26.3% | saldo neg
+  [--]  15min      21   0,083     1,7    R$-103     R$-9    328  WR 57.1% | saldo neg
+  [--]  30min      16   0,063     1,3     R$171     R$14    186  WR 56.2%
+  [OK]  60min      22   0,087     1,8    R$1300    R$108    410  OK
+
+========================================================================
+
+==========================================================================
+  TABELA RESUMO - INVESTIMENTO NECESSARIO PARA OPERAR EM MARCO 2026
+==========================================================================
+
+  #   Univ      Robo                     WR%  SaldoBT    DD   OpsMAR    ValMAR  PatrimMin PatrimCons
+  -----------------------------------------------------------------------------------------------
+  1   IFR_RSI   v7_resgate_contexto    82.8%   R$1955 105pts     ~1.4    ~R$163     R$1000     R$1500
+  2   CANDLE1A4 v42_cm3_rm2              73%    R$907 278pts     ~1.6     ~R$75     R$1000     R$1500
+  3   CANDLE1A4 v40_cm1_rm2            71.6%    R$642 278pts     ~1.8     ~R$53     R$1000     R$1500
+  4   CANDLE1A4 v21_cm3_rm1            69.1%    R$533 178pts     ~1.1     ~R$44     R$1000     R$1500
+  5   CANDLE1A4 v01_cm1_rm1            70.1%   R$1239 243pts     ~3.3    ~R$103     R$1000     R$1500
+  6   CANDLE1A4 v22_cm1_rm2            66.2%    R$490 197pts     ~2.1     ~R$41     R$1000     R$1500
+  7   CANDLE1A4 v43_cm1_rm3            64.6%    R$202 260pts     ~1.2     ~R$17     R$1000     R$1500
+  8   CANDLE1A4 v02_cm2_rm1            65.5%    R$746 257pts     ~4.5     ~R$62     R$1000     R$1500
+  9   IFR_RSI   v45_volume_por_horario 71.6%   R$3124 544pts    ~11.8    ~R$260     R$1360     R$1904
+  10  CANDLE1A4 v48_cm3_rm1            74.1%   R$1665 410pts     ~2.2    ~R$138     R$1025     R$1500
+
+  * Retorno estimado e PROPORCIONAL ao historico. Nao e garantia futura.
+  * Use sempre o patrimonio CONSERVADOR para iniciar.

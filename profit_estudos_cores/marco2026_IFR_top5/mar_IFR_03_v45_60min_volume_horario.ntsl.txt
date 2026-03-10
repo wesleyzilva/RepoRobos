@@ -1,0 +1,65 @@
+{
+  Indicador: mar_IFR_03_v45_60min_volume_horario
+  Descricao: Leitura visual do robô v45 (60min). Prioridade #3.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoMediaVolume(20);
+  HoraAberturaFim(103000);
+  FatorVolumeAbertura(1.30);
+  FatorVolumeMeio(1.00);
+  MostrarTexto(true);
+
+var
+  fIFR, fMediaVol, fFatorAtual : float;
+  iHoraHHMM, iHoraAberturaFimHHMM : Integer;
+  bVolumeOK, bCompra, bVenda : boolean;
+  cCompra, cVenda, cSemVolume, cNeutro : Integer;
+
+begin
+  cCompra := RGB(0, 220, 0);
+  cVenda := RGB(220, 0, 0);
+  cSemVolume := RGB(255, 140, 0);
+  cNeutro := RGB(120, 120, 120);
+
+  iHoraHHMM := Time;
+  if iHoraHHMM > 2400 then
+    iHoraHHMM := Round(iHoraHHMM / 100);
+
+  iHoraAberturaFimHHMM := HoraAberturaFim;
+  if iHoraAberturaFimHHMM > 2400 then
+    iHoraAberturaFimHHMM := Round(iHoraAberturaFimHHMM / 100);
+
+  fIFR := IFR(PeriodoIFR);
+  fMediaVol := Media(PeriodoMediaVolume, Volume);
+
+  if iHoraHHMM <= iHoraAberturaFimHHMM then
+    fFatorAtual := FatorVolumeAbertura
+  else
+    fFatorAtual := FatorVolumeMeio;
+
+  bVolumeOK := Volume >= (fMediaVol * fFatorAtual);
+
+  bCompra := bVolumeOK and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra);
+  bVenda := bVolumeOK and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda);
+
+  if bCompra then
+  begin
+    PaintBar(cCompra);
+    if MostrarTexto then PlotText("V45 60 COMPRA", cCompra, 0, Low - (Range * 0.30));
+  end
+  else if bVenda then
+  begin
+    PaintBar(cVenda);
+    if MostrarTexto then PlotText("V45 60 VENDA", cVenda, 0, High + (Range * 0.30));
+  end
+  else if not bVolumeOK then
+    PaintBar(cSemVolume)
+  else
+    PaintBar(cNeutro);
+end;

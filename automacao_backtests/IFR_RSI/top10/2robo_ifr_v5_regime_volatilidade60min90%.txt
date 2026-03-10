@@ -1,0 +1,194 @@
+{
+  Estrategia: robo_ifr_v5_regime_volatilidade
+  Autor: Wesley
+  Descricao: Ajusta extremos de IFR por regime de volatilidade (ATR relativo).
+             Alta volatilidade usa extremos mais amplos; baixa volatilidade mais estreitos.
+}
+
+input
+  PeriodoIFR(9);
+  PeriodoATR(14);
+  PeriodoATRMedia(50);
+  IFREntradaCompraAltaVol(20);
+  IFREntradaVendaAltaVol(80);
+  IFREntradaCompraBaixaVol(35);
+  IFREntradaVendaBaixaVol(65);
+  PeriodoMediaVolume(20);
+  FatorVolume(1.1);
+  UsarFiltroVolume(false);
+  MultiplicadorPavio(1.5);
+  MaxPavioOpostoCorpo(1.2);
+  UsarOCO(false);
+  StopLossPontos(100.0);
+  TakeProfitPontos(150.0);
+  UsarBreakEven(false);
+  BreakEvenTriggerPontos(80.0);
+  BreakEvenOffsetPontos(5.0);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(2500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  QuantidadeContratos(1);
+  DiasParaResetSemanal(5);
+  UsarResetSemanalPorDiaFixo(true);
+  DiaSemanaReset(2);
+
+var
+  fIFR, vMediaVol, fATR, fATRMedio : float;
+  fCompraNivel, fVendaNivel : float;
+  Range, TamCorpo, TamPavioSup, TamPavioInf : float;
+  fLimiteDia, fLimiteSemana, fResultadoDia, fResultadoSemana : float;
+  fPrecoEntrada, fResultadoTradePontos, fResultadoTradeReais : float;
+  fStopAtual, fAlvoAtual : float;
+  bVolumeAlto, bAltaVolatilidade : boolean;
+  bBloqueioDia, bBloqueioSemana, bEstavaPosicionado : boolean;
+  bBreakEvenAtivo, bSaidaOCOCompra, bSaidaOCOVenda : boolean;
+  bMartelo, bEstrela : boolean;
+  iDirecaoPosicao, iDiasSemana, iDiaSemanaAtual : integer;
+
+begin
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0;
+    bBloqueioDia := false;
+
+    if UsarResetSemanalPorDiaFixo then
+    begin
+      iDiaSemanaAtual := DayOfWeek(Date);
+      if iDiaSemanaAtual = DiaSemanaReset then
+      begin
+        fResultadoSemana := 0;
+        bBloqueioSemana := false;
+      end;
+    end
+    else
+    begin
+      iDiasSemana := iDiasSemana + 1;
+      if iDiasSemana > DiasParaResetSemanal then
+      begin
+        iDiasSemana := 1;
+        fResultadoSemana := 0;
+        bBloqueioSemana := false;
+      end;
+    end;
+  end;
+
+  fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+  fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+  if bEstavaPosicionado and (not IsBought) and (not IsSold) then
+  begin
+    fResultadoTradePontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
+    fResultadoTradeReais := fResultadoTradePontos * ValorPorPonto * QuantidadeContratos;
+    fResultadoDia := fResultadoDia + fResultadoTradeReais;
+    fResultadoSemana := fResultadoSemana + fResultadoTradeReais;
+  end;
+
+  if UsarGestaoRisco and (fResultadoDia <= -fLimiteDia) then
+    bBloqueioDia := true;
+
+  if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then
+    bBloqueioSemana := true;
+
+  if UsarGestaoRisco and UsarHardLock and (bBloqueioDia or bBloqueioSemana) and (IsBought or IsSold) then
+    ClosePosition;
+
+  fIFR := IFR(PeriodoIFR);
+  fATR := Media(PeriodoATR, Range);
+  fATRMedio := Media(PeriodoATRMedia, fATR);
+  if fATRMedio <= 0 then
+    fATRMedio := 0.01;
+
+  bAltaVolatilidade := (fATR >= fATRMedio);
+
+  if bAltaVolatilidade then
+  begin
+    fCompraNivel := IFREntradaCompraAltaVol;
+    fVendaNivel := IFREntradaVendaAltaVol;
+  end
+  else
+  begin
+    fCompraNivel := IFREntradaCompraBaixaVol;
+    fVendaNivel := IFREntradaVendaBaixaVol;
+  end;
+
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+  bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
+
+  Range := High - Low;
+  TamCorpo := Abs(Open - Close);
+  TamPavioSup := High - Max(Open, Close);
+  TamPavioInf := Min(Open, Close) - Low;
+
+  bMartelo := (Range > 0)
+           and (TamPavioInf >= (TamCorpo * MultiplicadorPavio))
+           and (TamPavioSup <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  bEstrela := (Range > 0)
+           and (TamPavioSup >= (TamCorpo * MultiplicadorPavio))
+           and (TamPavioInf <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  bSaidaOCOCompra := false;
+  bSaidaOCOVenda := false;
+
+  if IsBought and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((High - fPrecoEntrada) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+
+    fStopAtual := fPrecoEntrada - StopLossPontos;
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Max(fStopAtual, fPrecoEntrada + BreakEvenOffsetPontos);
+
+    fAlvoAtual := fPrecoEntrada + TakeProfitPontos;
+    bSaidaOCOCompra := UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual));
+  end;
+
+  if IsSold and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((fPrecoEntrada - Low) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+
+    fStopAtual := fPrecoEntrada + StopLossPontos;
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Min(fStopAtual, fPrecoEntrada - BreakEvenOffsetPontos);
+
+    fAlvoAtual := fPrecoEntrada - TakeProfitPontos;
+    bSaidaOCOVenda := UsarOCO and ((High >= fStopAtual) or (Low <= fAlvoAtual));
+  end;
+
+  if (not IsBought) and (not IsSold) and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+  begin
+    if (fIFR <= fCompraNivel) and bMartelo and bVolumeAlto then
+      BuyAtMarket
+    else if (fIFR >= fVendaNivel) and bEstrela and bVolumeAlto then
+      SellShortAtMarket;
+  end;
+
+  if IsBought and ((fIFR >= 50) or bSaidaOCOCompra) then
+    ClosePosition;
+
+  if IsSold and ((fIFR <= 50) or bSaidaOCOVenda) then
+    ClosePosition;
+
+  if (not bEstavaPosicionado) and IsBought then
+  begin
+    fPrecoEntrada := Close;
+    iDirecaoPosicao := 1;
+    bBreakEvenAtivo := false;
+  end;
+
+  if (not bEstavaPosicionado) and IsSold then
+  begin
+    fPrecoEntrada := Close;
+    iDirecaoPosicao := -1;
+    bBreakEvenAtivo := false;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+    bBreakEvenAtivo := false;
+
+  bEstavaPosicionado := IsBought or IsSold;
+end;

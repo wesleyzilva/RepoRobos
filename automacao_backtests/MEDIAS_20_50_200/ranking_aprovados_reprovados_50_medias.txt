@@ -1,0 +1,68 @@
+RANKING - 50 ROBOS DE MEDIAS (MME9, MME20, MMA50, MMA200)
+
+Critérios sugeridos
+- Aprovado: LucroLiquido > 0, ProfitFactor >= 1.20, Drawdown aceitavel para sua banca.
+- Reprovado: LucroLiquido <= 0 ou ProfitFactor < 1.00 ou Drawdown excessivo.
+- Em revisao: faixa intermediaria entre reprovado e aprovado.
+
+Campos recomendados por robo
+- Timeframe
+- LucroLiquido
+- ProfitFactor
+- WinRate
+- DrawdownMax
+- NumeroTrades
+- Status (Aprovado / Em revisao / Reprovado)
+
+Tabela de controle
+ID | Robo | Timeframe | LucroLiquido | ProfitFactor | WinRate | DrawdownMax | Trades | Status | Observacoes
+01 | robo_medias_v1_leque_tendencia |  |  |  |  |  |  |  | 
+02 | robo_medias_v2_pullback_20_regime |  |  |  |  |  |  |  | 
+03 | robo_medias_v3_rompimento_200_20proxima |  |  |  |  |  |  |  | 
+04 | robo_medias_v4_filtro_compressao_direcional |  |  |  |  |  |  |  | 
+05 | robo_medias_v05_leque |  |  |  |  |  |  |  | 
+06 | robo_medias_v06_leque |  |  |  |  |  |  |  | 
+07 | robo_medias_v07_leque |  |  |  |  |  |  |  | 
+08 | robo_medias_v08_leque |  |  |  |  |  |  |  | 
+09 | robo_medias_v09_leque |  |  |  |  |  |  |  | 
+10 | robo_medias_v10_leque |  |  |  |  |  |  |  | 
+11 | robo_medias_v11_leque |  |  |  |  |  |  |  | 
+12 | robo_medias_v12_leque |  |  |  |  |  |  |  | 
+13 | robo_medias_v13_leque |  |  |  |  |  |  |  | 
+14 | robo_medias_v14_leque |  |  |  |  |  |  |  | 
+15 | robo_medias_v15_pullback |  |  |  |  |  |  |  | 
+16 | robo_medias_v16_pullback |  |  |  |  |  |  |  | 
+17 | robo_medias_v17_pullback |  |  |  |  |  |  |  | 
+18 | robo_medias_v18_pullback |  |  |  |  |  |  |  | 
+19 | robo_medias_v19_pullback |  |  |  |  |  |  |  | 
+20 | robo_medias_v20_pullback |  |  |  |  |  |  |  | 
+21 | robo_medias_v21_pullback |  |  |  |  |  |  |  | 
+22 | robo_medias_v22_pullback |  |  |  |  |  |  |  | 
+23 | robo_medias_v23_pullback |  |  |  |  |  |  |  | 
+24 | robo_medias_v24_pullback |  |  |  |  |  |  |  | 
+25 | robo_medias_v25_romp200 |  |  |  |  |  |  |  | 
+26 | robo_medias_v26_romp200 |  |  |  |  |  |  |  | 
+27 | robo_medias_v27_romp200 |  |  |  |  |  |  |  | 
+28 | robo_medias_v28_romp200 |  |  |  |  |  |  |  | 
+29 | robo_medias_v29_romp200 |  |  |  |  |  |  |  | 
+30 | robo_medias_v30_romp200 |  |  |  |  |  |  |  | 
+31 | robo_medias_v31_romp200 |  |  |  |  |  |  |  | 
+32 | robo_medias_v32_romp200 |  |  |  |  |  |  |  | 
+33 | robo_medias_v33_romp200 |  |  |  |  |  |  |  | 
+34 | robo_medias_v34_romp200 |  |  |  |  |  |  |  | 
+35 | robo_medias_v35_compressao |  |  |  |  |  |  |  | 
+36 | robo_medias_v36_compressao |  |  |  |  |  |  |  | 
+37 | robo_medias_v37_compressao |  |  |  |  |  |  |  | 
+38 | robo_medias_v38_compressao |  |  |  |  |  |  |  | 
+39 | robo_medias_v39_compressao |  |  |  |  |  |  |  | 
+40 | robo_medias_v40_compressao |  |  |  |  |  |  |  | 
+41 | robo_medias_v41_compressao |  |  |  |  |  |  |  | 
+42 | robo_medias_v42_compressao |  |  |  |  |  |  |  | 
+43 | robo_medias_v43_compressao |  |  |  |  |  |  |  | 
+44 | robo_medias_v44_compressao |  |  |  |  |  |  |  | 
+45 | robo_medias_v45_hibrido |  |  |  |  |  |  |  | 
+46 | robo_medias_v46_hibrido |  |  |  |  |  |  |  | 
+47 | robo_medias_v47_hibrido |  |  |  |  |  |  |  | 
+48 | robo_medias_v48_hibrido |  |  |  |  |  |  |  | 
+49 | robo_medias_v49_hibrido |  |  |  |  |  |  |  | 
+50 | robo_medias_v50_hibrido |  |  |  |  |  |  |  | 

@@ -1,0 +1,93 @@
+{
+  Indicador: fev_ContadorCruzamentosMedias
+  Objetivo: Contar no intraday quantos cruzamentos ocorrem por dia entre:
+            1) MME20 x MMA50
+            2) MMA50 x MMA200
+  Observação: Não depende de exportação de dados.
+}
+
+input
+  PeriodoMME20(20);
+  PeriodoMMA50(50);
+  PeriodoMMA200(200);
+  ContarApenasHorarioRegular(true);
+  HoraInicio(900);
+  HoraFim(1755);
+  MarcarCruzamentosNoPreco(true);
+
+var
+  fMME20, fMMA50, fMMA200 : float;
+  iHoraAtual, iHoraHHMM : integer;
+  iCruz2050Dia, iCruz50200Dia : integer;
+  bNovoDia, bMesmoDia, bDentroHorario : boolean;
+  bCruz2050Alta, bCruz2050Baixa : boolean;
+  bCruz50200Alta, bCruz50200Baixa : boolean;
+  c2050, c50200, cMarca2050, cMarca50200 : integer;
+
+begin
+  // Cores
+  c2050 := RGB(255, 0, 255);      // Fúcsia (contador 20x50)
+  c50200 := RGB(0, 255, 255);     // Ciano (contador 50x200)
+  cMarca2050 := RGB(255, 215, 0); // Dourado (marca cruzamento 20x50 no preço)
+  cMarca50200 := RGB(255, 255, 255); // Branco (marca cruzamento 50x200 no preço)
+
+  // Horário em HHMM
+  iHoraAtual := Time;
+  if (iHoraAtual > 2359) then
+    iHoraHHMM := iHoraAtual / 100
+  else
+    iHoraHHMM := iHoraAtual;
+
+  bNovoDia := (Date <> Date[1]);
+  bMesmoDia := (Date = Date[1]);
+
+  // Reset diário
+  if bNovoDia then
+  begin
+    iCruz2050Dia := 0;
+    iCruz50200Dia := 0;
+  end;
+
+  // Faixa horária de contagem
+  if ContarApenasHorarioRegular then
+    bDentroHorario := (iHoraHHMM >= HoraInicio) and (iHoraHHMM <= HoraFim)
+  else
+    bDentroHorario := True;
+
+  // Médias
+  fMME20 := MediaExp(PeriodoMME20, Close);
+  fMMA50 := Media(PeriodoMMA50, Close);
+  fMMA200 := Media(PeriodoMMA200, Close);
+
+  // Cruzamentos apenas dentro do mesmo dia (evita contar transição de pregão)
+  bCruz2050Alta := bMesmoDia and bDentroHorario and (fMME20 > fMMA50) and (fMME20[1] <= fMMA50[1]);
+  bCruz2050Baixa := bMesmoDia and bDentroHorario and (fMME20 < fMMA50) and (fMME20[1] >= fMMA50[1]);
+
+  bCruz50200Alta := bMesmoDia and bDentroHorario and (fMMA50 > fMMA200) and (fMMA50[1] <= fMMA200[1]);
+  bCruz50200Baixa := bMesmoDia and bDentroHorario and (fMMA50 < fMMA200) and (fMMA50[1] >= fMMA200[1]);
+
+  if (bCruz2050Alta or bCruz2050Baixa) then
+    iCruz2050Dia := iCruz2050Dia + 1;
+
+  if (bCruz50200Alta or bCruz50200Baixa) then
+    iCruz50200Dia := iCruz50200Dia + 1;
+
+  // Exibe os contadores em painel de indicador
+  Plot(iCruz2050Dia);
+  SetPlotColor(1, c2050);
+  SetPlotWidth(1, 2);
+
+  Plot2(iCruz50200Dia);
+  SetPlotColor(2, c50200);
+  SetPlotWidth(2, 2);
+
+  // Marca no preço cada evento de cruzamento
+  if MarcarCruzamentosNoPreco then
+  begin
+    if (bCruz2050Alta or bCruz2050Baixa) then
+      PlotText("X2050", cMarca2050, 8, 0, Close);
+
+    if (bCruz50200Alta or bCruz50200Baixa) then
+      PlotText("X50200", cMarca50200, 8, 0, Close);
+  end;
+end;

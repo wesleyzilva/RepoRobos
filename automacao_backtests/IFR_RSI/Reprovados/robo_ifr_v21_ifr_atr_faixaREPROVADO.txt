@@ -1,0 +1,54 @@
+{
+  Estrategia: robo_ifr_v21_ifr_atr_faixa
+  Autor: Wesley
+  Descricao: IFR com filtro de faixa de volatilidade baseado em range medio (proxy de ATR).
+             Opera apenas quando a volatilidade esta em faixa operavel.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoVolatilidade(14);
+  FaixaMinRange(35.0);
+  FaixaMaxRange(220.0);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(14);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fRangeMedio : float;
+  bVolatilidadeOperavel : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fRangeMedio := Media(PeriodoVolatilidade, High - Low);
+
+  bVolatilidadeOperavel := (fRangeMedio >= FaixaMinRange) and (fRangeMedio <= FaixaMaxRange);
+
+  if (not IsBought) and (not IsSold) and bVolatilidadeOperavel then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

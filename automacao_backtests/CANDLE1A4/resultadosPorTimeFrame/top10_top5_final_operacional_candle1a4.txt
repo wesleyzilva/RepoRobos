@@ -1,0 +1,26 @@
+﻿TOP 10 E TOP 5 FINAL OPERACIONAL - CANDLE1A4 (CORRIGIDO v2)
+Gerado em: 04/03/2026 17:51:58
+Regras aplicadas: WinRate > 60; Saldo > 0; Drawdown <= 700; amostra pequena com peso menor.
+
+TOP 10 FINAL (ROBOS ELEGIVEIS)
+Pos | Robo | ScoreFinal | TFAprov | TradesAprov | WinRateAprov | SaldoAprov | DrawdownPiorAprov | PatrimonioSugerido
+1 | robo_candle1a4_v21_cm3_rm1_tfcurto | 57.74 | 3 | 17 | 76.47 | 1222 | 178 | 1000
+2 | robo_candle1a4_v27_cm3_rm3_tfcurto | 52.05 | 3 | 34 | 70.59 | 2057 | 630 | 1575
+3 | robo_candle1a4_v12_cm3_rm1_tfcurto | 51.1 | 3 | 34 | 67.65 | 1830 | 422 | 1055
+4 | robo_candle1a4_v30_cm3_rm1_tfcurto | 47.53 | 2 | 27 | 66.67 | 1575 | 422 | 1055
+5 | robo_candle1a4_v01_cm1_rm1_tfcurto | 45.79 | 2 | 39 | 69.23 | 1239 | 243 | 1000
+6 | robo_candle1a4_v03_cm3_rm1_tfcurto | 45.13 | 3 | 35 | 65.71 | 1680 | 572 | 1430
+7 | robo_candle1a4_v25_cm1_rm3_tfcurto | 44.98 | 4 | 57 | 63.16 | 1670 | 643 | 1608
+8 | robo_candle1a4_v16_cm1_rm3_tfcurto | 44.65 | 4 | 56 | 62.5 | 1532 | 643 | 1608
+9 | robo_candle1a4_v28_cm1_rm1_tfcurto | 44.64 | 4 | 56 | 62.5 | 1531 | 643 | 1608
+10 | robo_candle1a4_v10_cm1_rm1_tfcurto | 44.55 | 4 | 54 | 62.96 | 1479 | 643 | 1608
+
+TOP 5 PARA OPERAR
+Pos | Robo | ScoreFinal | TFAprov | TradesAprov | WinRateAprov | SaldoAprov | DrawdownPiorAprov | PatrimonioSugerido
+1 | robo_candle1a4_v21_cm3_rm1_tfcurto | 57.74 | 3 | 17 | 76.47 | 1222 | 178 | 1000
+2 | robo_candle1a4_v27_cm3_rm3_tfcurto | 52.05 | 3 | 34 | 70.59 | 2057 | 630 | 1575
+3 | robo_candle1a4_v12_cm3_rm1_tfcurto | 51.1 | 3 | 34 | 67.65 | 1830 | 422 | 1055
+4 | robo_candle1a4_v30_cm3_rm1_tfcurto | 47.53 | 2 | 27 | 66.67 | 1575 | 422 | 1055
+5 | robo_candle1a4_v01_cm1_rm1_tfcurto | 45.79 | 2 | 39 | 69.23 | 1239 | 243 | 1000
+
+OBS PATRIMONIO: estimativa tecnica = 2.5x drawdown pior aprovado (minimo 1000).

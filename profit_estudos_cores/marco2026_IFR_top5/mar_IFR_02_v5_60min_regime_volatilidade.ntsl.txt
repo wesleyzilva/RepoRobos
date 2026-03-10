@@ -1,0 +1,50 @@
+{
+  Indicador: mar_IFR_02_v5_60min_regime_volatilidade
+  Descricao: Leitura visual do robô v5 (60min). Prioridade #2.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoRangeRapido(14);
+  PeriodoRangeLento(50);
+  MostrarTexto(true);
+
+var
+  fIFR, fRangeRapido, fRangeLento : float;
+  bRegimeVolatil, bCompra, bVenda : boolean;
+  cCompra, cVenda, cBloqueado, cNeutro : Integer;
+
+begin
+  cCompra := RGB(0, 220, 0);
+  cVenda := RGB(220, 0, 0);
+  cBloqueado := RGB(255, 140, 0);
+  cNeutro := RGB(120, 120, 120);
+
+  fIFR := IFR(PeriodoIFR);
+  fRangeRapido := Media(PeriodoRangeRapido, Range);
+  fRangeLento := Media(PeriodoRangeLento, Range);
+
+  bRegimeVolatil := fRangeRapido >= fRangeLento;
+
+  bCompra := bRegimeVolatil and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra);
+  bVenda := bRegimeVolatil and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda);
+
+  if bCompra then
+  begin
+    PaintBar(cCompra);
+    if MostrarTexto then PlotText("V5 60 COMPRA", cCompra, 0, Low - (Range * 0.30));
+  end
+  else if bVenda then
+  begin
+    PaintBar(cVenda);
+    if MostrarTexto then PlotText("V5 60 VENDA", cVenda, 0, High + (Range * 0.30));
+  end
+  else if (not bRegimeVolatil) then
+    PaintBar(cBloqueado)
+  else
+    PaintBar(cNeutro);
+end;

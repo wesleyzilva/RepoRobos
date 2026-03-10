@@ -1,0 +1,122 @@
+﻿==================================================================
+ RANKING FINAL CANDLE1A4 - 05/03/2026
+ Criterios: WinRate > 60% | Saldo > 0 | DrawDown <= 700 | Trades >= 5
+ Score: 40% riskNorm + 25% consistencia + 15% WRnorm + 10% saldoNorm + 10% sampleNorm
+==================================================================
+
+Total combinacoes lidas   : 225
+Total robos unicos        : 35
+Robos elegiveis (>=1 TF)  : 28
+
+------------------------------------------------------------------
+ TOP 10 GERAL
+------------------------------------------------------------------
+
+#1  V42_CM3_RM2
+    Score         : 0.658
+    TFs aprovados : 3/5  [1min, 30min, 60min]
+    Consistencia  : 60%
+    WR medio      : 73.02%
+    Saldo total   : R$ 907
+    DrawDown pior : 278 pts
+    Trades aprov  : 19
+    Patrimonio min: R$ 1000  |  Conservador: R$ 1500
+
+#2  V01_CM1_RM1
+    Score         : 0.631
+    TFs aprovados : 2/8  [2min, 30min]
+    Consistencia  : 25%
+    WR medio      : 70.09%
+    Saldo total   : R$ 1239
+    DrawDown pior : 243 pts
+    Trades aprov  : 39
+    Patrimonio min: R$ 1000  |  Conservador: R$ 1500
+
+#3  V40_CM1_RM2
+    Score         : 0.6295
+    TFs aprovados : 3/5  [1min, 30min, 60min]
+    Consistencia  : 60%
+    WR medio      : 71.63%
+    Saldo total   : R$ 642
+    DrawDown pior : 278 pts
+    Trades aprov  : 21
+    Patrimonio min: R$ 1000  |  Conservador: R$ 1500
+
+#4  V48_CM3_RM1
+    Score         : 0.5721
+    TFs aprovados : 2/5  [1min, 60min]
+    Consistencia  : 40%
+    WR medio      : 74.09%
+    Saldo total   : R$ 1665
+    DrawDown pior : 410 pts
+    Trades aprov  : 27
+    Patrimonio min: R$ 1025  |  Conservador: R$ 1500
+
+#5  V21_CM3_RM1
+    Score         : 0.5719
+    TFs aprovados : 2/8  [1min, 2min]
+    Consistencia  : 25%
+    WR medio      : 69.05%
+    Saldo total   : R$ 533
+    DrawDown pior : 178 pts
+    Trades aprov  : 13
+    Patrimonio min: R$ 1000  |  Conservador: R$ 1500
+
+#6  V45_CM3_RM3
+    Score         : 0.5715
+    TFs aprovados : 2/5  [1min, 60min]
+    Consistencia  : 40%
+    WR medio      : 74.09%
+    Saldo total   : R$ 1655
+    DrawDown pior : 410 pts
+    Trades aprov  : 27
+    Patrimonio min: R$ 1025  |  Conservador: R$ 1500
+
+#7  V02_CM2_RM1
+    Score         : 0.5693
+    TFs aprovados : 2/8  [15min, 30min]
+    Consistencia  : 25%
+    WR medio      : 65.48%
+    Saldo total   : R$ 746
+    DrawDown pior : 257 pts
+    Trades aprov  : 55
+    Patrimonio min: R$ 1000  |  Conservador: R$ 1500
+
+#8  V12_CM3_RM1
+    Score         : 0.5526
+    TFs aprovados : 3/8  [1min, 2min, 60min]
+    Consistencia  : 37.5%
+    WR medio      : 71.69%
+    Saldo total   : R$ 1830
+    DrawDown pior : 422 pts
+    Trades aprov  : 34
+    Patrimonio min: R$ 1055  |  Conservador: R$ 1500
+
+#9  V22_CM1_RM2
+    Score         : 0.5466
+    TFs aprovados : 2/8  [2min, 30min]
+    Consistencia  : 25%
+    WR medio      : 66.27%
+    Saldo total   : R$ 490
+    DrawDown pior : 197 pts
+    Trades aprov  : 25
+    Patrimonio min: R$ 1000  |  Conservador: R$ 1500
+
+#10  V30_CM3_RM1
+    Score         : 0.5288
+    TFs aprovados : 2/5  [1min, 60min]
+    Consistencia  : 40%
+    WR medio      : 71.82%
+    Saldo total   : R$ 1575
+    DrawDown pior : 422 pts
+    Trades aprov  : 27
+    Patrimonio min: R$ 1055  |  Conservador: R$ 1500
+
+------------------------------------------------------------------
+ TOP 5 OPERACIONAL (para operar JA)
+------------------------------------------------------------------
+1. v42_cm3_rm2  |  Score: 0.658  |  WR: 73.02%  |  Saldo: 907  |  DD: 278  |  TFs: [1min, 30min, 60min]
+2. v01_cm1_rm1  |  Score: 0.631  |  WR: 70.09%  |  Saldo: 1239  |  DD: 243  |  TFs: [2min, 30min]
+3. v40_cm1_rm2  |  Score: 0.6295  |  WR: 71.63%  |  Saldo: 642  |  DD: 278  |  TFs: [1min, 30min, 60min]
+4. v48_cm3_rm1  |  Score: 0.5721  |  WR: 74.09%  |  Saldo: 1665  |  DD: 410  |  TFs: [1min, 60min]
+5. v21_cm3_rm1  |  Score: 0.5719  |  WR: 69.05%  |  Saldo: 533  |  DD: 178  |  TFs: [1min, 2min]

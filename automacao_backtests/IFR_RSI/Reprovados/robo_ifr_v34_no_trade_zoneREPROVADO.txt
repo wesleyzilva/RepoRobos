@@ -1,0 +1,47 @@
+{
+  Estrategia: robo_ifr_v34_no_trade_zone
+  Autor: Wesley
+  Descricao: Reversao IFR com bloqueio de zona neutra 45-55.
+             Evita entradas em regiao de indefinicao do indicador.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(36);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(64);
+  ZonaNeutraMin(45);
+  ZonaNeutraMax(55);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR : float;
+  bForaZonaNeutra : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  bForaZonaNeutra := (fIFR < ZonaNeutraMin) or (fIFR > ZonaNeutraMax);
+
+  if (not IsBought) and (not IsSold) and bForaZonaNeutra then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+      BuyAtMarket
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+      SellShortAtMarket;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

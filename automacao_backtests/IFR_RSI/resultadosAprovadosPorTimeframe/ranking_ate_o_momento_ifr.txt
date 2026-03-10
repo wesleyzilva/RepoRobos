@@ -1,0 +1,22 @@
+﻿RANKING ATE O MOMENTO - IFR_RSI (CORRIGIDO)
+Gerado em: 04/03/2026 18:03:13
+Combinacoes analisadas (robo+tf): 87
+Criterios de aprovacao: WinRate > 60; Saldo > 0; Drawdown <= 700
+
+TOP 15 COMBINACOES APROVADAS (robo+tf)
+Robo | TF | Trades | WinRate | Saldo | Drawdown
+robo_ifr_v47_orb_confirmacao_dupla | 15 | 2 | 100 | 173 | 0
+robo_ifr_v5_regime_volatilidade | 60 | 11 | 90.91 | 1563 | 392
+robo_ifr_v4_divergencia_confirmada | 60 | 10 | 90 | 988 | 0
+robo_ifr_v23_dupla_confirmacao | 15 | 16 | 87.5 | 1253 | 59
+robo_ifr_v7_resgate_contexto | 30 | 7 | 85.71 | 1291 | 0
+robo_ifr_v25_ifr_mme200_contexto | 30 | 12 | 83.33 | 814 | 592
+robo_ifr_v6_saida_hibrida | 30 | 27 | 81.48 | 2254 | 662
+robo_ifr_v1_reversao_extremos | 60 | 10 | 80 | 1304 | 392
+robo_ifr_v7_resgate_contexto | 2 | 10 | 80 | 664 | 105
+robo_ifr_v6_saida_hibrida | 60 | 18 | 77.78 | 2315 | 341
+robo_ifr_v45_volume_por_horario | 60 | 12 | 75 | 1643 | 544
+robo_ifr_v25_ifr_mme200_contexto | 2 | 94 | 70.21 | 894 | 636
+robo_ifr_v45_volume_por_horario | 2 | 129 | 68.22 | 1481 | 432
+robo_ifr_v47_orb_confirmacao_dupla | 60 | 3 | 66.67 | 742 | 0
+robo_ifr_v1_reversao_extremos | 2 | 76 | 64.47 | 612 | 545

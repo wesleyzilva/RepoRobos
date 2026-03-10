@@ -1,0 +1,63 @@
+{
+  Estrategia: robo_ifr_v35_cooldown_diario
+  Autor: Wesley
+  Descricao: Reversao IFR com cooldown diario apos saida por tempo.
+             Reduz sequencia de entradas em dias de baixa qualidade.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  CooldownBarras(5);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(10);
+
+var
+  iBarrasEmPosicao, iCooldown : integer;
+  fIFR : float;
+  bSaiuPorTempo, bPodeEntrar : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  if Date <> Date[1] then
+    iCooldown := 0;
+
+  if iCooldown > 0 then
+    iCooldown := iCooldown - 1;
+
+  bPodeEntrar := (iCooldown = 0);
+
+  if (not IsBought) and (not IsSold) and bPodeEntrar then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+      BuyAtMarket
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+      SellShortAtMarket;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  bSaiuPorTempo := UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao);
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or bSaiuPorTempo) then
+  begin
+    ClosePosition;
+    if bSaiuPorTempo then
+      iCooldown := CooldownBarras;
+  end;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or bSaiuPorTempo) then
+  begin
+    ClosePosition;
+    if bSaiuPorTempo then
+      iCooldown := CooldownBarras;
+  end;
+end;

@@ -1,0 +1,66 @@
+{
+  Estrategia: robo_ifr_v15_saida_estagio_trailing
+  Autor: Wesley
+  Descricao: Entrada por retorno de IFR e saída em dois estágios simulados.
+             Primeiro estágio em IFR 50; depois trailing simples por mínima/máxima anterior.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(18);
+
+var
+  iBarrasEmPosicao, iEstagioSaida : integer;
+  fIFR : float;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    iEstagioSaida := 0;
+
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought then
+  begin
+    if (iEstagioSaida = 0) and (fIFR >= 50) then
+      iEstagioSaida := 1;
+
+    if (iEstagioSaida = 1) and (Close < Low[1]) then
+      ClosePosition;
+
+    if UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao) then
+      ClosePosition;
+  end;
+
+  if IsSold then
+  begin
+    if (iEstagioSaida = 0) and (fIFR <= 50) then
+      iEstagioSaida := 1;
+
+    if (iEstagioSaida = 1) and (Close > High[1]) then
+      ClosePosition;
+
+    if UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao) then
+      ClosePosition;
+  end;
+end;

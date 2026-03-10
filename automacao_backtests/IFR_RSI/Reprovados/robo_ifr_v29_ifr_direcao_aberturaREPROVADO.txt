@@ -1,0 +1,58 @@
+{
+  Estrategia: robo_ifr_v29_ifr_direcao_abertura
+  Autor: Wesley
+  Descricao: IFR com filtro de direcao pela abertura do dia.
+             Opera apenas a favor da direcao definida no inicio da sessao.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  HoraReferencia(930);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(13);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fPrecoAberturaDia : float;
+  bDirecaoCompra, bDirecaoVenda : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  if Date <> Date[1] then
+    fPrecoAberturaDia := Open;
+
+  if Time = HoraReferencia then
+    fPrecoAberturaDia := Close;
+
+  bDirecaoCompra := (Close > fPrecoAberturaDia);
+  bDirecaoVenda := (Close < fPrecoAberturaDia);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bDirecaoCompra and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if bDirecaoVenda and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

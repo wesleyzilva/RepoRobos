@@ -1,0 +1,56 @@
+{
+  Estrategia: robo_ifr_v3_tendencia_pullback
+  Autor: Wesley
+  Descricao: Opera pullback a favor da tendencia com IFR e candle de retomada.
+             Compra em pullback de alta e venda em pullback de baixa.
+}
+
+input
+  PeriodoIFR(9);
+  NivelTendencia(50);
+  ZonaPullbackCompra(40);
+  ZonaPullbackVenda(60);
+  PeriodoMediaVolume(20);
+  FatorVolume(1.1);
+  UsarFiltroVolume(false);
+  MultiplicadorPavio(1.4);
+  MaxPavioOpostoCorpo(1.3);
+
+var
+  fIFR, vMediaVol : float;
+  Range, TamCorpo, TamPavioSup, TamPavioInf : float;
+  bVolumeAlto : boolean;
+  bRetomadaCompra, bRetomadaVenda : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+  bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
+
+  Range := High - Low;
+  TamCorpo := Abs(Open - Close);
+  TamPavioSup := High - Max(Open, Close);
+  TamPavioInf := Min(Open, Close) - Low;
+
+  bRetomadaCompra := (Range > 0)
+                  and (TamPavioInf >= (TamCorpo * MultiplicadorPavio))
+                  and (TamPavioSup <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  bRetomadaVenda := (Range > 0)
+                 and (TamPavioSup >= (TamCorpo * MultiplicadorPavio))
+                 and (TamPavioInf <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR > NivelTendencia) and (fIFR <= ZonaPullbackCompra) and bRetomadaCompra and bVolumeAlto then
+      BuyAtMarket
+    else if (fIFR < NivelTendencia) and (fIFR >= ZonaPullbackVenda) and bRetomadaVenda and bVolumeAlto then
+      SellShortAtMarket;
+  end;
+
+  if IsBought and ((fIFR >= 60) or bRetomadaVenda) then
+    ClosePosition;
+
+  if IsSold and ((fIFR <= 40) or bRetomadaCompra) then
+    ClosePosition;
+end;

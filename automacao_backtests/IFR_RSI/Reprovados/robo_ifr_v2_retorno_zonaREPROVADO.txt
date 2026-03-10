@@ -1,0 +1,54 @@
+{
+  Estrategia: robo_ifr_v2_retorno_zona
+  Autor: Wesley
+  Descricao: Entrada quando IFR retorna da zona extrema (reentrada de timing).
+             Exige candle de rejeicao + volume e cruzamento de volta do IFR.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFRExtremoVenda(70);
+  PeriodoMediaVolume(20);
+  FatorVolume(1.1);
+  UsarFiltroVolume(true);
+  MultiplicadorPavio(1.5);
+  MaxPavioOpostoCorpo(1.2);
+
+var
+  fIFR, vMediaVol : float;
+  Range, TamCorpo, TamPavioSup, TamPavioInf : float;
+  bVolumeAlto, bMartelo, bEstrela : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+  bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
+
+  Range := High - Low;
+  TamCorpo := Abs(Open - Close);
+  TamPavioSup := High - Max(Open, Close);
+  TamPavioInf := Min(Open, Close) - Low;
+
+  bMartelo := (Range > 0)
+           and (TamPavioInf >= (TamCorpo * MultiplicadorPavio))
+           and (TamPavioSup <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  bEstrela := (Range > 0)
+           and (TamPavioSup >= (TamCorpo * MultiplicadorPavio))
+           and (TamPavioInf <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bVolumeAlto and bMartelo and (fIFR[1] < IFRExtremoCompra) and (fIFR >= IFRExtremoCompra) then
+      BuyAtMarket
+    else if bVolumeAlto and bEstrela and (fIFR[1] > IFRExtremoVenda) and (fIFR <= IFRExtremoVenda) then
+      SellShortAtMarket;
+  end;
+
+  if IsBought and (fIFR >= 50) then
+    ClosePosition;
+
+  if IsSold and (fIFR <= 50) then
+    ClosePosition;
+end;

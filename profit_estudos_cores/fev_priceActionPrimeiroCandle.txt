@@ -1,0 +1,136 @@
+{
+  Indicador: fev_priceActionPrimeiroCandle
+  Objetivo: Analisar exclusivamente o primeiro candle do dia.
+  Regra visual: Apenas o primeiro candle recebe classificação; todo o restante fica cinza.
+}
+
+input
+  pCorpoForca(0.70);            // Corpo mínimo (em % do range) para considerar barra de força
+  pFatorVolumeClimatico(2.0);   // Multiplicador de volume vs candle anterior
+  pFatorRejeicao(1.8);          // Relação pavio/corpo para detectar rejeição
+  pPeriodoReferencia(20);       // Janela para médias de volume e range
+  pFatorVolumeRelativo(1.5);    // Volume atual vs média de volume
+  pFatorGapGrande(0.8);         // Gap grande em múltiplos do range médio
+  pFatorExpansaoRange(1.3);     // Expansão de range vs média
+  pFechamentoExtremo(0.75);     // Fechamento na extremidade do candle
+
+var
+  // Cores
+  cCinza, cVerde, cVermelho, cCiano, cFucsia, cAzulRoyal, cMarrom, cBranco, cLaranja : Integer;
+
+  // Estado
+  bPrimeiroCandle, bAlta, bBaixa : boolean;
+  bForca, bVolumeClimatico, bRejeicaoTopo, bRejeicaoFundo : boolean;
+  bGapAlta, bGapBaixa, bGapGrande : boolean;
+  bFechouNaMax, bFechouNaMin, bExpansaoRange, bAbsorcao : boolean;
+  bArmadilhaAlta, bArmadilhaBaixa : boolean;
+
+  // Métricas do candle
+  fRange, fCorpo, fPavioSup, fPavioInf, fRazaoCorpo : float;
+  fGap, fVolMedio, fRangeMedio, fVolumeRelativo : float;
+  fClosePosicao : float;
+  i : Integer;
+
+begin
+  // 1) Paleta
+  cCinza     := RGB(105, 105, 105); // Todo o resto do dia
+  cVerde     := RGB(0, 255, 0);     // Primeiro candle de alta (normal)
+  cVermelho  := RGB(255, 0, 0);     // Primeiro candle de baixa (normal)
+  cCiano     := RGB(0, 255, 255);   // Iniciativa compradora (força + volume)
+  cFucsia    := RGB(255, 0, 255);   // Iniciativa vendedora (força + volume)
+  cAzulRoyal := RGB(65, 105, 225);  // Rejeição de topo
+  cMarrom    := RGB(165, 42, 42);   // Rejeição de fundo
+  cBranco    := RGB(255, 255, 255); // Absorção/indefinição/doji
+  cLaranja   := RGB(255, 140, 0);   // Armadilha de abertura
+
+  // 2) Default: tudo cinza
+  PaintBar(cCinza);
+
+  // 3) Detecta o primeiro candle do dia
+  bPrimeiroCandle := (Date <> Date[1]);
+
+  // 4) Só analisa o primeiro candle
+  if bPrimeiroCandle then
+  begin
+    // 4.1) Referências de contexto
+    fVolMedio := 0;
+    fRangeMedio := 0;
+    for i := 1 to pPeriodoReferencia do
+    begin
+      fVolMedio := fVolMedio + Volume[i];
+      fRangeMedio := fRangeMedio + (High[i] - Low[i]);
+    end;
+
+    if pPeriodoReferencia > 0 then
+    begin
+      fVolMedio := fVolMedio / pPeriodoReferencia;
+      fRangeMedio := fRangeMedio / pPeriodoReferencia;
+    end;
+
+    if fVolMedio <= 0 then fVolMedio := 1;
+    if fRangeMedio <= 0 then fRangeMedio := 0.01;
+
+    fGap := Open - Close[1];
+
+    fRange := High - Low;
+    if fRange <= 0 then fRange := 0.01;
+
+    fCorpo := Abs(Close - Open);
+    fRazaoCorpo := fCorpo / fRange;
+    fClosePosicao := (Close - Low) / fRange;
+    fVolumeRelativo := Volume / fVolMedio;
+
+    bAlta := (Close > Open);
+    bBaixa := (Close < Open);
+    bGapAlta := (Open > Close[1]);
+    bGapBaixa := (Open < Close[1]);
+    bGapGrande := (Abs(fGap) >= (fRangeMedio * pFatorGapGrande));
+
+    bFechouNaMax := (fClosePosicao >= pFechamentoExtremo);
+    bFechouNaMin := (fClosePosicao <= (1 - pFechamentoExtremo));
+    bExpansaoRange := (fRange >= (fRangeMedio * pFatorExpansaoRange));
+
+    if (Close >= Open) then
+    begin
+      fPavioSup := High - Close;
+      fPavioInf := Open - Low;
+    end
+    else
+    begin
+      fPavioSup := High - Open;
+      fPavioInf := Close - Low;
+    end;
+
+    bForca := (fRazaoCorpo >= pCorpoForca) and ((bAlta and bFechouNaMax) or (bBaixa and bFechouNaMin));
+    bVolumeClimatico := (Volume > (Volume[1] * pFatorVolumeClimatico)) or (fVolumeRelativo >= pFatorVolumeRelativo);
+    bRejeicaoTopo := (fPavioSup > (fCorpo * pFatorRejeicao)) and (fPavioSup > fPavioInf);
+    bRejeicaoFundo := (fPavioInf > (fCorpo * pFatorRejeicao)) and (fPavioInf > fPavioSup);
+
+    // Armadilha: gap forte + fechamento contra + rejeição
+    bArmadilhaAlta := bGapAlta and bGapGrande and bBaixa and bRejeicaoTopo;
+    bArmadilhaBaixa := bGapBaixa and bGapGrande and bAlta and bRejeicaoFundo;
+
+    // Absorção: muito volume e pouco resultado direcional
+    bAbsorcao := (fVolumeRelativo >= pFatorVolumeRelativo) and (fRazaoCorpo <= 0.35);
+
+    // 5) Prioridade de classificação
+    if bArmadilhaAlta or bArmadilhaBaixa then
+      PaintBar(cLaranja)
+    else if bRejeicaoTopo then
+      PaintBar(cAzulRoyal)
+    else if bRejeicaoFundo then
+      PaintBar(cMarrom)
+    else if bForca and bVolumeClimatico and bExpansaoRange and bAlta then
+      PaintBar(cCiano)
+    else if bForca and bVolumeClimatico and bExpansaoRange and bBaixa then
+      PaintBar(cFucsia)
+    else if bAbsorcao then
+      PaintBar(cBranco)
+    else if bAlta then
+      PaintBar(cVerde)
+    else if bBaixa then
+      PaintBar(cVermelho)
+    else
+      PaintBar(cBranco);
+  end;
+end;

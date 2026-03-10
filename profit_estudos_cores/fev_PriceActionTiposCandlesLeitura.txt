@@ -1,0 +1,277 @@
+input
+  AtivarAnalisePrimeiroCandle(true);
+  AtivarCorteHorarioVisual(true);
+  HoraCorteVisual(150000); // Após 15:00, pintar preto
+  AtivarRejeicaoRobustaGeral(true);
+  ConfirmarRejeicaoNoCandleSeguinte(true);
+  FatorVolumePrimeiroCandle(1.5);
+  CorpoMinPrimeiroCandle(0.60);
+  PeriodoATRRejeicao(14);
+  FatorRangeMinATRRejeicao(0.80);
+  FatorPavioRejeicao(2.2);
+  FracaoFechamentoRejeicao(0.35);
+  FatorVolumeMinRejeicao(1.20);
+  UsarFatorVolumePorHorario(true);
+  HoraFimManha(113000);
+  HoraFimMiolo(163000);
+  FatorVolumeMinRejeicaoManha(1.30);
+  FatorVolumeMinRejeicaoMiolo(1.00);
+  FatorVolumeMinRejeicaoFechamento(1.15);
+  PeriodoExtremoRejeicao(20);
+
+var
+  // Cores
+  cVerde, cVermelho, cLaranja, cBranco, cCinza, cPreto : Integer;
+  
+  // Variáveis de Anatomia
+  fCorpo, fPavioSup, fPavioInf, fRange : float;
+  fCorpoAnt, fPavioSupAnt, fPavioInfAnt, fRangeAnt : float;
+  bAlta, bBaixa : boolean;
+  
+  // Variáveis de Contexto (Candle Anterior)
+  bAntAlta, bAntBaixa, bAnt2Alta, bAnt2Baixa : boolean;
+  bMarteloAnterior, bEstrelaAnterior, bMarteloConfirmado, bEstrelaConfirmada : boolean;
+  fAntMax, fAntMin, fAnt2Max, fAnt2Min : float;
+
+  // Padrões válidos (contexto + anatomia)
+  bEngolfoAltaValido, bEngolfoBaixaValido : boolean;
+  bInsideBarValido, bDojiRealValido : boolean;
+  bContextoAlta, bContextoBaixa : boolean;
+  bSinalCompraContextual, bSinalVendaContextual : boolean;
+  bRejeicaoTopoAtual, bRejeicaoFundoAtual : boolean;
+  bRejeicaoTopoAtualPrev, bRejeicaoFundoAtualPrev : boolean;
+  bRejeicaoTopoConfirmada, bRejeicaoFundoConfirmada : boolean;
+  bPrimeiroCandle, bAbsorcaoPrimeiro : boolean;
+  bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
+  bRejeicaoTopoPrimeiro, bRejeicaoFundoPrimeiro : boolean;
+  bExtremoTopoAtual, bExtremoFundoAtual : boolean;
+  bExtremoTopoPrimeiro, bExtremoFundoPrimeiro : boolean;
+  bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
+  fMediaVolumePrimeiro, fATRRejeicao, fMediaVolumeAtual, fATRRejeicaoAtual : float;
+  fTopoExtremoRef, fFundoExtremoRef, fCloseAnteriorRef, fHighAnteriorRef, fLowAnteriorRef : float;
+  fFatorVolumeMinRejeicaoDinamico : float;
+
+begin
+  // 1. Definição de Cores
+  cVerde      := RGB(0, 255, 0);     // Compra contextualizada
+  cVermelho   := RGB(255, 0, 0);     // Venda contextualizada
+  cLaranja    := RGB(255, 140, 0);   // Inside Bar
+  cBranco     := RGB(255, 255, 255); // Doji
+  cCinza      := RGB(105, 105, 105); // Neutro
+  cPreto      := RGB(0, 0, 0);       // Bloqueio após horário de corte
+
+  // 2. Cálculos do Contexto (Candle Anterior)
+  bAntAlta  := Close[1] > Open[1];
+  bAntBaixa := Close[1] < Open[1];
+  bAnt2Alta  := Close[2] > Open[2];
+  bAnt2Baixa := Close[2] < Open[2];
+  fAntMax   := High[1];
+  fAntMin   := Low[1];
+  fAnt2Max  := High[2];
+  fAnt2Min  := Low[2];
+  bPrimeiroCandle := (Date <> Date[1]);
+
+  // Fator dinâmico de volume por horário (curva intraday B3)
+  if not UsarFatorVolumePorHorario then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicao
+  else if Time <= HoraFimManha then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoManha
+  else if Time <= HoraFimMiolo then
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoMiolo
+  else
+    fFatorVolumeMinRejeicaoDinamico := FatorVolumeMinRejeicaoFechamento;
+
+  // 3. Cálculos do Candle Atual
+  fRange := Range;
+  fCorpo := Abs(Close - Open);
+  
+  if (Close >= Open) then
+    begin
+      fPavioSup := High - Close;
+      fPavioInf := Open - Low;
+      bAlta := True;
+      bBaixa := False;
+    end
+  else
+    begin
+      fPavioSup := High - Open;
+      fPavioInf := Close - Low;
+      bAlta := False;
+      bBaixa := True;
+    end;
+
+  // 3.1 Cálculos do candle anterior (para confirmação de reversão)
+  fRangeAnt := fAntMax - fAntMin;
+  fCorpoAnt := Abs(Close[1] - Open[1]);
+
+  if (Close[1] >= Open[1]) then
+    begin
+      fPavioSupAnt := fAntMax - Close[1];
+      fPavioInfAnt := Open[1] - fAntMin;
+    end
+  else
+    begin
+      fPavioSupAnt := fAntMax - Open[1];
+      fPavioInfAnt := Close[1] - fAntMin;
+    end;
+
+  // Reversão confirmada: candle de reversão [1] + confirmação no candle atual
+  bMarteloAnterior := (fRangeAnt > 0) and (fPavioInfAnt > (fCorpoAnt * 2)) and (fPavioSupAnt < fCorpoAnt);
+  bEstrelaAnterior := (fRangeAnt > 0) and (fPavioSupAnt > (fCorpoAnt * 2)) and (fPavioInfAnt < fCorpoAnt);
+
+  bMarteloConfirmado := bMarteloAnterior and bAnt2Baixa and (fAntMin <= fAnt2Min) and (Close > fAntMax);
+  bEstrelaConfirmada := bEstrelaAnterior and bAnt2Alta and (fAntMax >= fAnt2Max) and (Close < fAntMin);
+
+  // 3.2 Validação de contexto antes da cor
+  bContextoAlta := bAntBaixa or bAnt2Baixa;
+  bContextoBaixa := bAntAlta or bAnt2Alta;
+
+  // Engolfo real = anatomia + contexto
+  bEngolfoAltaValido := bAlta and bContextoAlta and bAntBaixa and (Close > fAntMax) and (Open <= Close[1]);
+  bEngolfoBaixaValido := bBaixa and bContextoBaixa and bAntAlta and (Close < fAntMin) and (Open >= Close[1]);
+
+  // Inside bar real = candle dentro do anterior + contração de range
+  bInsideBarValido := (High < fAntMax) and (Low > fAntMin) and (fRangeAnt > 0) and (fRange < (fRangeAnt * 0.85));
+
+  // Doji real = corpo muito pequeno + sombras relevantes
+  bDojiRealValido := (fRange > 0) and (fCorpo <= (fRange * 0.10)) and (fPavioSup >= (fRange * 0.25)) and (fPavioInf >= (fRange * 0.25));
+
+  // Sinal final contextualizado: contexto primeiro, padrão depois
+  bSinalCompraContextual := bEngolfoAltaValido or bMarteloConfirmado;
+  bSinalVendaContextual := bEngolfoBaixaValido or bEstrelaConfirmada;
+
+  // Referências de extremos calculadas fora de escopos condicionais
+  fTopoExtremoRef := Highest(High, PeriodoExtremoRejeicao)[1];
+  fFundoExtremoRef := Lowest(Low, PeriodoExtremoRejeicao)[1];
+  fCloseAnteriorRef := Close[1];
+  fHighAnteriorRef := High[1];
+  fLowAnteriorRef := Low[1];
+
+  // Rejeição robusta para qualquer candle
+  fMediaVolumeAtual := Media(20, Volume);
+  if fMediaVolumeAtual <= 0 then
+    fMediaVolumeAtual := 1;
+
+  fATRRejeicaoAtual := Media(PeriodoATRRejeicao, Range);
+  if fATRRejeicaoAtual <= 0 then
+    fATRRejeicaoAtual := 0.01;
+
+  bExtremoTopoAtual := (High >= fTopoExtremoRef);
+  bExtremoFundoAtual := (Low <= fFundoExtremoRef);
+
+  bRejeicaoTopoAtual := (fPavioSup > (fCorpo * FatorPavioRejeicao))
+                    and (fPavioSup > fPavioInf)
+                    and (Close <= (Low + (fRange * FracaoFechamentoRejeicao)))
+                    and (fRange >= (fATRRejeicaoAtual * FatorRangeMinATRRejeicao))
+                    and (Volume >= (fMediaVolumeAtual * fFatorVolumeMinRejeicaoDinamico))
+                    and bExtremoTopoAtual;
+
+  bRejeicaoFundoAtual := (fPavioInf > (fCorpo * FatorPavioRejeicao))
+                     and (fPavioInf > fPavioSup)
+                     and (Close >= (High - (fRange * FracaoFechamentoRejeicao)))
+                     and (fRange >= (fATRRejeicaoAtual * FatorRangeMinATRRejeicao))
+                     and (Volume >= (fMediaVolumeAtual * fFatorVolumeMinRejeicaoDinamico))
+                     and bExtremoFundoAtual;
+
+  bRejeicaoTopoAtualPrev := bRejeicaoTopoAtual[1];
+  bRejeicaoFundoAtualPrev := bRejeicaoFundoAtual[1];
+
+  if ConfirmarRejeicaoNoCandleSeguinte then
+  begin
+    bRejeicaoTopoConfirmada := bRejeicaoTopoAtualPrev and (Close < fLowAnteriorRef);
+    bRejeicaoFundoConfirmada := bRejeicaoFundoAtualPrev and (Close > fHighAnteriorRef);
+  end
+  else
+  begin
+    bRejeicaoTopoConfirmada := bRejeicaoTopoAtual;
+    bRejeicaoFundoConfirmada := bRejeicaoFundoAtual;
+  end;
+
+  // 4. Lógica de Coloração (Hierarquia de Prioridade)
+  
+  // Default
+  PaintBar(cCinza);
+
+  // --- NÍVEL 3: SINAL CONTEXTUALIZADO (PRIORIDADE MÁXIMA) ---
+  // Sequência: contexto validado -> padrão validado -> cor
+  if AtivarRejeicaoRobustaGeral and bRejeicaoTopoConfirmada then
+    PaintBar(cVermelho)
+  else if AtivarRejeicaoRobustaGeral and bRejeicaoFundoConfirmada then
+    PaintBar(cVerde)
+  else if bSinalCompraContextual then
+    PaintBar(cVerde)
+  else if bSinalVendaContextual then
+    PaintBar(cVermelho)
+
+  // --- NÍVEL 2: INDECISÃO ---
+  else if bInsideBarValido then
+    PaintBar(cLaranja) // Inside Bar
+  else if bDojiRealValido then
+    PaintBar(cBranco); // Doji
+
+  // Análise dedicada do primeiro candle
+  if bPrimeiroCandle then
+  begin
+    if AtivarAnalisePrimeiroCandle then
+    begin
+      fMediaVolumePrimeiro := Media(20, Volume);
+      if fMediaVolumePrimeiro <= 0 then
+        fMediaVolumePrimeiro := 1;
+
+      fATRRejeicao := Media(PeriodoATRRejeicao, Range);
+      if fATRRejeicao <= 0 then
+        fATRRejeicao := 0.01;
+
+      bExtremoTopoPrimeiro := (High >= fTopoExtremoRef);
+      bExtremoFundoPrimeiro := (Low <= fFundoExtremoRef);
+
+      bRejeicaoTopoPrimeiro := (fPavioSup > (fCorpo * FatorPavioRejeicao))
+                           and (fPavioSup > fPavioInf)
+                           and (Close <= (Low + (fRange * FracaoFechamentoRejeicao)))
+                           and (fRange >= (fATRRejeicao * FatorRangeMinATRRejeicao))
+                           and (Volume >= (fMediaVolumePrimeiro * fFatorVolumeMinRejeicaoDinamico))
+                           and bExtremoTopoPrimeiro;
+
+      bRejeicaoFundoPrimeiro := (fPavioInf > (fCorpo * FatorPavioRejeicao))
+                            and (fPavioInf > fPavioSup)
+                            and (Close >= (High - (fRange * FracaoFechamentoRejeicao)))
+                            and (fRange >= (fATRRejeicao * FatorRangeMinATRRejeicao))
+                            and (Volume >= (fMediaVolumePrimeiro * fFatorVolumeMinRejeicaoDinamico))
+                            and bExtremoFundoPrimeiro;
+      bAbsorcaoPrimeiro := (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle)) and (fCorpo <= (fRange * 0.35));
+      bIniciativaAltaPrimeiro := bAlta and (fCorpo >= (fRange * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));
+      bIniciativaBaixaPrimeiro := bBaixa and (fCorpo >= (fRange * CorpoMinPrimeiroCandle)) and (Volume >= (fMediaVolumePrimeiro * FatorVolumePrimeiroCandle));
+
+      bGapAltaPrimeiro := (Open > fCloseAnteriorRef);
+      bGapBaixaPrimeiro := (Open < fCloseAnteriorRef);
+      bArmadilhaPrimeiro := (bGapAltaPrimeiro and bBaixa and bRejeicaoTopoPrimeiro)
+                        or (bGapBaixaPrimeiro and bAlta and bRejeicaoFundoPrimeiro);
+
+      if bArmadilhaPrimeiro then
+        PaintBar(cLaranja)
+      else if bRejeicaoTopoPrimeiro then
+        PaintBar(cVermelho)
+      else if bRejeicaoFundoPrimeiro then
+        PaintBar(cVerde)
+      else if bIniciativaAltaPrimeiro then
+        PaintBar(cVerde)
+      else if bIniciativaBaixaPrimeiro then
+        PaintBar(cVermelho)
+      else if bAbsorcaoPrimeiro or bDojiRealValido then
+        PaintBar(cBranco)
+      else if bAlta then
+        PaintBar(cVerde)
+      else if bBaixa then
+        PaintBar(cVermelho)
+      else
+        PaintBar(cBranco);
+    end
+    else
+      PaintBar(cCinza);
+  end;
+
+  // Corte visual por horário (prioridade máxima)
+  if AtivarCorteHorarioVisual and (Time > HoraCorteVisual) then
+    PaintBar(cPreto);
+
+end;

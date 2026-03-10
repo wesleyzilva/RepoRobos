@@ -1,0 +1,62 @@
+{
+  Estrategia: robo_ifr_v9_conservador_contexto
+  Autor: Wesley
+  Descricao: Abordagem conservadora com filtro de tendencia e volume.
+             Entrada em retorno do IFR com contexto direcional.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoMMERapida(9);
+  PeriodoMMELenta(21);
+  PeriodoMediaVolume(20);
+  FatorVolume(1.2);
+  UsarFiltroVolume(true);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fMME9, fMME21, fMME21Anterior, vMediaVol : float;
+  bVolumeAlto, bTendenciaCompra, bTendenciaVenda : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fMME9 := MediaExp(PeriodoMMERapida, Close);
+  fMME21 := MediaExp(PeriodoMMELenta, Close);
+  fMME21Anterior := MediaExp(PeriodoMMELenta, Close)[1];
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+
+  bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
+
+  bTendenciaCompra := (Close > fMME9) and (fMME9 > fMME21) and (fMME21 > fMME21Anterior);
+  bTendenciaVenda := (Close < fMME9) and (fMME9 < fMME21) and (fMME21 < fMME21Anterior);
+
+  if (not IsBought) and (not IsSold) and bVolumeAlto then
+  begin
+    if bTendenciaCompra and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if bTendenciaVenda and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

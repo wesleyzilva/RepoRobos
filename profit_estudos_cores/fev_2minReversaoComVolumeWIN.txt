@@ -1,0 +1,220 @@
+{
+  Indicador: fev_2minReversaoComVolumeWIN
+  Autor: Wesley (Gemini Code Assist)
+  Descrição: Identifica velas de reversão (Martelo/Estrela) validadas por
+             Volume acima da média (Lei de Esforço vs Resultado).
+}
+
+input
+  UsarPresetRegime(true);
+  RegimePreset(1); // 1=Manhã Forte, 2=Almoço, 3=Pós-14h, 0=Manual
+  AtivarAnalisePrimeiroCandle(true);
+  FatorVolume(1.5); // No WIN 2min, 1.5x tende a capturar melhor absorção relevante
+  PeriodoMedia(20);
+  MultiplicadorPavio(1.5); // Pavio principal em relação ao corpo
+  MaxPavioOpostoCorpo(1.2); // Limite do pavio oposto em relação ao corpo
+  UsarFiltroProximidadeMME20(false);
+  DistanciaMaxMME20Perc(0.35); // Distância máxima (%) do fechamento para a MME20
+
+var
+  vMediaVol, fMME20, fDistanciaMME20Perc : float;
+  fFatorVolumeEfetivo, fMultiplicadorPavioEfetivo, fMaxPavioOpostoEfetivo, fDistMaxMME20Efetiva : float;
+  bVolumeAlto : boolean;
+  bMartelo, bEstrela, bRejeicaoForteAlta, bRejeicaoForteBaixa : boolean;
+  bDojiPrimeiro, bAbsorcaoPrimeiro, bIniciativaAltaPrimeiro, bIniciativaBaixaPrimeiro : boolean;
+  bGapAltaPrimeiro, bGapBaixaPrimeiro, bArmadilhaPrimeiro : boolean;
+  fMaxAnterior, fMinAnterior : float;
+  TamCorpo, TamPavioSup, TamPavioInf, Range, fFechamentoPosicao : float;  
+  CorAbsorcaoFundo, CorAbsorcaoTopo, CorNeutra, CorRejeicaoContexto, CorIndefinicao : integer;
+  bMesmoDia, bProximoMME20, bUsarFiltroProxEfetivo : boolean;
+  iRegimeEfetivo : integer;
+
+begin
+  // --- 1. CONFIGURAÇÃO ---
+  CorAbsorcaoFundo := RGB(0, 255, 0);   // Verde (Sentido de Alta)
+  CorAbsorcaoTopo  := RGB(255, 0, 0);   // Vermelho (Sentido de Baixa)
+  CorNeutra        := RGB(105, 105, 105); // Cinza Escuro
+  CorRejeicaoContexto := RGB(255, 140, 0); // Laranja (Rejeição forte por contexto)
+  CorIndefinicao := RGB(255, 255, 255); // Branco
+
+  // --- 1.1 PRESET DE REGIME (PARTE PRINCIPAL) ---
+  iRegimeEfetivo := RegimePreset;
+  if (iRegimeEfetivo < 0) then
+    iRegimeEfetivo := 0;
+  if (iRegimeEfetivo > 3) then
+    iRegimeEfetivo := 3;
+
+  // Fallback manual
+  fFatorVolumeEfetivo := FatorVolume;
+  fMultiplicadorPavioEfetivo := MultiplicadorPavio;
+  fMaxPavioOpostoEfetivo := MaxPavioOpostoCorpo;
+  bUsarFiltroProxEfetivo := UsarFiltroProximidadeMME20;
+  fDistMaxMME20Efetiva := DistanciaMaxMME20Perc;
+
+  if UsarPresetRegime then
+  begin
+    // 1 = Manhã forte (09:00-11:00)
+    if (iRegimeEfetivo = 1) then
+    begin
+      fFatorVolumeEfetivo := 1.7;
+      fMultiplicadorPavioEfetivo := 1.6;
+      fMaxPavioOpostoEfetivo := 1.0;
+      bUsarFiltroProxEfetivo := True;
+      fDistMaxMME20Efetiva := 0.30;
+    end
+    // 2 = Almoço (12:00-13:00)
+    else if (iRegimeEfetivo = 2) then
+    begin
+      fFatorVolumeEfetivo := 1.9;
+      fMultiplicadorPavioEfetivo := 1.8;
+      fMaxPavioOpostoEfetivo := 0.9;
+      bUsarFiltroProxEfetivo := True;
+      fDistMaxMME20Efetiva := 0.25;
+    end
+    // 3 = Pós-14h (14:00-17:00)
+    else if (iRegimeEfetivo = 3) then
+    begin
+      fFatorVolumeEfetivo := 1.5;
+      fMultiplicadorPavioEfetivo := 1.5;
+      fMaxPavioOpostoEfetivo := 1.2;
+      bUsarFiltroProxEfetivo := True;
+      fDistMaxMME20Efetiva := 0.35;
+    end;
+  end;
+
+  // --- PINTURA PADRÃO ---
+  PaintBar(CorNeutra); // Pinta tudo de cinza antes de verificar os sinais
+
+  // --- 2. ANÁLISE DE VOLUME (O ESFORÇO) ---
+  vMediaVol := Media(PeriodoMedia, Volume);
+  fMME20 := MediaExp(20, Close);
+  // Verifica se o volume atual é relevante (ex: > 1.5x a média)
+  bVolumeAlto := Volume >= (vMediaVol * fFatorVolumeEfetivo);
+
+  // --- 2.1 FILTRO OPCIONAL: PROXIMIDADE DA MME20 ---
+  if (fMME20 > 0) then
+    fDistanciaMME20Perc := (Abs(Close - fMME20) / fMME20) * 100
+  else
+    fDistanciaMME20Perc := 999;
+
+  bProximoMME20 := (fDistanciaMME20Perc <= fDistMaxMME20Efetiva);
+
+  // --- 3. ANATOMIA DO CANDLE (O RESULTADO) ---
+  Range := High - Low;
+  TamCorpo := Abs(Open - Close);
+  TamPavioSup := High - Max(Open, Close);
+  TamPavioInf := Min(Open, Close) - Low;
+  if (Range > 0) then
+    fFechamentoPosicao := (Close - Low) / Range
+  else
+    fFechamentoPosicao := 0.5;
+  fMaxAnterior := High[1];
+  fMinAnterior := Low[1];
+  bMesmoDia := (Date = Date[1]);
+
+  // Análise dedicada do primeiro candle do dia
+  if (Range > 0) and (not bMesmoDia) and AtivarAnalisePrimeiroCandle then
+  begin
+    bDojiPrimeiro := (TamCorpo <= (Range * 0.10));
+    bAbsorcaoPrimeiro := bVolumeAlto and (TamCorpo <= (Range * 0.35));
+
+    bIniciativaAltaPrimeiro := (Close > Open)
+                            and bVolumeAlto
+                            and (TamCorpo >= (Range * 0.60))
+                            and (fFechamentoPosicao >= 0.75);
+
+    bIniciativaBaixaPrimeiro := (Close < Open)
+                             and bVolumeAlto
+                             and (TamCorpo >= (Range * 0.60))
+                             and (fFechamentoPosicao <= 0.25);
+
+    bGapAltaPrimeiro := (Open > Close[1]);
+    bGapBaixaPrimeiro := (Open < Close[1]);
+
+    bArmadilhaPrimeiro := (bGapAltaPrimeiro and (Close < Open) and (TamPavioSup >= (TamCorpo * (fMultiplicadorPavioEfetivo + 0.2))))
+                       or (bGapBaixaPrimeiro and (Close > Open) and (TamPavioInf >= (TamCorpo * (fMultiplicadorPavioEfetivo + 0.2))));
+
+    if bArmadilhaPrimeiro then
+    begin
+      PaintBar(CorRejeicaoContexto);
+      PlotText("1C_TRAP", CorRejeicaoContexto, 8, 0, Close);
+    end
+    else if bIniciativaAltaPrimeiro then
+    begin
+      PaintBar(CorAbsorcaoFundo);
+      PlotText("1C_UP", CorAbsorcaoFundo, 8, 0, Low * 0.999);
+    end
+    else if bIniciativaBaixaPrimeiro then
+    begin
+      PaintBar(CorAbsorcaoTopo);
+      PlotText("1C_DN", CorAbsorcaoTopo, 8, 0, High * 1.001);
+    end
+    else if bAbsorcaoPrimeiro or bDojiPrimeiro then
+      PaintBar(CorIndefinicao)
+    else if (Close > Open) then
+      PaintBar(CorAbsorcaoFundo)
+    else if (Close < Open) then
+      PaintBar(CorAbsorcaoTopo)
+    else
+      PaintBar(CorIndefinicao);
+  end;
+
+  // Proteção contra divisão por zero
+  // Ignora o primeiro candle do dia para evitar sinal falso na abertura
+  if (Range > 0) and bMesmoDia then
+    begin
+      // Definição de Martelo (Força Compradora)
+      // Pavio inferior dominante e pavio superior controlado
+      bMartelo := (TamPavioInf >= (TamCorpo * fMultiplicadorPavioEfetivo)) and (TamPavioSup <= (TamCorpo * fMaxPavioOpostoEfetivo));
+
+      // Definição de Estrela (Força Vendedora)
+      // Pavio superior dominante e pavio inferior controlado
+      bEstrela := (TamPavioSup >= (TamCorpo * fMultiplicadorPavioEfetivo)) and (TamPavioInf <= (TamCorpo * fMaxPavioOpostoEfetivo));
+
+      // Rejeição forte por contexto (pinta laranja mesmo sem volume)
+      // Alta: varre mínima anterior e fecha recuperando com pavio inferior dominante
+      bRejeicaoForteAlta := (Low < fMinAnterior)
+                        and (Close > Open)
+                        and (Close >= (Low + (Range * 0.55)))
+                        and (TamPavioInf >= (TamCorpo * (fMultiplicadorPavioEfetivo + 0.3)));
+
+      // Baixa: varre máxima anterior e fecha rejeitando com pavio superior dominante
+      bRejeicaoForteBaixa := (High > fMaxAnterior)
+                          and (Close < Open)
+                          and (Close <= (High - (Range * 0.55)))
+                          and (TamPavioSup >= (TamCorpo * (fMultiplicadorPavioEfetivo + 0.3)));
+
+      // --- 4. SINALIZAÇÃO ---
+
+      // 4.1 Contexto de rejeição forte (prioridade, independente de volume)
+      if (bRejeicaoForteAlta or bRejeicaoForteBaixa) then
+      begin
+        PaintBar(CorRejeicaoContexto);
+        PlotText("RJ", CorRejeicaoContexto, 8, 0, Close);
+      end
+      else
+      begin
+      
+      // Só sinaliza se tiver Volume Alto + Padrão de Reversão
+      // e, opcionalmente, preço perto da MME20 para reduzir ruído de lateral
+      if bVolumeAlto and ((not bUsarFiltroProxEfetivo) or bProximoMME20) then
+        begin
+          if bMartelo then
+            begin
+              PaintBar(CorAbsorcaoFundo);     // Pinta o candle atual
+              PaintBar(CorAbsorcaoFundo);      // Reforça coloração no candle de sinal
+              PlotText("ABS", CorAbsorcaoFundo, 8, 0, Low * 0.999);
+              Alert(CorAbsorcaoFundo);
+            end;
+
+          if bEstrela then
+            begin
+              PaintBar(CorAbsorcaoTopo);      // Pinta o candle atual
+              PaintBar(CorAbsorcaoTopo);       // Reforça coloração no candle de sinal
+              PlotText("ABS", CorAbsorcaoTopo, 8, 0, High * 1.001);
+              Alert(CorAbsorcaoTopo);
+            end;
+        end;
+            end;
+    end;
+end;
