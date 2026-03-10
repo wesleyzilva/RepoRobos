@@ -25,7 +25,6 @@ Parser[120,29]: SellAtMarket não é um identificador válido
 Parser[128,1]: O código deve começar com begin
 Erro de Sintaxe
 
-
 Compilando ...
 Parser[49,5]: Print não é um identificador válido
 Parser[80,16]: Função ou variável inválida: ATR
@@ -45,14 +44,12 @@ Parser[79,40]: No final da chamada da função deve vir " ) "
 Parser[154,1]: O código deve começar com begin
 Erro de Sintaxe
 
-
 Compilando ...
 Parser[58,5]: Print não é um identificador válido
 Parser[87,40]: No final da chamada da função deve vir " ) "
 Parser[89,16]: Função ou variável inválida: ATR
 Parser[202,1]: O código deve começar com begin
 Erro de Sintaxe
-
 
 Compilando ...
 Parser[28,5]: Print não é um identificador válido
@@ -65,7 +62,6 @@ Parser[76,49]: SellAtMarket não é um identificador válido
 Parser[76,86]: SellAtMarket não é um identificador válido
 Parser[96,1]: O código deve começar com begin
 Erro de Sintaxe
-
 
 Compilando ...
 Parser[13,28]: Token inválido: =
