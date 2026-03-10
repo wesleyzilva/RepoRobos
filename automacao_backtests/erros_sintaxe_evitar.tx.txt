@@ -14,3 +14,65 @@ Compilando ...
 Parser[156,1]: Bloco incompleto
 Parser[156,1]: Bloco incompleto
 Erro de Sintaxe
+
+Compilando ...
+Parser[44,5]: Print não é um identificador válido
+Parser[79,24]: SellAtMarket não é um identificador válido
+Parser[81,7]: exit não é um identificador válido
+Parser[83,45]: exit não é um identificador válido
+Parser[119,29]: SellAtMarket não é um identificador válido
+Parser[120,29]: SellAtMarket não é um identificador válido
+Parser[128,1]: O código deve começar com begin
+Erro de Sintaxe
+
+
+Compilando ...
+Parser[49,5]: Print não é um identificador válido
+Parser[80,16]: Função ou variável inválida: ATR
+Parser[116,8]: Função ou variável inválida: bCompressaoIntensa
+Parser[179,1]: O código deve começar com begin
+Erro de Sintaxe
+
+Compilando ...
+Parser[49,5]: Print não é um identificador válido
+Parser[79,16]: Função ou variável inválida: ATR
+Parser[156,1]: O código deve começar com begin
+Erro de Sintaxe
+
+Compilando ...
+Parser[50,5]: Print não é um identificador válido
+Parser[79,40]: No final da chamada da função deve vir " ) "
+Parser[154,1]: O código deve começar com begin
+Erro de Sintaxe
+
+
+Compilando ...
+Parser[58,5]: Print não é um identificador válido
+Parser[87,40]: No final da chamada da função deve vir " ) "
+Parser[89,16]: Função ou variável inválida: ATR
+Parser[202,1]: O código deve começar com begin
+Erro de Sintaxe
+
+
+Compilando ...
+Parser[28,5]: Print não é um identificador válido
+Parser[56,87]: SellAtMarket não é um identificador válido
+Parser[56,129]: exit não é um identificador válido
+Parser[57,45]: exit não é um identificador válido
+Parser[63,22]: SellAtMarket não é um identificador válido
+Parser[65,5]: exit não é um identificador válido
+Parser[76,49]: SellAtMarket não é um identificador válido
+Parser[76,86]: SellAtMarket não é um identificador válido
+Parser[96,1]: O código deve começar com begin
+Erro de Sintaxe
+
+
+Compilando ...
+Parser[13,28]: Token inválido: =
+Parser[13,28]: O código deve começar com begin
+Erro de Sintaxe
+
+Compilando ...
+Parser[52,5]: Print não é um identificador válido
+Parser[160,1]: O código deve começar com begin
+Erro de Sintaxe
