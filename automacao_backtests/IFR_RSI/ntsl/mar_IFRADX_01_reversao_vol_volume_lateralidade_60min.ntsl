@@ -1,0 +1,146 @@
+{
+  Estrategia: mar_IFRADX_01_reversao_vol_volume_lateralidade_60min
+  Descricao:  Reversão em Price Action (martelo/estrela cadente) com IFR extremo
+               e volume acima da média, operando apenas em lateralidade (ADX < 20).
+               Saída por IFR retornando a 50/40 ou por tempo. Foco: WIN 60min.
+  Timeframe:  60min
+}
+
+input
+  // ── IFR ─────────────────────────────────────────────
+  PeriodoIFR(9);                { período do IFR }
+  NivelSobrecompra(70);         { IFR >= 70 = sobrecompra }
+  NivelSobrevenda(30);          { IFR <= 30 = sobrevenda }
+  // ── Price Action ───────────────────────────────────
+  MultiplicadorPavio(1.5);      { pavio >= corpo * multiplicador }
+  MaxPavioOpostoCorpo(1.2);
+  // ── Volume ─────────────────────────────────────────
+  PeriodoMediaVol(20);
+  FatorVolume(1.2);             { volume >= 120% da média }
+  // ── ADX ─────────────────────────────────────────────
+  PeriodoADX(14);
+  LimiarADX(20);                { ADX < 20 = lateralidade }
+  // ── Saída ──────────────────────────────────────────
+  UsarSaidaIFR(true);
+  NivelSaidaCompra(50);         { IFR >= 50 = sair compra }
+  NivelSaidaVenda(40);          { IFR <= 40 = sair venda }
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+  // ── Gestão de risco ───────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(3);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR, fMediaVol, fADX : float;
+  fRange, fCorpo, fPavioSup, fPavioInf : float;
+  bMartelo, bEstrela, bVolumeOk, bLateral : boolean;
+  iBarrasEmPosicao : integer;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iDirecaoPosicao, iStopsConsec, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFRADX_01_reversao_vol_volume_lateralidade_60min");
+
+  if Date <> Date[1] then
+  begin
+    iBarrasEmPosicao := 0;
+    fResultadoDia    := 0;
+    bBloqueioDia     := false;
+    iDiaSemanaAtual  := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // ── CÁLCULOS ───────────────────────────────────────
+  fIFR      := IFR(PeriodoIFR);
+  fMediaVol := Media(PeriodoMediaVol, Volume);
+  fADX      := ADX(PeriodoADX);
+  bVolumeOk := Volume >= fMediaVol * FatorVolume;
+  bLateral  := fADX < LimiarADX;
+
+  fRange    := High - Low;
+  fCorpo    := Abs(Open - Close);
+  fPavioSup := High - Max(Open, Close);
+  fPavioInf := Min(Open, Close) - Low;
+
+  bMartelo := (fRange > 0) and (fCorpo > 0)
+           and (fPavioInf >= fCorpo * MultiplicadorPavio)
+           and (fPavioSup <= fCorpo * MaxPavioOpostoCorpo);
+
+  bEstrela := (fRange > 0) and (fCorpo > 0)
+           and (fPavioSup >= fCorpo * MultiplicadorPavio)
+           and (fPavioInf <= fCorpo * MaxPavioOpostoCorpo);
+
+  // ── ENTRADA ────────────────────────────────────────
+  if (not IsBought) and (not IsSold)
+  and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+  begin
+    // Compra: IFR em sobrevenda, martelo, volume alto, lateralidade
+    if (fIFR <= NivelSobrevenda) and bMartelo and bVolumeOk and bLateral then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+    end
+    // Venda: IFR em sobrecompra, estrela cadente, volume alto, lateralidade
+    else if (fIFR >= NivelSobrecompra) and bEstrela and bVolumeOk and bLateral then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+    end;
+  end;
+
+  // ── BARRA EM POSIÇÃO ──────────────────────────────
+  if IsBought or IsSold then iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else iBarrasEmPosicao := 0;
+
+  // ── SAÍDA ─────────────────────────────────────────
+  if IsBought  and ((UsarSaidaIFR and (fIFR >= NivelSaidaCompra))
+                or  (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR and (fIFR <= NivelSaidaVenda))
+              or  (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;
