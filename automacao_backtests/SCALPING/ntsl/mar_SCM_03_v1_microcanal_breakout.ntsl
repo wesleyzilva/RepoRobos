@@ -1,0 +1,132 @@
+﻿// ============================================================
+// Robô: mar_SCM_03_v1_microcanal_breakout
+// Grupo: SCALPING
+// Versão: v1 | Timeframe: 2min / 5min
+// Descrição: Após N barras comprimidas (range acumulado < LimRange),
+//            espera rompimento da máxima ou mínima do micro-canal.
+//            Alvo: 35pts. Stop: outro lado do canal + 5pts.
+//            Janela: 09h30–12h00. Limita-se a 3 entradas/dia.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 3;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input BarrasCanal   = 5;     // barras para medir o micro-canal
+input LimRangeCanal = 80;   // range máximo acumulado para ser "comprimido"
+input AlvoFixo      = 35;
+input StopExtra     = 5;    // pts além do outro lado do canal
+input MaxEntradasDia= 3;
+input HoraIni       = 930;
+input HoraFim       = 1200;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec, EntradasHoje: integer;
+  DataAnterior: date;
+  MaxCanal, MinCanal, RangeCanal: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_SCM_03_v1_microcanal_breakout");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    EntradasHoje := 0;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  MaxCanal  := Highest(High, BarrasCanal);
+  MinCanal  := Lowest(Low,   BarrasCanal);
+  RangeCanal := MaxCanal - MinCanal;
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (EntradasHoje < MaxEntradasDia) and
+     (RangeCanal <= LimRangeCanal) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: rompimento da máxima do canal
+    if (Close > MaxCanal[1]) then
+    begin
+      StopLoss     := MinCanal - StopExtra;
+      TakeProfit   := Close + AlvoFixo;
+      EntradasHoje := EntradasHoje + 1;
+      BuyAtMarket;
+    end;
+
+    // SHORT: rompimento da mínima do canal
+    if (Close < MinCanal[1]) then
+    begin
+      StopLoss     := MaxCanal + StopExtra;
+      TakeProfit   := Close - AlvoFixo;
+      EntradasHoje := EntradasHoje + 1;
+      SellAtMarket;
+    end;
+  end;
+
+end;

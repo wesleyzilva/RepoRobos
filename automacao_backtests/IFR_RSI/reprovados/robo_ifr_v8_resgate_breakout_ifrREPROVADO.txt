@@ -1,0 +1,63 @@
+{
+  Estrategia: robo_ifr_v8_resgate_breakout_ifr
+  Autor: Wesley
+  Descricao: Versao de resgate por breakout apos alivio do extremo IFR.
+             Entrada na retomada direcional com IFR cruzando nivel de retorno.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoMediaVolume(20);
+  FatorVolume(1.0);
+  UsarFiltroVolume(false);
+  PeriodoMMECurta(9);
+  UsarFiltroMME(true);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(15);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, vMediaVol, fMME9, fMME9Anterior : float;
+  bVolumeAlto, bPermiteCompra, bPermiteVenda : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fMME9 := MediaExp(PeriodoMMECurta, Close);
+  fMME9Anterior := MediaExp(PeriodoMMECurta, Close)[1];
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+
+  bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
+
+  bPermiteCompra := (not UsarFiltroMME) or ((Close > fMME9) and (fMME9 > fMME9Anterior));
+  bPermiteVenda := (not UsarFiltroMME) or ((Close < fMME9) and (fMME9 < fMME9Anterior));
+
+  if (not IsBought) and (not IsSold) and bVolumeAlto then
+  begin
+    // Compra: IFR sai da zona extrema e cruza de volta para cima
+    if bPermiteCompra and (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    // Venda: IFR sai da zona extrema e cruza de volta para baixo
+    else if bPermiteVenda and (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

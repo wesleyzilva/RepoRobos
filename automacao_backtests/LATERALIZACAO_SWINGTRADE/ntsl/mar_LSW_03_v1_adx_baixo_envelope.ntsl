@@ -1,0 +1,128 @@
+﻿// ============================================================
+// Robô: mar_LSW_03_v1_adx_baixo_envelope
+// Grupo: LATERALIZACAO_SWINGTRADE
+// Versão: v1 | Timeframe: 60min / 240min
+// Descrição: Envelopes de média móvel (±1%) como zonas de
+//            sobrecompra/sobrevenda em swing lateral (ADX<20).
+//            Compra no envelope inferior, vende no superior.
+//            Stop: ATR×2.5. Alvo: média central.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 2.0;
+input RiscoSemanaPct       = 4.0;
+input MaxStopsConsecutivos = 3;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoMedia   = 21;
+input PctEnvelope    = 1.0;   // 1% acima/abaixo da média
+input PeriodoADX     = 20;
+input ADXMax         = 20;
+input PeriodoATR     = 14;
+input MultATR        = 2.5;
+input HoraIni        = 1000;
+input HoraFim        = 1500;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  Media21, EnvSup, EnvInf, ADX14, ATR14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LSW_03_v1_adx_baixo_envelope");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  Media21 := Media(PeriodoMedia, Close);
+  EnvSup  := Media21 * (1 + PctEnvelope / 100);
+  EnvInf  := Media21 * (1 - PctEnvelope / 100);
+  ADX14   := ADX(PeriodoADX, 0);
+  ATR14   := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (ADX14 < ADXMax) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    if (Close <= EnvInf) then
+    begin
+      StopLoss   := Close - ATR14 * MultATR;
+      TakeProfit := Media21;
+      BuyAtMarket;
+    end;
+    if (Close >= EnvSup) then
+    begin
+      StopLoss   := Close + ATR14 * MultATR;
+      TakeProfit := Media21;
+      SellAtMarket;
+    end;
+  end;
+
+end;

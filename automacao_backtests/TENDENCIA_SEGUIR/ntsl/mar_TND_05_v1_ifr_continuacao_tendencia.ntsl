@@ -1,0 +1,142 @@
+﻿// ============================================================
+// Robô: mar_TND_05_v1_ifr_continuacao_tendencia
+// Grupo: TENDENCIA_SEGUIR
+// Versão: v1 | Timeframe: 30min / 60min
+// Descrição: Em tendência forte (ADX>25, 3 médias alinhadas),
+//            espera o IFR recuar para zona de 40-50 (pullback
+//            saudável na tendência) e entra na retomada.
+//            Confirmação: IFR volta a subir (>50 para alta) /
+//            desce (<50 para baixa). Stop: ATR×2. Alvo: 1:3.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 2.0;
+input RiscoSemanaPct       = 4.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoIFR    = 14;
+input IFRPullbackMin= 40;   // IFR recuou até esta zona
+input IFRPullbackMax= 55;
+input PeriodoMME9   = 9;
+input PeriodoMME21  = 21;
+input PeriodoMME200 = 200;
+input PeriodoADX    = 14;
+input ADXMin        = 25;
+input PeriodoATR    = 14;
+input MultATR       = 2.0;
+input RelacaoRR     = 3.0;
+input HoraIni       = 930;
+input HoraFim       = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  IFR14, MME9, MME21, MME200, ADX14, ATR14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TND_05_v1_ifr_continuacao_tendencia");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  IFR14  := IFR(PeriodoIFR, 0);
+  MME9   := Media(PeriodoMME9,   Close);
+  MME21  := Media(PeriodoMME21,  Close);
+  MME200 := Media(PeriodoMME200, Close);
+  ADX14  := ADX(PeriodoADX, 0);
+  ATR14  := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (ADX14 >= ADXMin) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: 3 médias altistas + IFR recuou para zona pullback e voltou a subir acima de 50
+    if (MME9 > MME21) and (MME21 > MME200) and
+       (IFR14[1] >= IFRPullbackMin) and (IFR14[1] <= IFRPullbackMax) and
+       (IFR14 > IFRPullbackMax) then
+    begin
+      StopLoss   := Close - ATR14 * MultATR;
+      TakeProfit := Close + (Close - StopLoss) * RelacaoRR;
+      BuyAtMarket;
+    end;
+
+    // SHORT: 3 médias baixistas + IFR recuou para zona pullback e voltou a cair abaixo de 50
+    if (MME9 < MME21) and (MME21 < MME200) and
+       (IFR14[1] >= IFRPullbackMin) and (IFR14[1] <= IFRPullbackMax) and
+       (IFR14 < IFRPullbackMin) then
+    begin
+      StopLoss   := Close + ATR14 * MultATR;
+      TakeProfit := Close - (StopLoss - Close) * RelacaoRR;
+      SellAtMarket;
+    end;
+  end;
+
+end;

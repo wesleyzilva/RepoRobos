@@ -1,0 +1,165 @@
+﻿{
+  Estrategia: robo_ifr_v20_ifr_assimetrico_lado
+  Autor: Wesley
+  Descricao: IFR com niveis assimetricos para compra e venda.
+             Ajusta sensibilidade por lado para refletir comportamento diferente do mercado.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(32);
+  IFREtornoCompra(38);
+  IFRExtremoVenda(68);
+  IFREtornoVenda(62);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  UsarOCO(false);
+  StopLossPontos(100.0);
+  TakeProfitPontos(150.0);
+  UsarBreakEven(false);
+  BreakEvenTriggerPontos(80.0);
+  BreakEvenOffsetPontos(5.0);
+  MaxBarrasPosicao(15);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(1500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  QuantidadeContratos(1);
+  DiasParaResetSemanal(5);
+  UsarResetSemanalPorDiaFixo(true);
+  DiaSemanaReset(2);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR : float;
+  fLimiteDia, fLimiteSemana, fResultadoDia, fResultadoSemana : float;
+  fPrecoEntrada, fResultadoTradePontos, fResultadoTradeReais : float;
+  fStopAtual, fAlvoAtual : float;
+  bBloqueioDia, bBloqueioSemana, bEstavaPosicionado : boolean;
+  bBreakEvenAtivo, bSaidaOCOCompra, bSaidaOCOVenda : boolean;
+  iDirecaoPosicao, iDiasSemana, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: 4robo_ifr_v20_ifr_assimetrico_lado30min62%");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0;
+    bBloqueioDia := false;
+
+    if UsarResetSemanalPorDiaFixo then
+    begin
+      iDiaSemanaAtual := DayOfWeek(Date);
+      if iDiaSemanaAtual = DiaSemanaReset then
+      begin
+        fResultadoSemana := 0;
+        bBloqueioSemana := false;
+      end;
+    end
+    else
+    begin
+      iDiasSemana := iDiasSemana + 1;
+      if iDiasSemana > DiasParaResetSemanal then
+      begin
+        iDiasSemana := 1;
+        fResultadoSemana := 0;
+        bBloqueioSemana := false;
+      end;
+    end;
+  end;
+
+  fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+  fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+  if bEstavaPosicionado and (not IsBought) and (not IsSold) then
+  begin
+    fResultadoTradePontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
+    fResultadoTradeReais := fResultadoTradePontos * ValorPorPonto * QuantidadeContratos;
+    fResultadoDia := fResultadoDia + fResultadoTradeReais;
+    fResultadoSemana := fResultadoSemana + fResultadoTradeReais;
+  end;
+
+  if UsarGestaoRisco and (fResultadoDia <= -fLimiteDia) then
+    bBloqueioDia := true;
+
+  if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then
+    bBloqueioSemana := true;
+
+  if UsarGestaoRisco and UsarHardLock and (bBloqueioDia or bBloqueioSemana) and (IsBought or IsSold) then
+    ClosePosition;
+
+  fIFR := IFR(PeriodoIFR);
+
+  bSaidaOCOCompra := false;
+  bSaidaOCOVenda := false;
+
+  if IsBought and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((High - fPrecoEntrada) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+
+    fStopAtual := fPrecoEntrada - StopLossPontos;
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Max(fStopAtual, fPrecoEntrada + BreakEvenOffsetPontos);
+
+    fAlvoAtual := fPrecoEntrada + TakeProfitPontos;
+    bSaidaOCOCompra := UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual));
+  end;
+
+  if IsSold and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((fPrecoEntrada - Low) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+
+    fStopAtual := fPrecoEntrada + StopLossPontos;
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Min(fStopAtual, fPrecoEntrada - BreakEvenOffsetPontos);
+
+    fAlvoAtual := fPrecoEntrada - TakeProfitPontos;
+    bSaidaOCOVenda := UsarOCO and ((High >= fStopAtual) or (Low <= fAlvoAtual));
+  end;
+
+  if (not IsBought) and (not IsSold) and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana))) then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 52)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao)) or bSaidaOCOCompra) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 48)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao)) or bSaidaOCOVenda) then
+    ClosePosition;
+
+  if (not bEstavaPosicionado) and IsBought then
+  begin
+    fPrecoEntrada := Close;
+    iDirecaoPosicao := 1;
+    bBreakEvenAtivo := false;
+  end;
+
+  if (not bEstavaPosicionado) and IsSold then
+  begin
+    fPrecoEntrada := Close;
+    iDirecaoPosicao := -1;
+    bBreakEvenAtivo := false;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+    bBreakEvenAtivo := false;
+
+  bEstavaPosicionado := IsBought or IsSold;
+end;

@@ -1,0 +1,137 @@
+﻿// ============================================================
+// Robô: mar_TFM_04_v1_3candles_consecutivos_5min
+// Grupo: timeframeMenor
+// Versão: v1 | Timeframe sugerido: 5min
+// Descrição: 3 candles consecutivos de alta/baixa com corpos
+//            crescentes formam um "trem" de momentum.
+//            Entra na continuação. Alvo: 35pts.
+//            Stop: mínima/máxima do 1º candle do trem - 5pts.
+//            Janela: 09h30–12h00 (melhor momentum de manhã).
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 3;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input CorpoMinCandle = 10;    // corpo mínimo de cada candle (pts)
+input AlvoFixo       = 35;
+input StopExtra      = 5;
+input HoraIni        = 930;
+input HoraFim        = 1200;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  Corpo0, Corpo1, Corpo2: float;
+  TremAlta, TremBaixa: boolean;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TFM_04_v1_3candles_consecutivos_5min");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  // Corpo dos 3 candles anteriores
+  Corpo0 := Abs(Close    - Open   );   // candle atual
+  Corpo1 := Abs(Close[1] - Open[1]);
+  Corpo2 := Abs(Close[2] - Open[2]);
+
+  // Trem de alta: 3 corpos crescentes verdes
+  TremAlta  := (Close[2] > Open[2]) and (Corpo2 >= CorpoMinCandle) and
+               (Close[1] > Open[1]) and (Corpo1 > Corpo2) and
+               (Close    > Open   ) and (Corpo0 > Corpo1);
+
+  // Trem de baixa: 3 corpos crescentes vermelhos
+  TremBaixa := (Close[2] < Open[2]) and (Corpo2 >= CorpoMinCandle) and
+               (Close[1] < Open[1]) and (Corpo1 > Corpo2) and
+               (Close    < Open   ) and (Corpo0 > Corpo1);
+
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    if TremAlta then
+    begin
+      StopLoss   := Low[2] - StopExtra;
+      TakeProfit := Close + AlvoFixo;
+      BuyAtMarket;
+    end;
+
+    if TremBaixa then
+    begin
+      StopLoss   := High[2] + StopExtra;
+      TakeProfit := Close - AlvoFixo;
+      SellAtMarket;
+    end;
+  end;
+
+end;

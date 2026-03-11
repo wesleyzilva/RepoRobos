@@ -1,0 +1,120 @@
+﻿{
+  Robo:       mar_IFR_02_v1_reversao_volume_relativo
+  Grupo:      IFR_RSI — Tier 1 (#02)
+  Descricao:  Reversao de IFR (extremo → retorno) com filtro de volume relativo.
+              Entrada apenas quando volume esta acima da media do periodo.
+              Referencia v31: ~72% acerto.
+  Timeframe:  60min (principal), 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+}
+
+input
+  // ── IFR ──────────────────────────────────────────────────────
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);          // IFR atinge sobrevenda
+  IFREtornoCompra(35);           // IFR sobe de volta = sinal
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  // ── Volume relativo ─────────────────────────────────────────
+  PeriodoMediaVol(20);
+  FatorVolume(1.2);              // volume >= 120% da media
+  // ── Saida ───────────────────────────────────────────────────
+  UsarSaidaIFR(true);
+  NivelSaidaCompra(50);
+  NivelSaidaVenda(50);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+  // ── Gestao de risco (toggle) ────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(3);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fMediaVol  : float;
+  bVolumeAlto      : boolean;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana  : boolean;
+  iDirecaoPosicao, iStopsConsec  : integer;
+  iDiaSemanaAtual                : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_02_v1_reversao_volume_relativo");
+  if Date <> Date[1] then
+  begin
+    iBarrasEmPosicao := 0;
+    fResultadoDia    := 0;
+    bBloqueioDia     := false;
+    iDiaSemanaAtual  := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  fIFR      := IFR(PeriodoIFR);
+  fMediaVol := Media(PeriodoMediaVol, Volume);
+  bVolumeAlto := Volume >= (fMediaVol * FatorVolume);
+
+  if (not IsBought) and (not IsSold)
+  and (not (UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana)))
+  and bVolumeAlto then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+    end;
+  end;
+
+  if IsBought or IsSold then iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else iBarrasEmPosicao := 0;
+
+  if IsBought  and ((UsarSaidaIFR and (fIFR >= NivelSaidaCompra))
+                or  (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+  if IsSold and ((UsarSaidaIFR and (fIFR <= NivelSaidaVenda))
+              or  (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

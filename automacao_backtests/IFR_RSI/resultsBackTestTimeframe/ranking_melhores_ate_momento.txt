@@ -1,0 +1,70 @@
+RANKING DOS MELHORES ROBÔS IFR (CSV COMPILADO)
+
+Data da compilação
+- 02/03/2026
+
+Base considerada
+- 87 arquivos CSV em resultadosAprovadosPorTimeframe.
+- Critério principal: ResultadoFinal (último campo Total do CSV).
+- Critério secundário: Winrate (% de operações com resultado > 0).
+
+Classificação por timeframe (regra usada)
+- APROVADO = saldo > 0 e winrate >= 60%
+- ALERTA = winrate >= 60% e saldo <= 0
+- REPROVADO = demais casos
+
+========================================
+PERÍODO DA MELHOR OPERAÇÃO
+========================================
+Melhor operação individual encontrada
+- Robô/arquivo: robo_ifr_v11_agressivo_reentrada60min.csv
+- Resultado da operação: +560,00
+- Abertura: 27/08/2025 09:00:00
+- Fechamento: 28/08/2025 09:00:00
+- Duração: 1d
+
+Melhor período (timeframe) em resultado consolidado
+- 60min: resultado total +10.070,00 (18 CSV) | média por CSV +559,44 | winrate médio 66,24%
+- 30min: resultado total +9.877,00 (16 CSV) | média por CSV +617,31 | winrate médio 65,98%
+
+========================================
+TOP 10 ARQUIVOS (RESULTADO FINAL)
+========================================
+1) v6 | 60min | saldo +2.315,00 | winrate 77,78% | 18 ops
+	arquivo: robo_ifr_v6_saida_hibrida60min.csv
+2) v6 | 30min | saldo +2.254,00 | winrate 81,48% | 27 ops
+	arquivo: robo_ifr_v6_saida_hibrida30min.csv
+3) v45 | 60min | saldo +1.643,00 | winrate 75,00% | 12 ops
+	arquivo: robo_ifr_v45_volume_por_horario60min.csv
+4) v5 | 60min | saldo +1.563,00 | winrate 90,91% | 11 ops
+	arquivo: robo_ifr_v5_regime_volatilidade60min.csv
+5) v45 | 2min | saldo +1.481,00 | winrate 68,22% | 129 ops
+	arquivo: robo_ifr_v45_volume_por_horario02min.csv
+6) v20 | 30min | saldo +1.393,00 | winrate 62,50% | 40 ops
+	arquivo: robo_ifr_v20_ifr_assimetrico_lado30min.csv
+7) v1 | 60min | saldo +1.304,00 | winrate 80,00% | 10 ops
+	arquivo: robo_ifr_v1_reversao_extremos60min71%.csv
+8) v7 | 30min | saldo +1.291,00 | winrate 85,71% | 7 ops
+	arquivo: robo_ifr_v7_resgate_contexto30min.csv
+9) v23 | 15min | saldo +1.253,00 | winrate 87,50% | 16 ops
+	arquivo: robo_ifr_v23_dupla_confirmacao15min.csv
+10) v11 | 30min | saldo +1.245,00 | winrate 58,33% | 12 ops
+	 arquivo: robo_ifr_v11_agressivo_reentrada30min.csv
+
+========================================
+RESUMO POR TIMEFRAME (87 CSV)
+========================================
+- 60min: 18 CSV | saldo total +10.070,00 | média +559,44 | winrate médio 66,24%
+- 30min: 16 CSV | saldo total +9.877,00 | média +617,31 | winrate médio 65,98%
+- 1min: 2 CSV | saldo total -240,00 | média -120,00 | winrate médio 60,72%
+- 2min: 17 CSV | saldo total -7.098,00 | média -417,53 | winrate médio 62,12%
+- 15min: 17 CSV | saldo total -9.479,00 | média -557,59 | winrate médio 62,59%
+- 5min: 17 CSV | saldo total -28.182,00 | média -1.657,76 | winrate médio 51,60%
+
+========================================
+CONCLUSÃO PRÁTICA
+========================================
+- Melhor robô/timeframe no consolidado: v6 em 60min (saldo +2.315,00).
+- Melhor período operacional geral: 60min e 30min (únicos com saldo total positivo forte).
+- Timeframe mais fraco no período analisado: 5min (maior saldo agregado negativo).
+- Próximo foco: priorizar carteira em 60min/30min e revalidar regras de 5min antes de usar em produção.

@@ -1,0 +1,98 @@
+﻿{
+  Robo:       mar_DDZ_02_v1_parcial_breakeven_rapido
+  Grupo:      DRAWDOWNZERO – Tier 1 (#02)
+  Descricao:  Escala parcial (50%) no alvo rapido (60pts) e move stop para entrada.
+              Segunda metade vai para alvo estendido. Risco real apos parcial = zero.
+  Timeframe:  5min, 15min | Versao: 1.0 – marco/2026
+}
+input
+  PericodoMME9(9); PeriodoMME21(21);
+  AlvoParcial(60); AlvoEstendido(150);
+  StopInicial(70);
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fMME9, fMME21 : float;
+  fPrecoEntrada, fStop, fAlvo2 : float;
+  bParcialFeita : boolean;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DDZ_02_v1_parcial_breakeven_rapido");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0; bParcialFeita := false;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0; bParcialFeita := false;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fMME9  := Media(PericodoMME9, Close);
+  fMME21 := Media(PeriodoMME21, Close);
+
+  if IsBought then
+  begin
+    // Parcial + breakeven
+    if (not bParcialFeita) and (Close >= fPrecoEntrada + AlvoParcial) then
+    begin
+      SellAtMarket; bParcialFeita := true; fStop := fPrecoEntrada;
+    end;
+    if bParcialFeita and (Close >= fAlvo2) then SellAtMarket;
+    if Close <= fStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if (not bParcialFeita) and (Close <= fPrecoEntrada - AlvoParcial) then
+    begin
+      BuyAtMarket; bParcialFeita := true; fStop := fPrecoEntrada;
+    end;
+    if bParcialFeita and (Close <= fAlvo2) then BuyAtMarket;
+    if Close >= fStop then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    // Cruzamento MME9 > MME21 (alta)
+    if (fMME9[1] < fMME21[1]) and (fMME9 > fMME21) then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close;
+      fStop := Close - StopInicial;
+      fAlvo2 := Close + AlvoEstendido;
+      bParcialFeita := false; iDirecaoPosicao := 1;
+    end;
+    if (fMME9[1] > fMME21[1]) and (fMME9 < fMME21) then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close;
+      fStop := Close + StopInicial;
+      fAlvo2 := Close - AlvoEstendido;
+      bParcialFeita := false; iDirecaoPosicao := -1;
+    end;
+  end;
+end;

@@ -1,0 +1,37 @@
+var
+  cAzulRoyal, cMarrom, cCinza : Integer;
+  fCorpo, fPavioSup, fPavioInf, fRange : float;
+
+begin
+  // Inicialização das Cores
+  cAzulRoyal := RGB(65, 105, 225); // Rejeição de Topo
+  cMarrom    := RGB(165, 42, 42);  // Rejeição de Fundo
+  cCinza     := RGB(105, 105, 105); // Neutro
+
+  // Cálculos
+  fRange := Range;
+  fCorpo := Abs(Close - Open);
+  
+  if (Close >= Open) then
+    begin
+      fPavioSup := High - Close;
+      fPavioInf := Open - Low;
+    end
+  else
+    begin
+      fPavioSup := High - Open;
+      fPavioInf := Close - Low;
+    end;
+
+  // Default
+  PaintBar(cCinza);
+
+  // Lógica de Sombra (Prioridade Única)
+  // Pavio superior grande (Rejeição de Topo / Shooting Star)
+  if (fPavioSup > (fCorpo * 2)) and (fPavioSup > fPavioInf) then
+    PaintBar(cAzulRoyal);
+  
+  // Pavio inferior grande (Rejeição de Fundo / Hammer)
+  if (fPavioInf > (fCorpo * 2)) and (fPavioInf > fPavioSup) then
+    PaintBar(cMarrom);
+end;

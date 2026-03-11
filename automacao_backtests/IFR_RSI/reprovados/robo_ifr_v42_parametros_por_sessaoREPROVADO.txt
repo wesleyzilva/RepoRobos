@@ -1,0 +1,67 @@
+{
+  Estrategia: robo_ifr_v42_parametros_por_sessao
+  Autor: Wesley
+  Descricao: IFR com parametros diferentes por bloco horario da sessao.
+             Abertura mais agressiva e meio do periodo mais conservador.
+}
+
+input
+  PeriodoIFR(9);
+  HoraAberturaFim(1030);
+  ExtremoCompraAbertura(32);
+  RetornoCompraAbertura(38);
+  ExtremoVendaAbertura(68);
+  RetornoVendaAbertura(62);
+  ExtremoCompraMeio(28);
+  RetornoCompraMeio(34);
+  ExtremoVendaMeio(72);
+  RetornoVendaMeio(66);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, eCompra, rCompra, eVenda, rVenda : float;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  if Time <= HoraAberturaFim then
+  begin
+    eCompra := ExtremoCompraAbertura;
+    rCompra := RetornoCompraAbertura;
+    eVenda := ExtremoVendaAbertura;
+    rVenda := RetornoVendaAbertura;
+  end
+  else
+  begin
+    eCompra := ExtremoCompraMeio;
+    rCompra := RetornoCompraMeio;
+    eVenda := ExtremoVendaMeio;
+    rVenda := RetornoVendaMeio;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR[1] <= eCompra) and (fIFR >= rCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= eVenda) and (fIFR <= rVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

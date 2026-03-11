@@ -1,0 +1,170 @@
+﻿{
+  Robo:       mar_PPV_05_v1_parciais_multiplos
+  Grupo:      POUCOSPONTOSVENCEDORES – Tier 1 (#05)
+  Descricao:  Entrada por IFR extremo + saida em tres parciais progressivas.
+              Parcial 1 no 1:1, parcial 2 no 1:2, parcial 3 trailing por ATR.
+              Objetivo: capturar pequenos movimentos com risco controlado.
+  Timeframe:  5min, 15min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 – marco/2026
+}
+
+input
+  // ── IFR de entrada ──────────────────────────────────────────
+  PeriodoIFR(14);
+  NivelSobreComprado(70);
+  NivelSobreVendido(30);
+  // ── Parciais ────────────────────────────────────────────────
+  AlvoParcial1(50);              // pontos para parcial 1 (50% posição)
+  AlvoParcial2(100);             // pontos para parcial 2 (25% posição)
+  MultiplicadorTrailing(1.2);    // trailing na parcial restante × ATR
+  PeriodoATR(14);
+  // ── Stop ────────────────────────────────────────────────────
+  StopInicial(80);               // stop fixo em pontos
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR, fATR           : float;
+  fPrecoEntrada        : float;
+  fStopAtual           : float;
+  bParcial1Feita       : boolean;
+  bParcial2Feita       : boolean;
+  fResultadoDia        : float;
+  fResultadoSemana     : float;
+  fLimiteDia           : float;
+  fLimiteSemana        : float;
+  bBloqueioDia         : boolean;
+  bBloqueioSemana      : boolean;
+  iStopsConsec         : integer;
+  iDirecaoPosicao      : integer;
+  iDiaSemanaAtual      : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PPV_05_v1_parciais_multiplos");
+  // ── NOVO DIA: reset ──────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    bParcial1Feita  := false;
+    bParcial2Feita  := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then
+      bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then
+    begin
+      if IsBought then SellAtMarket;
+      if IsSold  then BuyAtMarket;
+      exit;
+    end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  // ── INDICADORES ──────────────────────────────────────────────
+  fIFR := RSI(Close, PeriodoIFR);
+  fATR := ATR(PeriodoATR);
+
+  // ── GESTAO DE PARCIAIS (posicao aberta) ──────────────────────
+  if IsBought then
+  begin
+    // parcial 1: 1:1
+    if (not bParcial1Feita) and (Close >= fPrecoEntrada + AlvoParcial1) then
+    begin
+      SellAtMarket;    // fecha metade (simulado — Profit não tem parcial nativa)
+      bParcial1Feita := true;
+      fStopAtual     := fPrecoEntrada;   // breakeven
+    end;
+    // parcial 2: 1:2
+    if bParcial1Feita and (not bParcial2Feita) and (Close >= fPrecoEntrada + AlvoParcial2) then
+    begin
+      SellAtMarket;
+      bParcial2Feita := true;
+    end;
+    // trailing final
+    if bParcial2Feita then
+      fStopAtual := Close - fATR * MultiplicadorTrailing;
+    if Close <= fStopAtual then SellAtMarket;
+  end;
+
+  if IsSold then
+  begin
+    if (not bParcial1Feita) and (Close <= fPrecoEntrada - AlvoParcial1) then
+    begin
+      BuyAtMarket;
+      bParcial1Feita := true;
+      fStopAtual     := fPrecoEntrada;
+    end;
+    if bParcial1Feita and (not bParcial2Feita) and (Close <= fPrecoEntrada - AlvoParcial2) then
+    begin
+      BuyAtMarket;
+      bParcial2Feita := true;
+    end;
+    if bParcial2Feita then
+      fStopAtual := Close + fATR * MultiplicadorTrailing;
+    if Close >= fStopAtual then BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) then
+  begin
+    bParcial1Feita := false;
+    bParcial2Feita := false;
+    // Compra: IFR sobrevendido cruzando para cima de 30
+    if (fIFR[1] < NivelSobreVendido) and (fIFR > NivelSobreVendido) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada   := Close;
+      fStopAtual      := Close - StopInicial;
+      iDirecaoPosicao := 1;
+    end;
+    // Venda: IFR sobrecomprado cruzando para baixo de 70
+    if (fIFR[1] > NivelSobreComprado) and (fIFR < NivelSobreComprado) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada   := Close;
+      fStopAtual      := Close + StopInicial;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+
+  // ── STOP FIXO COMO SEGURANCA ──────────────────────────────────
+  if IsBought and (Close <= fPrecoEntrada - StopInicial) then SellAtMarket;
+  if IsSold  and (Close >= fPrecoEntrada + StopInicial) then BuyAtMarket;
+
+end;

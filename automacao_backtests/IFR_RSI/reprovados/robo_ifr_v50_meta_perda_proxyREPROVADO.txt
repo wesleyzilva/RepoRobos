@@ -1,0 +1,73 @@
+{
+  Estrategia: robo_ifr_v50_meta_perda_proxy
+  Autor: Wesley
+  Descricao: IFR com pausa diaria por meta/perda proxy operacional.
+             Meta: numero de saidas em IFR50; Perda: numero de saidas por tempo.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  MetaSaidasIFR50Dia(3);
+  LimiteSaidasTempoDia(2);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(10);
+
+var
+  iBarrasEmPosicao, iSaidasIFR50Dia, iSaidasTempoDia : integer;
+  fIFR : float;
+  bPausaDia, bSaiuIFR50, bSaiuTempo : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  if Date <> Date[1] then
+  begin
+    iSaidasIFR50Dia := 0;
+    iSaidasTempoDia := 0;
+  end;
+
+  bPausaDia := (iSaidasIFR50Dia >= MetaSaidasIFR50Dia) or (iSaidasTempoDia >= LimiteSaidasTempoDia);
+
+  if (not IsBought) and (not IsSold) and (not bPausaDia) then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  bSaiuIFR50 := UsarSaidaIFR50 and ((IsBought and (fIFR >= 50)) or (IsSold and (fIFR <= 50)));
+  bSaiuTempo := UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao);
+
+  if IsBought and (bSaiuIFR50 or bSaiuTempo) then
+  begin
+    ClosePosition;
+    if bSaiuIFR50 then
+      iSaidasIFR50Dia := iSaidasIFR50Dia + 1;
+    if bSaiuTempo then
+      iSaidasTempoDia := iSaidasTempoDia + 1;
+  end;
+
+  if IsSold and (bSaiuIFR50 or bSaiuTempo) then
+  begin
+    ClosePosition;
+    if bSaiuIFR50 then
+      iSaidasIFR50Dia := iSaidasIFR50Dia + 1;
+    if bSaiuTempo then
+      iSaidasTempoDia := iSaidasTempoDia + 1;
+  end;
+end;

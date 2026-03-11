@@ -1,0 +1,139 @@
+﻿// ============================================================
+// Robô: mar_REV_05_v1_envelope_dinamico_atr
+// Grupo: REVERSAO_MEDIA
+// Versão: v1 | Timeframe: 15min / 30min
+// Descrição: Envelope dinâmico baseado na MME21 ± N×ATR.
+//            Quando o preço toca o envelope externo (±2×ATR),
+//            aguarda confirmação (candle na direção contrária)
+//            e entra visando o retorno à MME21.
+//            Stop: ATR×1.5 além do ponto de entrada.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoMME    = 21;
+input PeriodoATR    = 14;
+input MultEnvelope  = 2.0;   // distância do envelope = MultEnvelope × ATR
+input MultStop      = 1.5;
+input PctCorpoConf  = 40;    // % corpo mínimo do candle de confirmação
+input HoraIni       = 930;
+input HoraFim       = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  MME21, ATR14, EnvSup, EnvInf: float;
+  CorpoCandle, Range: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_REV_05_v1_envelope_dinamico_atr");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  MME21  := Media(PeriodoMME, Close);
+  ATR14  := ATR(PeriodoATR, 0);
+  EnvSup := MME21 + MultEnvelope * ATR14;
+  EnvInf := MME21 - MultEnvelope * ATR14;
+
+  CorpoCandle := Abs(Close - Open);
+  Range       := High - Low;
+  EmPosicao   := IsBought or IsSold;
+
+  // ---- Saída ----
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  // ---- Entradas ----
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: toca envelope inferior + candle de reversão altista
+    if (Low <= EnvInf) and
+       (Close > Open) and
+       ((Range = 0) or (CorpoCandle / Range * 100 >= PctCorpoConf)) then
+    begin
+      StopLoss   := Close - ATR14 * MultStop;
+      TakeProfit := MME21;
+      BuyAtMarket;
+    end;
+
+    // SHORT: toca envelope superior + candle de reversão baixista
+    if (High >= EnvSup) and
+       (Close < Open) and
+       ((Range = 0) or (CorpoCandle / Range * 100 >= PctCorpoConf)) then
+    begin
+      StopLoss   := Close + ATR14 * MultStop;
+      TakeProfit := MME21;
+      SellAtMarket;
+    end;
+  end;
+
+end;

@@ -1,0 +1,163 @@
+﻿{
+  Robo:       mar_IFR_07_v1_ifr_adx_filtro
+  Grupo:      IFR_RSI — Tier 2 (#07)
+  Descricao:  Combina sinal IFR com filtro de ADX: so opera reversao quando
+              o mercado NAO esta em tendencia forte (ADX < limiar). Conceito:
+              em tendencia (ADX alto) IFR extremo nao e reversao, e apenas
+              pullback. Em lateralidade (ADX baixo) o extremo e genuino.
+              Opcional: ativar modo tendencia (ADX > limiar = pullback).
+  Timeframe:  30min (referencia: ~57%)
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+  Legado:     robo_ifr_v28_ifr_adx_filtro30min57%
+}
+
+input
+  // ── IFR ──────────────────────────────────────────────────────
+  PeriodoIFR(14);
+  ZonaSobrevenda(30);
+  ZonaSobrecompra(70);
+  // ── ADX ──────────────────────────────────────────────────────
+  PeriodoADX(14);
+  LimiarADXTendencia(25);        // ADX >= 25 = tendencia, abaixo = lateral
+  OperarLateralidade(true);      // true = reversao em ADX < limiar
+  OperarTendencia(false);        // true = pullback em ADX >= limiar (experimental)
+  // ── Saida ───────────────────────────────────────────────────
+  UsarSaidaIFR(true);
+  NivelSaidaCompra(52);
+  NivelSaidaVenda(48);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(10);
+  HorarioEncerramentoH(17);
+  HorarioEncerramentoM(15);
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR, fADX : float;
+  bReversaoAlta, bReversaoBaixa : boolean;
+  bLateral, bTendencia : boolean;
+  iBarrasPosicao : integer;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iDirecaoPosicao, iStopsConsec, iDiaSemanaAtual : integer;
+  bEncerramento : boolean;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_07_v1_ifr_adx_filtro");
+  // ── RESET DIARIO ─────────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // ── CALCULOS ─────────────────────────────────────────────────
+  bEncerramento := (HourOf(Time) * 60 + MinuteOf(Time)) >= (HorarioEncerramentoH * 60 + HorarioEncerramentoM);
+
+  fIFR := IFR(PeriodoIFR);
+  fADX := ADX(PeriodoADX);
+
+  bLateral  := fADX < LimiarADXTendencia;
+  bTendencia:= fADX >= LimiarADXTendencia;
+
+  // Modo lateralidade: reversao nos extremos
+  bReversaoAlta  := bLateral and OperarLateralidade
+                 and (IFR(PeriodoIFR)[1] < ZonaSobrevenda)
+                 and (fIFR >= ZonaSobrevenda);
+
+  bReversaoBaixa := bLateral and OperarLateralidade
+                 and (IFR(PeriodoIFR)[1] > ZonaSobrecompra)
+                 and (fIFR <= ZonaSobrecompra);
+
+  // Modo tendencia (opcional): pullback — compra se IFR caiu e volta enquanto ADX alto
+  if OperarTendencia and bTendencia then
+  begin
+    bReversaoAlta  := bReversaoAlta  or ((IFR(PeriodoIFR)[1] < 40) and (fIFR >= 40));
+    bReversaoBaixa := bReversaoBaixa or ((IFR(PeriodoIFR)[1] > 60) and (fIFR <= 60));
+  end;
+
+  // ── SAIDAS ───────────────────────────────────────────────────
+  if IsBought then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaIFR and (fIFR >= NivelSaidaCompra)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) then
+      SellAtMarket;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaIFR and (fIFR <= NivelSaidaVenda)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) then
+      BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) and (not bEncerramento) then
+  begin
+    iBarrasPosicao := 0;
+    if UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana) then exit;
+
+    if bReversaoAlta then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+    end
+    else if bReversaoBaixa then
+    begin
+      SellAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;

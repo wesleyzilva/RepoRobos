@@ -1,0 +1,154 @@
+﻿{
+  Estrategia: robo_ifr_v7_resgate_contexto
+  Autor: Wesley
+  Descricao: Versao de resgate com filtro de contexto para reduzir falso sinal.
+             Reversao em extremo IFR + rejeicao + afastamento da MME20 + confirmacao.
+}
+
+input
+  PeriodoIFR(9);
+  IFREntradaCompra(25);
+  IFREntradaVenda(75);
+  PeriodoMediaVolume(20);
+  FatorVolume(1.2);
+  UsarFiltroVolume(true);
+  PeriodoMME(20);
+  DistMinMME20Perc(0.20);
+  UsarJanelaHorario(true);
+  HoraInicio(900);
+  HoraFim(1130);
+  MultiplicadorPavio(1.6);
+  MaxPavioOpostoCorpo(1.1);
+  DojiMaxCorpoPerc(0.10);
+  MaxBarrasConfirmacao(3);
+  UsarSaidaIFR50(true);
+  UsarSaidaSinalContrario(true);
+  MaxBarrasPosicao(20);
+
+var
+  iHoraAtualHHMM, iBarrasAguardarCompra, iBarrasAguardarVenda, iBarrasEmPosicao : integer;
+  fIFR, vMediaVol, fMME20, fDistMME20Perc : float;
+  Range, TamCorpo, TamPavioSup, TamPavioInf, fFechamentoPosicao : float;
+  fNivelCompra, fNivelVenda : float;
+  bJanelaOK, bVolumeAlto, bLongeMME20 : boolean;
+  bMartelo, bEstrela, bDojiAlta, bDojiBaixa : boolean;
+  bSinalCompra, bSinalVenda, bForcaContrariaCompra, bForcaContrariaVenda : boolean;
+  bArmarCompra, bArmarVenda : boolean;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v7_resgate_contexto30min84%");
+  iHoraAtualHHMM := Time;
+  if iHoraAtualHHMM > 2400 then
+    iHoraAtualHHMM := Round(iHoraAtualHHMM / 100);
+
+  bJanelaOK := (not UsarJanelaHorario) or ((iHoraAtualHHMM >= HoraInicio) and (iHoraAtualHHMM <= HoraFim));
+
+  fIFR := IFR(PeriodoIFR);
+  vMediaVol := Media(PeriodoMediaVolume, Volume);
+  bVolumeAlto := (not UsarFiltroVolume) or (Volume >= (vMediaVol * FatorVolume));
+
+  fMME20 := MediaExp(PeriodoMME, Close);
+  if fMME20 > 0 then
+    fDistMME20Perc := (Abs(Close - fMME20) / fMME20) * 100
+  else
+    fDistMME20Perc := 999;
+
+  bLongeMME20 := (fDistMME20Perc >= DistMinMME20Perc);
+
+  Range := High - Low;
+  TamCorpo := Abs(Open - Close);
+  TamPavioSup := High - Max(Open, Close);
+  TamPavioInf := Min(Open, Close) - Low;
+
+  if Range > 0 then
+    fFechamentoPosicao := (Close - Low) / Range
+  else
+    fFechamentoPosicao := 0.5;
+
+  bMartelo := (Range > 0)
+           and (TamPavioInf >= (TamCorpo * MultiplicadorPavio))
+           and (TamPavioSup <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  bEstrela := (Range > 0)
+           and (TamPavioSup >= (TamCorpo * MultiplicadorPavio))
+           and (TamPavioInf <= (TamCorpo * MaxPavioOpostoCorpo));
+
+  bDojiAlta := (Range > 0) and (TamCorpo <= (Range * DojiMaxCorpoPerc)) and (fFechamentoPosicao >= 0.50);
+  bDojiBaixa := (Range > 0) and (TamCorpo <= (Range * DojiMaxCorpoPerc)) and (fFechamentoPosicao < 0.50);
+
+  bSinalCompra := bJanelaOK and bVolumeAlto and bLongeMME20 and (bMartelo or bDojiAlta);
+  bSinalVenda := bJanelaOK and bVolumeAlto and bLongeMME20 and (bEstrela or bDojiBaixa);
+
+  if Date <> Date[1] then
+  begin
+    bArmarCompra := False;
+    bArmarVenda := False;
+    iBarrasAguardarCompra := 0;
+    iBarrasAguardarVenda := 0;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR <= IFREntradaCompra) and bSinalCompra then
+    begin
+      bArmarCompra := True;
+      bArmarVenda := False;
+      fNivelCompra := High;
+      iBarrasAguardarCompra := 0;
+    end
+    else if (fIFR >= IFREntradaVenda) and bSinalVenda then
+    begin
+      bArmarVenda := True;
+      bArmarCompra := False;
+      fNivelVenda := Low;
+      iBarrasAguardarVenda := 0;
+    end;
+
+    if bArmarCompra then
+    begin
+      iBarrasAguardarCompra := iBarrasAguardarCompra + 1;
+      if High > fNivelCompra then
+      begin
+        BuyAtMarket;
+        bArmarCompra := False;
+      end
+      else if iBarrasAguardarCompra > MaxBarrasConfirmacao then
+        bArmarCompra := False;
+    end;
+
+    if bArmarVenda then
+    begin
+      iBarrasAguardarVenda := iBarrasAguardarVenda + 1;
+      if Low < fNivelVenda then
+      begin
+        SellShortAtMarket;
+        bArmarVenda := False;
+      end
+      else if iBarrasAguardarVenda > MaxBarrasConfirmacao then
+        bArmarVenda := False;
+    end;
+  end;
+
+  bForcaContrariaCompra := bVolumeAlto and bEstrela and (fFechamentoPosicao <= 0.35);
+  bForcaContrariaVenda := bVolumeAlto and bMartelo and (fFechamentoPosicao >= 0.65);
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and (
+      (UsarSaidaIFR50 and (fIFR >= 50))
+      or (UsarSaidaSinalContrario and bForcaContrariaCompra)
+      or (iBarrasEmPosicao >= MaxBarrasPosicao)
+     ) then
+    ClosePosition;
+
+  if IsSold and (
+      (UsarSaidaIFR50 and (fIFR <= 50))
+      or (UsarSaidaSinalContrario and bForcaContrariaVenda)
+      or (iBarrasEmPosicao >= MaxBarrasPosicao)
+     ) then
+    ClosePosition;
+end;

@@ -1,0 +1,92 @@
+{
+  "folders": [
+    {
+      "name": "🤖 RepoRobos [marco_Tradeoperador]",
+      "path": "./RepoRobos"
+    }
+  ],
+  "settings": {
+    // ── Identidade Git ──────────────────────────────────────────
+    "git.defaultBranchName": "marco_Tradeoperador",
+    "git.autofetch": true,
+    "git.autofetchPeriod": 180,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true,
+
+    // ── Python ──────────────────────────────────────────────────
+    "python.defaultInterpreterPath": "C:/Program Files/Python310/python.exe",
+
+    // ── Editor ──────────────────────────────────────────────────
+    "editor.tabSize": 2,
+    "editor.rulers": [100],
+    "editor.wordWrap": "on",
+    "editor.formatOnSave": true,
+    "editor.suggestSelection": "first",
+    "editor.inlineSuggest.enabled": true,
+
+    // ── Copilot ─────────────────────────────────────────────────
+    "github.copilot.enable": {
+      "*": true,
+      "plaintext": true,
+      "markdown": true
+    },
+    "chat.tools.terminal.autoApprove": {
+      "ForEach-Object": true,
+      "ConvertFrom-Json": true,
+      "/^node --version; npx --version$/": {
+        "approve": true,
+        "matchCommandLine": true
+      }
+    },
+
+    // ── Arquivos ─────────────────────────────────────────────────
+    "files.associations": {
+      "*.txt": "plaintext",
+      "*.ntsl": "plaintext"
+    },
+    "files.exclude": {
+      "**/.git": true,
+      "**/__pycache__": true,
+      "**/*.pyc": true
+    },
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 2000,
+
+    // ── Explorer ─────────────────────────────────────────────────
+    "explorer.sortOrder": "type",
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {
+      "*.md": "${capture}_*.md"
+    },
+
+    // ── Terminal ─────────────────────────────────────────────────
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.cwd": "${workspaceFolder}"
+  },
+  "extensions": {
+    "recommendations": [
+      "github.copilot",
+      "github.copilot-chat",
+      "ms-python.python",
+      "ms-python.pylance",
+      "yzhang.markdown-all-in-one",
+      "mhutchie.git-graph",
+      "eamodio.gitlens",
+      "streetsidesoftware.code-spell-checker",
+      "streetsidesoftware.code-spell-checker-portuguese-brazilian"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Python: Backtest Atual",
+        "type": "python",
+        "request": "launch",
+        "program": "${file}",
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/automacao_backtests"
+      }
+    ]
+  }
+}

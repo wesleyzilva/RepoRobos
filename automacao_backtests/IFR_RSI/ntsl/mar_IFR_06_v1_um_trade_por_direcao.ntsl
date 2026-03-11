@@ -1,0 +1,160 @@
+﻿{
+  Robo:       mar_IFR_06_v1_um_trade_por_direcao
+  Grupo:      IFR_RSI — Tier 2 (#06)
+  Descricao:  Protetor de sobre-operacao: limita a exatamente 1 trade de compra
+              e 1 trade de venda por sessao. Forca disciplina na selecao do
+              sinal mais forte do dia. Usa IFR extremo (< 25 / > 75) para ser
+              mais seletivo. Baseline: ~54% — perfil conservador, poucas entradas.
+  Timeframe:  60min (referencia: ~54%)
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+  Legado:     robo_ifr_v27_um_trade_por_direcao60min54%
+}
+
+input
+  // ── IFR ──────────────────────────────────────────────────────
+  PeriodoIFR(14);
+  ZonaSobrevenda(25);            // mais seletivo que 30
+  ZonaSobrecompra(75);           // mais seletivo que 70
+  // ── Controle de trade unico ──────────────────────────────────
+  MaxUmaCompra(1);               // maximo de 1 compra por dia
+  MaxUmaVenda(1);                // maximo de 1 venda por dia
+  // ── Confirmacao ─────────────────────────────────────────────
+  UsarConfirmacaoCandle(true);   // exige candle de reversao
+  MultiplicadorPavio(1.2);
+  // ── Saida ───────────────────────────────────────────────────
+  UsarSaidaIFR(true);
+  NivelSaidaCompra(50);
+  NivelSaidaVenda(50);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+  HorarioEncerramentoH(17);
+  HorarioEncerramentoM(15);
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR : float;
+  fRange, fCorpo, fPavioSup, fPavioInf : float;
+  bMartelo, bEstrela : boolean;
+  iComprasHoje, iVendasHoje, iBarrasPosicao : integer;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iDirecaoPosicao, iStopsConsec, iDiaSemanaAtual : integer;
+  bEncerramento : boolean;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_06_v1_um_trade_por_direcao");
+  // ── RESET DIARIO ─────────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iComprasHoje    := 0;
+    iVendasHoje     := 0;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // ── CALCULOS ─────────────────────────────────────────────────
+  bEncerramento := (HourOf(Time) * 60 + MinuteOf(Time)) >= (HorarioEncerramentoH * 60 + HorarioEncerramentoM);
+
+  fIFR     := IFR(PeriodoIFR);
+  fRange   := High - Low;
+  fCorpo   := Abs(Open - Close);
+  fPavioSup:= High - Max(Open, Close);
+  fPavioInf:= Min(Open, Close) - Low;
+
+  bMartelo := (fRange > 0) and (fCorpo > 0)
+           and (fPavioInf >= fCorpo * MultiplicadorPavio);
+  bEstrela := (fRange > 0) and (fCorpo > 0)
+           and (fPavioSup >= fCorpo * MultiplicadorPavio);
+
+  // ── SAIDAS ───────────────────────────────────────────────────
+  if IsBought then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaIFR and (fIFR >= NivelSaidaCompra)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) then
+      SellAtMarket;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaIFR and (fIFR <= NivelSaidaVenda)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) then
+      BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) and (not bEncerramento) then
+  begin
+    iBarrasPosicao := 0;
+    if UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana) then exit;
+
+    if (IFR(PeriodoIFR)[1] < ZonaSobrevenda) and (fIFR >= ZonaSobrevenda)
+       and (iComprasHoje < MaxUmaCompra)
+       and ((not UsarConfirmacaoCandle) or bMartelo) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+      iComprasHoje  := iComprasHoje + 1;
+    end
+    else if (IFR(PeriodoIFR)[1] > ZonaSobrecompra) and (fIFR <= ZonaSobrecompra)
+            and (iVendasHoje < MaxUmaVenda)
+            and ((not UsarConfirmacaoCandle) or bEstrela) then
+    begin
+      SellAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+      iVendasHoje   := iVendasHoje + 1;
+    end;
+  end;
+
+end;

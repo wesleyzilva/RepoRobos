@@ -1,0 +1,169 @@
+﻿{
+  Robo:      mar_PC_15_v1_gap_parcial_fecha_acima_maxD1
+  Catalogo:  #28 — Tier 2
+  Descricao: 1o candle INTEIRAMENTE acima do range D-1 (gap + forca) + pullback e compras
+             Entrada em pullback para a maxima D-1. Stop: fecho abaixo maxD1. Alvo: 2.0x rangeD1.
+  Timeframe: 15min ou 30min
+  Ativo:     WIN (minicontrato de indice)
+  Versao:    1.0 — marco/2026
+}
+
+input
+  PctCorpoMinimo(0.50);
+  PeriodoMediaVol(20);
+  FatorVolumeMinimo(1.0);
+  UsarFiltroMME200(true);
+  PeriodoMME200(200);
+  MultiplicadorAlvoRangeD1(2.0); // alvo agressivo = 2x range D-1
+  ToleranciaPullbackPontos(50.0); // tolerancia para tocar a maxD1 sem fechar abaixo
+  UsarOCO(true);
+  UsarBreakEven(true);
+  BreakEvenTriggerPontos(100.0);
+  BreakEvenOffsetPontos(10.0);
+  MaxBarrasPosicao(10);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(3500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iCandleDia                                        : integer;
+  fMaxC1, fMinC1, fAberDia, fFechC1                : float;
+  fRangeC1, fCorpoC1, fVolC1                       : float;
+  fMaxD1, fMinD1, fRangeD1                         : float;
+  fVWAPSoma, fVWAPVol, fVWAPDiario                 : float;
+  fMME200, fMediaVol                               : float;
+  bCandleAcimaRangeD1, bPullbackAtingido           : boolean;
+  bCorpoAlta, bVolOK, bAcimaMME200                 : boolean;
+  bSinalCompra, bEntradaExecutada                  : boolean;
+  fPrecoEntrada, fStopAtual, fAlvoAtual            : float;
+  iBarrasEmPosicao, iDirecaoPosicao                : integer;
+  bBreakEvenAtivo, bEstavaPosicionado              : boolean;
+  fResultadoDia, fResultadoSemana                  : float;
+  fLimiteDia, fLimiteSemana                        : float;
+  fResultadoPontos, fResultadoReais                : float;
+  bBloqueioDia, bBloqueioSemana                    : boolean;
+  iDiaSemanaAtual                                  : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_15_v1_gap_parcial_fecha_acima_maxD1");
+  if Date <> Date[1] then
+  begin
+    iCandleDia            := 1;
+    fMaxC1                := 0;
+    fMinC1                := 0;
+    fRangeC1              := 0;
+    fCorpoC1              := 0;
+    fVolC1                := 0;
+    bEntradaExecutada     := false;
+    bPullbackAtingido     := false;
+    fResultadoDia         := 0;
+    bBloqueioDia          := false;
+    fVWAPSoma             := 0;
+    fVWAPVol              := 0;
+    iDiaSemanaAtual       := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end
+  else
+    iCandleDia := iCandleDia + 1;
+
+  fVWAPSoma := fVWAPSoma + ((High + Low + Close) / 3.0) * Volume;
+  fVWAPVol  := fVWAPVol  + Volume;
+  if fVWAPVol > 0 then
+    fVWAPDiario := fVWAPSoma / fVWAPVol;
+
+  fMME200   := Media(PeriodoMME200, 1, Close);
+  fMediaVol := Media(PeriodoMediaVol, Volume);
+
+  fLimiteDia    := SaldoConta * (RiscoDiaPct    / 100.0);
+  fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+  if bEstavaPosicionado and (not IsBought) and (not IsSold) then
+  begin
+    fResultadoPontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
+    fResultadoReais  := fResultadoPontos * ValorPorPonto;
+    fResultadoDia    := fResultadoDia    + fResultadoReais;
+    fResultadoSemana := fResultadoSemana + fResultadoReais;
+  end;
+
+  if UsarGestaoRisco and (fResultadoDia    <= -fLimiteDia)    then bBloqueioDia    := true;
+  if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then bBloqueioSemana := true;
+  if UsarGestaoRisco and UsarHardLock and (bBloqueioDia or bBloqueioSemana) and (IsBought or IsSold) then
+    ClosePosition;
+
+  if iCandleDia = 1 then
+  begin
+    fMaxC1   := High;
+    fMinC1   := Low;
+    fAberDia := Open;
+    fFechC1  := Close;
+    fRangeC1 := High - Low;
+    fCorpoC1 := Abs(Close - Open);
+    fVolC1   := Volume;
+    fMaxD1   := High[1];
+    fMinD1   := Low[1];
+    fRangeD1 := fMaxD1 - fMinD1;
+    // 1o candle inteiramente acima do range D-1
+    bCandleAcimaRangeD1 := (fMinC1 > fMaxD1) and (fFechC1 > fAberDia);
+  end;
+
+  // Aguarda pullback para a maxD1 nos candles seguintes (em qualquer candle antes do MaxBarras)
+  if bCandleAcimaRangeD1 and (not bEntradaExecutada)
+     and (not IsBought) and (not IsSold)
+     and (iCandleDia >= 2) and (iCandleDia <= MaxBarrasPosicao) then
+  begin
+    bVolOK       := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeMinimo);
+    bAcimaMME200 := (not UsarFiltroMME200) or (Close > fMME200);
+    // Pullback: minima do candle atual toca a zona da maxD1 mas nao fecha abaixo
+    bPullbackAtingido := (Low <= fMaxD1 + ToleranciaPullbackPontos) and (Close > fMaxD1);
+
+    if bPullbackAtingido and bVolOK and bAcimaMME200 then
+    begin
+      fStopAtual  := fMaxD1;
+      fAlvoAtual  := fMaxD1 + (fRangeD1 * MultiplicadorAlvoRangeD1);
+      BuyAtMarket;
+      bEntradaExecutada := true;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+  begin
+    iBarrasEmPosicao := 0;
+    bBreakEvenAtivo  := false;
+  end;
+
+  if IsBought and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((High - fPrecoEntrada) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Max(fStopAtual, fPrecoEntrada + BreakEvenOffsetPontos);
+
+    if UsarOCO and ((Low <= fStopAtual) or (High >= fAlvoAtual)) then
+      ClosePosition
+    else if iBarrasEmPosicao >= MaxBarrasPosicao then
+      ClosePosition;
+  end;
+
+  if (not bEstavaPosicionado) and IsBought then
+  begin
+    fPrecoEntrada    := Close;
+    iDirecaoPosicao  := 1;
+    iBarrasEmPosicao := 0;
+    bBreakEvenAtivo  := false;
+    fStopAtual       := fMaxD1;
+    fAlvoAtual       := fMaxD1 + (fRangeD1 * MultiplicadorAlvoRangeD1);
+  end;
+
+  bEstavaPosicionado := IsBought or IsSold;
+end;

@@ -1,0 +1,57 @@
+{
+  Estrategia: robo_ifr_v26_janela_pivo
+  Autor: Wesley
+  Descricao: IFR com janela horaria seletiva e confirmacao por rompimento de pivo curto.
+             Objetivo: reduzir ruido fora da janela de melhor desempenho.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  HoraInicio(915);
+  HoraFim(1130);
+  LookbackPivo(3);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fPivoAlta, fPivoBaixa : float;
+  bJanelaAtiva, bConfirmacaoCompra, bConfirmacaoVenda : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+  fPivoAlta := Highest(High, LookbackPivo)[1];
+  fPivoBaixa := Lowest(Low, LookbackPivo)[1];
+
+  bJanelaAtiva := (Time >= HoraInicio) and (Time <= HoraFim);
+  bConfirmacaoCompra := (Close > fPivoAlta);
+  bConfirmacaoVenda := (Close < fPivoBaixa);
+
+  if (not IsBought) and (not IsSold) and bJanelaAtiva then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) and bConfirmacaoCompra then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) and bConfirmacaoVenda then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

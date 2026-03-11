@@ -1,0 +1,52 @@
+{
+  Estratégia: Keltner ATR Breakout
+  Descrição: Colore candles que fecham fora do Canal de Keltner (Média +/- ATR).
+  Plataforma: ProfitChart (NTSL)
+}
+
+Input
+  PeriodoMedia(20);     // Média de tendência
+  PeriodoATR(14);       // Período clássico do ATR
+  FatorVolatilidade(1.3); // Recalibrado para 1.3 para capturar movimentos mais curtos
+
+Var
+  vMedia    : Real;
+  vATR      : Real;
+  BandaSup  : Real;
+  BandaInf  : Real;
+  CorAlta   : Integer;
+  CorBaixa  : Integer;
+  CorNeutra : Integer;
+
+Begin
+  // Definição de Cores RGB Vivas
+  CorAlta := RGB(0, 255, 0); 
+  CorBaixa := RGB(255, 0, 0);
+  CorNeutra := RGB(128, 128, 128);
+
+  // Cálculo da Média Central (Exponencial)
+  // Usando sintaxe em Ingles para compatibilidade (XAverage = Media Exponencial)
+  vMedia := XAverage(Close, PeriodoMedia);
+
+  // Cálculo da Volatilidade (Usando Summation/Soma para contornar erro de nome da funcao Average)
+  vATR := Summation(High - Low, PeriodoATR) / PeriodoATR;
+
+  // Definição das Bandas do Canal
+  BandaSup := vMedia + (vATR * FatorVolatilidade);
+  BandaInf := vMedia - (vATR * FatorVolatilidade);
+
+  // 1. Pinta tudo de cinza (Neutro/Dentro do Canal - AGUARDAR)
+  PaintBar(CorNeutra);
+
+  // 2. Verifica Rompimento de Alta (COMPRA - Força)
+  If (Close > BandaSup) and (Close > Open) then
+    PaintBar(CorAlta);
+
+  // 3. Verifica Rompimento de Baixa (VENDA - Força)
+  If (Close < BandaInf) and (Close < Open) then
+    PaintBar(CorBaixa);
+
+  // Plotagem das linhas para conferência visual
+  Plot(BandaSup);
+  Plot2(BandaInf);
+End;

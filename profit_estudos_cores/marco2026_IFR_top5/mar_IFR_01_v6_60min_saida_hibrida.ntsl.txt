@@ -1,0 +1,50 @@
+{
+  Indicador: mar_IFR_01_v6_60min_saida_hibrida
+  Descricao: Leitura visual do robô v6 (60min). Prioridade #1.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoMedia(20);
+  MostrarTexto(true);
+
+var
+  fIFR, fMME : float;
+  bCompra, bVenda, bSaida : boolean;
+  cCompra, cVenda, cSaida, cNeutro : Integer;
+
+begin
+  cCompra := RGB(0, 255, 0);
+  cVenda := RGB(255, 0, 0);
+  cSaida := RGB(255, 215, 0);
+  cNeutro := RGB(120, 120, 120);
+
+  fIFR := IFR(PeriodoIFR);
+  fMME := MediaExp(PeriodoMedia, Close);
+
+  bCompra := (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) and (Close >= fMME);
+  bVenda := (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) and (Close <= fMME);
+
+  bSaida := (fIFR >= 48) and (fIFR <= 52);
+
+  if bCompra then
+  begin
+    PaintBar(cCompra);
+    if MostrarTexto then PlotText("V6 60 COMPRA", cCompra, 0, Low - (Range * 0.30));
+  end
+  else if bVenda then
+  begin
+    PaintBar(cVenda);
+    if MostrarTexto then PlotText("V6 60 VENDA", cVenda, 0, High + (Range * 0.30));
+  end
+  else if bSaida then
+  begin
+    PaintBar(cSaida);
+  end
+  else
+    PaintBar(cNeutro);
+end;

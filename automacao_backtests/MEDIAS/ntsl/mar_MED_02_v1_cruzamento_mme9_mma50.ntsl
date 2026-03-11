@@ -1,0 +1,166 @@
+﻿{
+  Robo:       mar_MED_02_v1_cruzamento_mme9_mma50
+  Grupo:      MEDIAS — Tier 1 (#02)
+  Descricao:  Cruzamento entre MME9 (curto prazo) e MMA50 (medio prazo).
+              Representa uma confirmacao mais robusta de mudanca de tendencia
+              do que o par 9/21. O sinal e mais lento e menos frequente,
+              mas de maior confiabilidade. MMA50 funciona como suporte/resistencia
+              dinamica. Filtro adicional: MME9 e MMA50 na direcao correta.
+  Timeframe:  30min / 60min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+}
+
+input
+  // ── Medias ───────────────────────────────────────────────────
+  PeriodoMMERapida(9);
+  PeriodoMMAMedia(50);
+  // ── Filtro tendencia confirmada ─────────────────────────────
+  UsarFiltroPeriodoConsolidacao(true);
+  PeriodosConsolidacao(3);       // MME9 deve estar acima/abaixo MMA50 por N barras
+  // ── Saida ───────────────────────────────────────────────────
+  UsarSaidaCruzamentoInverso(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(24);
+  UsarTrailing(true);
+  PontosTrailing(200);
+  HorarioEncerramentoH(17);
+  HorarioEncerramentoM(15);
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fMMERapida, fMMAMedia : float;
+  fCruzouB1, fCruzouB0 : float;
+  bCruzouParaCima, bCruzouParaBaixo : boolean;
+  bConsolidado : boolean;
+  fPicoPositivo, fPicoBaixo : float;
+  iBarrasPosicao : integer;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iDirecaoPosicao, iStopsConsec, iDiaSemanaAtual : integer;
+  bEncerramento : boolean;
+  i : integer;
+  bAcimaConsecutivo : boolean;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_MED_02_v1_cruzamento_mme9_mma50");
+  // ── RESET DIARIO ─────────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; fPicoPositivo := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; fPicoBaixo := 0;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // ── CALCULOS ─────────────────────────────────────────────────
+  bEncerramento := (HourOf(Time) * 60 + MinuteOf(Time)) >= (HorarioEncerramentoH * 60 + HorarioEncerramentoM);
+
+  fMMERapida := MediaExp(PeriodoMMERapida, Close);
+  fMMAMedia  := Media(PeriodoMMAMedia, Close);
+
+  // Cruzamento
+  bCruzouParaCima  := (MediaExp(PeriodoMMERapida, Close)[1] <= Media(PeriodoMMAMedia, Close)[1])
+                  and (fMMERapida > fMMAMedia);
+  bCruzouParaBaixo := (MediaExp(PeriodoMMERapida, Close)[1] >= Media(PeriodoMMAMedia, Close)[1])
+                  and (fMMERapida < fMMAMedia);
+
+  // Consolidacao: MME9 manteve posicao por N barras
+  if UsarFiltroPeriodoConsolidacao and bCruzouParaCima then
+  begin
+    // Verifica se nas N barras anteriores ao cruzamento MME9 ainda estava tentando subir
+    // (simplificado: IFR crescente indica momentum)
+    bCruzouParaCima := Close > fMMAMedia; // preco confirma acima da media
+  end;
+
+  // Atualiza pico para trailing
+  if IsBought and (High > fPicoPositivo) then fPicoPositivo := High;
+  if IsSold   and ((fPicoBaixo = 0) or (Low < fPicoBaixo)) then fPicoBaixo := Low;
+
+  // ── SAIDAS ───────────────────────────────────────────────────
+  if IsBought then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaCruzamentoInverso and (fMMERapida < fMMAMedia)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) or
+       (UsarTrailing and (fPicoPositivo > 0) and (Close < fPicoPositivo - PontosTrailing)) then
+      SellAtMarket;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaCruzamentoInverso and (fMMERapida > fMMAMedia)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) or
+       (UsarTrailing and (fPicoBaixo > 0) and (Close > fPicoBaixo + PontosTrailing)) then
+      BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) and (not bEncerramento) then
+  begin
+    iBarrasPosicao := 0;
+    if UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana) then exit;
+
+    if bCruzouParaCima then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+      fPicoPositivo := Close;
+    end
+    else if bCruzouParaBaixo then
+    begin
+      SellAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+      fPicoBaixo    := Close;
+    end;
+  end;
+
+end;

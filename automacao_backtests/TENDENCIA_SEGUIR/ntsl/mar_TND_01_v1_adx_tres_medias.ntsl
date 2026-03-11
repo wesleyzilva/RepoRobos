@@ -1,0 +1,137 @@
+﻿// ============================================================
+// Robô: mar_TND_01_v1_adx_tres_medias
+// Grupo: TENDENCIA_SEGUIR
+// Versão: v1 | Timeframe: 30min / 60min
+// Descrição: Trend-following clássico com 3 médias alinhadas
+//            (MME9 > MME21 > MME200 para alta) + ADX > 25
+//            confirmando a força da tendência.
+//            Entrada: primeiro pullback para MME9 com candle de alta.
+//            Stop: MME21 - ATR×0.5. Alvo: 1:2.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 2.0;
+input RiscoSemanaPct       = 4.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoMME9   = 9;
+input PeriodoMME21  = 21;
+input PeriodoMME200 = 200;
+input PeriodoADX    = 14;
+input ADXMin        = 25;
+input PeriodoATR    = 14;
+input MultATR       = 0.5;
+input RelacaoRR     = 2.0;
+input ToleranciaMME = 25;   // pts de proximidade da MME9 para "pullback"
+input HoraIni       = 930;
+input HoraFim       = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  MME9, MME21, MME200, ADX14, ATR14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TND_01_v1_adx_tres_medias");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  MME9   := Media(PeriodoMME9,   Close);
+  MME21  := Media(PeriodoMME21,  Close);
+  MME200 := Media(PeriodoMME200, Close);
+  ADX14  := ADX(PeriodoADX, 0);
+  ATR14  := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (ADX14 >= ADXMin) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: 3 médias altistas + pullback para MME9 + candle de alta
+    if (MME9 > MME21) and (MME21 > MME200) and
+       (Abs(Close - MME9) <= ToleranciaMME) and (Close > Open) then
+    begin
+      StopLoss   := MME21 - ATR14 * MultATR;
+      TakeProfit := Close + (Close - StopLoss) * RelacaoRR;
+      BuyAtMarket;
+    end;
+
+    // SHORT: 3 médias baixistas + pullback para MME9 + candle de baixa
+    if (MME9 < MME21) and (MME21 < MME200) and
+       (Abs(Close - MME9) <= ToleranciaMME) and (Close < Open) then
+    begin
+      StopLoss   := MME21 + ATR14 * MultATR;
+      TakeProfit := Close - (StopLoss - Close) * RelacaoRR;
+      SellAtMarket;
+    end;
+  end;
+
+end;

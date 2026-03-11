@@ -1,0 +1,125 @@
+﻿// ============================================================
+// Robô: mar_REV_03_v1_bb_retorno_media
+// Grupo: REVERSAO_MEDIA
+// Versão: v1 | Timeframe: 15min / 30min
+// Descrição: Bandas de Bollinger clássico (20,2). Quando o preço
+//            fecha fora da banda (sobreextensão), aguarda o candle
+//            retornar para dentro. A entrada é no fechamento
+//            do primeiro candle que volta para dentro da banda.
+//            Alvo: média. Stop: 1 ATR além do extremo.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoBB     = 20;
+input DesvBB        = 2.0;
+input PeriodoATR    = 14;
+input MultATRStop   = 1.0;
+input HoraIni       = 930;
+input HoraFim       = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  BBSup, BBInf, BBMed, ATR14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_REV_03_v1_bb_retorno_media");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  BBSup := BollingerUpper(PeriodoBB, DesvBB, 0);
+  BBInf := BollingerLower(PeriodoBB, DesvBB, 0);
+  BBMed := Media(PeriodoBB, Close);
+  ATR14 := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  // ---- Saída na média de BB ----
+  if IsBought  and (Close >= BBMed) then
+  begin
+    SellAtMarket;
+    if (UsarGestaoRisco) then StopsConsec := 0;
+  end;
+  if IsSold    and (Close <= BBMed) then
+  begin
+    BuyAtMarket;
+    if (UsarGestaoRisco) then StopsConsec := 0;
+  end;
+
+  // ---- Stop loss ----
+  if IsBought and (Close <= StopLoss) then
+  begin
+    SellAtMarket;
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+      PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+      StopsConsec := StopsConsec + 1;
+    end;
+  end;
+  if IsSold and (Close >= StopLoss) then
+  begin
+    BuyAtMarket;
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+      PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+      StopsConsec := StopsConsec + 1;
+    end;
+  end;
+
+  // ---- Entradas ----
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: Close anterior abaixo da banda inf, atual volta (fecha acima de BBInf)
+    if (Close[1] < BBInf[1]) and (Close >= BBInf) then
+    begin
+      StopLoss   := Close[1] - ATR14 * MultATRStop;  // extremo anterior - ATR
+      TakeProfit := BBMed;
+      BuyAtMarket;
+    end;
+
+    // SHORT: Close anterior acima da banda sup, atual volta (fecha abaixo de BBSup)
+    if (Close[1] > BBSup[1]) and (Close <= BBSup) then
+    begin
+      StopLoss   := Close[1] + ATR14 * MultATRStop;
+      TakeProfit := BBMed;
+      SellAtMarket;
+    end;
+  end;
+
+end;

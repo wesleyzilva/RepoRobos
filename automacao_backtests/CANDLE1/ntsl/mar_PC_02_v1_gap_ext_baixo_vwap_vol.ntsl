@@ -1,0 +1,163 @@
+﻿{
+  Robo:      mar_PC_02_v1_gap_ext_baixo_vwap_vol
+  Catalogo:  #42 — Tier 1
+  Descricao: Gap externo para BAIXO + preço abaixo VWAP diaria + corpo >70% + volume climático
+             Entrada venda no 2o candle. Simétrico ao PC_01.
+  Timeframe: 15min ou 30min
+  Ativo:     WIN (minicontrato de índice)
+  Versao:    1.0 — marco/2026
+}
+
+input
+  PctCorpoMinimo(0.70);
+  FatorVolumeClimatico(1.5);
+  PeriodoMediaVol(20);
+  UsarFiltroMME200(true);
+  PeriodoMME200(200);
+  MultiplicadorAlvo(1.5);
+  UsarOCO(true);
+  UsarBreakEven(false);
+  BreakEvenTriggerPontos(80.0);
+  BreakEvenOffsetPontos(5.0);
+  MaxBarrasPosicao(8);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(3500.0);
+  RiscoDiaPct(1.0);
+  RiscoSemanaPct(3.0);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  iCandleDia                                            : integer;
+  fMaxC1, fMinC1, fAberDia, fFechC1                    : float;
+  fRangeC1, fCorpoC1, fVolC1                           : float;
+  fVWAPSoma, fVWAPVol, fVWAPDiario                     : float;
+  fMME200, fMediaVol                                    : float;
+  bGapExtBaixo, bCorpoBaixa, bVolClimatico, bAbaixoMME200 : boolean;
+  bSinalVenda, bEntradaExecutada                        : boolean;
+  fPrecoEntrada, fStopAtual, fAlvoAtual                 : float;
+  iBarrasEmPosicao, iDirecaoPosicao                     : integer;
+  bBreakEvenAtivo, bEstavaPosicionado                   : boolean;
+  fResultadoDia, fResultadoSemana                       : float;
+  fLimiteDia, fLimiteSemana                             : float;
+  fResultadoPontos, fResultadoReais                     : float;
+  bBloqueioDia, bBloqueioSemana                         : boolean;
+  iDiaSemanaAtual                                       : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_PC_02_v1_gap_ext_baixo_vwap_vol");
+  if Date <> Date[1] then
+  begin
+    iCandleDia        := 1;
+    fMaxC1            := 0;
+    fMinC1            := 0;
+    fRangeC1          := 0;
+    fCorpoC1          := 0;
+    fVolC1            := 0;
+    bEntradaExecutada := false;
+    fResultadoDia     := 0;
+    bBloqueioDia      := false;
+    fVWAPSoma         := 0;
+    fVWAPVol          := 0;
+    iDiaSemanaAtual   := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end
+  else
+    iCandleDia := iCandleDia + 1;
+
+  fVWAPSoma  := fVWAPSoma + ((High + Low + Close) / 3.0) * Volume;
+  fVWAPVol   := fVWAPVol  + Volume;
+  if fVWAPVol > 0 then
+    fVWAPDiario := fVWAPSoma / fVWAPVol;
+
+  fMME200   := Media(PeriodoMME200, 1, Close);
+  fMediaVol := Media(PeriodoMediaVol, Volume);
+
+  fLimiteDia    := SaldoConta * (RiscoDiaPct    / 100.0);
+  fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+
+  if bEstavaPosicionado and (not IsBought) and (not IsSold) then
+  begin
+    fResultadoPontos := (Close - fPrecoEntrada) * iDirecaoPosicao;
+    fResultadoReais  := fResultadoPontos * ValorPorPonto;
+    fResultadoDia    := fResultadoDia    + fResultadoReais;
+    fResultadoSemana := fResultadoSemana + fResultadoReais;
+  end;
+
+  if UsarGestaoRisco and (fResultadoDia    <= -fLimiteDia)    then bBloqueioDia    := true;
+  if UsarGestaoRisco and (fResultadoSemana <= -fLimiteSemana) then bBloqueioSemana := true;
+  if UsarGestaoRisco and UsarHardLock and (bBloqueioDia or bBloqueioSemana) and (IsBought or IsSold) then
+    ClosePosition;
+
+  if iCandleDia = 1 then
+  begin
+    fMaxC1   := High;
+    fMinC1   := Low;
+    fAberDia := Open;
+    fFechC1  := Close;
+    fRangeC1 := High - Low;
+    fCorpoC1 := Abs(Close - Open);
+    fVolC1   := Volume;
+  end;
+
+  if (iCandleDia = 2) and (not bEntradaExecutada) and (fRangeC1 > 0)
+     and (not IsBought) and (not IsSold) then
+  begin
+    // Gap externo para baixo: abertura abaixo da mínima do dia anterior
+    bGapExtBaixo   := fAberDia < Low[2];
+    // Corpo de baixa > PctCorpoMinimo do range
+    bCorpoBaixa    := (fFechC1 < fAberDia) and (fCorpoC1 >= fRangeC1 * PctCorpoMinimo);
+    bVolClimatico  := (fMediaVol > 0) and (fVolC1 >= fMediaVol * FatorVolumeClimatico);
+    bAbaixoMME200  := (not UsarFiltroMME200) or (Close < fMME200);
+    bSinalVenda    := bGapExtBaixo and bCorpoBaixa and bVolClimatico and bAbaixoMME200
+                      and (fFechC1 < fVWAPDiario);
+
+    if bSinalVenda then
+    begin
+      fStopAtual  := fMaxC1;
+      fAlvoAtual  := fMinC1 - (fRangeC1 * MultiplicadorAlvo);
+      SellShortAtMarket;
+      bEntradaExecutada := true;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+  begin
+    iBarrasEmPosicao := 0;
+    bBreakEvenAtivo  := false;
+  end;
+
+  if IsSold and bEstavaPosicionado then
+  begin
+    if UsarBreakEven and (not bBreakEvenAtivo) and ((fPrecoEntrada - Low) >= BreakEvenTriggerPontos) then
+      bBreakEvenAtivo := true;
+
+    if UsarBreakEven and bBreakEvenAtivo then
+      fStopAtual := Min(fStopAtual, fPrecoEntrada - BreakEvenOffsetPontos);
+
+    if UsarOCO and ((High >= fStopAtual) or (Low <= fAlvoAtual)) then
+      ClosePosition
+    else if iBarrasEmPosicao >= MaxBarrasPosicao then
+      ClosePosition;
+  end;
+
+  if (not bEstavaPosicionado) and IsSold then
+  begin
+    fPrecoEntrada    := Close;
+    iDirecaoPosicao  := -1;
+    iBarrasEmPosicao := 0;
+    bBreakEvenAtivo  := false;
+    fStopAtual       := fMaxC1;
+    fAlvoAtual       := fMinC1 - (fRangeC1 * MultiplicadorAlvo);
+  end;
+
+  bEstavaPosicionado := IsBought or IsSold;
+end;

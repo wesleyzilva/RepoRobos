@@ -1,0 +1,139 @@
+﻿// ============================================================
+// Robô: mar_LAB_04_v1_williams_r_pullback
+// Grupo: LABORATORIO_INDICADORES
+// Versão: v1 | Timeframe sugerido: 15min / 60min
+// Descrição: Williams %R em zona extrema como sinal de reversão.
+//            Entra apenas em pullbacks quando tendência primária
+//            ainda está intacta (MME9 > MME21 para longs).
+//            Stop na mínima/máxima de 2 barras; alvo 1:2.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoWR    = 14;
+input NivelSobVend = -80;   // Williams %R abaixo = sobrevendido
+input NivelSobComp = -20;   // Williams %R acima = sobrecomprado
+input PeriodoMME9  = 9;
+input PeriodoMME21 = 21;
+input RelacaoRR    = 2.0;
+input HoraIni      = 900;
+input HoraFim      = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  WR14, MME9, MME21: float;
+  StopLoss, TakeProfit: float;
+  StopPcts: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAB_04_v1_williams_r_pullback");
+
+  // ---- Reset diário ----
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  // ---- Bloqueio de risco ----
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then
+        ClosePosition;
+      exit;
+    end;
+  end;
+
+  // ---- Indicadores ----
+  WR14  := WilliamsR(PeriodoWR, 0);
+  MME9  := Media(PeriodoMME9,  Close);
+  MME21 := Media(PeriodoMME21, Close);
+
+  EmPosicao := IsBought or IsSold;
+
+  // ---- Gerenciar posição aberta ----
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  // ---- Entrada: LONG ----
+  // Tendência: MME9 > MME21 | Pullback: WR saindo de sobrevendido
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) and
+     (MME9 > MME21) and
+     (WR14[1] < NivelSobVend) and (WR14 >= NivelSobVend) then
+  begin
+    StopLoss   := MinList(Low, Low[1]) - 10;
+    TakeProfit := Close + (Close - StopLoss) * RelacaoRR;
+    BuyAtMarket;
+  end;
+
+  // ---- Entrada: SHORT ----
+  // Tendência: MME9 < MME21 | Pullback: WR saindo de sobrecomprado
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) and
+     (MME9 < MME21) and
+     (WR14[1] > NivelSobComp) and (WR14 <= NivelSobComp) then
+  begin
+    StopLoss   := MaxList(High, High[1]) + 10;
+    TakeProfit := Close - (StopLoss - Close) * RelacaoRR;
+    SellAtMarket;
+  end;
+
+end;

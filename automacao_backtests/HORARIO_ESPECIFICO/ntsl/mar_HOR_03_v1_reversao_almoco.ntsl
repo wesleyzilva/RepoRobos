@@ -1,0 +1,77 @@
+﻿{
+  Robo:       mar_HOR_03_v1_reversao_almoco
+  Grupo:      HORARIO_ESPECIFICO – Tier 1 (#03)
+  Descricao:  Opera das 12h00 as 13h30 (horario de almoco / baixa liquidez).
+              Estrategia de reversao: IFR extremo no horario de menor volume.
+              Movimentos menores, stops apertados.
+  Timeframe:  5min | Versao: 1.0 – marco/2026
+}
+input
+  HoraInicio(1200); HoraFim(1330); HoraFechamento(1745);
+  PeriodoIFR(14); IFRSobreVendido(25); IFRSobreComprado(75);
+  StopFixo(50); AlvoRR(1.5);    // alvo menor no almoco
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fIFR : float;
+  fPrecoEntrada, fStop, fAlvo : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_HOR_03_v1_reversao_almoco");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0); fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+  if Time >= HoraFechamento then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+
+  fIFR := RSI(Close, PeriodoIFR);
+
+  if IsBought then begin if Close >= fAlvo then SellAtMarket; if Close <= fStop then SellAtMarket; end;
+  if IsSold   then begin if Close <= fAlvo then BuyAtMarket;  if Close >= fStop then BuyAtMarket;  end;
+
+  if (not IsBought) and (not IsSold) and (Time >= HoraInicio) and (Time < HoraFim) then
+  begin
+    if (fIFR[1] < IFRSobreVendido) and (fIFR >= IFRSobreVendido) then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close;
+      fStop := Close - StopFixo; fAlvo := Close + StopFixo * AlvoRR;
+      iDirecaoPosicao := 1;
+    end;
+    if (fIFR[1] > IFRSobreComprado) and (fIFR <= IFRSobreComprado) then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close;
+      fStop := Close + StopFixo; fAlvo := Close - StopFixo * AlvoRR;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+end;

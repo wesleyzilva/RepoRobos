@@ -1,0 +1,54 @@
+﻿{
+  Estrategia: robo_ifr_v28_ifr_adx_filtro
+  Autor: Wesley
+  Descricao: IFR com filtro de forca de tendencia por ADX.
+             Opera apenas quando ADX estiver acima do nivel minimo.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  PeriodoADX(14);
+  ADXMinimo(20);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(14);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fADX : float;
+  bTendenciaValida : boolean;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v28_ifr_adx_filtro30min57%");
+  fIFR := IFR(PeriodoIFR);
+  fADX := ADX(PeriodoADX, PeriodoADX);
+  bTendenciaValida := (fADX >= ADXMinimo);
+
+  if (not IsBought) and (not IsSold) and bTendenciaValida then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

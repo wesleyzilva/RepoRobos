@@ -1,0 +1,124 @@
+﻿// ============================================================
+// mar_ST_02_v1_divergencia_ifr_stop_pivo.ntsl
+// Grupo: STOPTOLERANTE | Versão: 1.0 | Timeframe: 60min
+// Descrição: Divergência IFR (preço faz nova mínima/máxima,
+//            IFR não confirma) + stop abaixo do pivô rompido
+// R:R mínimo: 1:3 | Taxa esperada: ~65%
+// Gestão: UsarGestaoRisco ativável | HardLock diário
+// ============================================================
+
+// ----- ENTRADAS -----
+input IFR_Periodo         = 9;
+input IFR_ZS              = 35;     // Região de sobrevenda
+input IFR_SO              = 65;     // Região de sobrecompra
+input MME200_Periodo      = 200;
+input ATR_Periodo         = 14;
+input Multiplicador_Stop  = 1.5;   // Stop = ATR × 1.5 (fallback)
+input Multiplicador_Alvo  = 3.0;   // Alvo = 3× o stop (R:R 1:3)
+
+// Gestão de risco
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+// ----- VARIÁVEIS -----
+var ifr0, ifr1, ifr2     : float;
+var close0, close1, close2 : float;
+var low0, low1, low2     : float;
+var high0, high1, high2  : float;
+var mme200, atr          : float;
+var divBaixa, divAlta    : boolean;
+
+var stopC, stopV, alvoC, alvoV : float;
+
+var perdaDiaria    : float;
+var perdaSemanal   : float;
+var stopsConsec    : integer;
+var diaUltimoReset : integer;
+var ultimoPnL      : float;
+var emOperacao     : boolean;
+
+// ----- INÍCIO -----
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_ST_02_v1_divergencia_ifr_stop_pivo");
+  ifr0   := IFR(IFR_Periodo, 0);
+  ifr1   := IFR(IFR_Periodo, 1);
+  ifr2   := IFR(IFR_Periodo, 2);
+  close0 := Close;
+  low0   := Low;   low1 := Low[1];   low2 := Low[2];
+  high0  := High;  high1 := High[1]; high2 := High[2];
+  mme200 := MediaExp(MME200_Periodo, 0);
+  atr    := ATR(ATR_Periodo, 0);
+
+  // Gestão: reset semanal
+  if (UsarGestaoRisco) and (DayOfWeek = DiaSemanaReset) and (DayOfWeek <> diaUltimoReset) then
+  begin
+    perdaSemanal   := 0;
+    stopsConsec    := 0;
+    diaUltimoReset := DayOfWeek;
+  end;
+
+  if (IsBought or IsSold) then emOperacao := true
+  else begin
+    if emOperacao then
+    begin
+      ultimoPnL := NetProfit - ultimoPnL;
+      if ultimoPnL < 0 then
+      begin
+        perdaDiaria  := perdaDiaria  + Abs(ultimoPnL);
+        perdaSemanal := perdaSemanal + Abs(ultimoPnL);
+        stopsConsec  := stopsConsec + 1;
+      end else stopsConsec := 0;
+      ultimoPnL  := NetProfit;
+      emOperacao := false;
+    end;
+  end;
+
+  if (UsarHardLock) then
+  begin
+    if (perdaDiaria  >= (SaldoConta * RiscoDiaPct  / 100.0)) then exit;
+    if (perdaSemanal >= (SaldoConta * RiscoSemanaPct / 100.0)) then exit;
+    if (stopsConsec  >= MaxStopsConsecutivos) then exit;
+  end;
+
+  if IsBought or IsSold then exit;
+
+  // ===========================================================
+  // DIVERGÊNCIA DE BAIXO (alta — alta em preço, IFR sem nova alta → reversão baixista)
+  // Preço faz nova MÁXIMA mas IFR faz máxima MENOR
+  // Contexto: precisa estar abaixo da MME200 ou em zona de SO
+  // ===========================================================
+  divAlta := (high0 > high1) and (ifr0 < ifr2) and (ifr0 > IFR_SO);
+
+  if divAlta and (close0 < mme200) then
+  begin
+    stopV := high1 + atr * 0.5;          // stop acima da máxima da divergência
+    alvoV := close0 - (stopV - close0) * Multiplicador_Alvo;
+    SellShortAtMarket;
+    SetStopLoss(stopV);
+    SetTakeProfit(alvoV);
+  end;
+
+  // ===========================================================
+  // DIVERGÊNCIA DE ALTA (baixa — baixa em preço, IFR sem nova baixa → reversão altista)
+  // Preço faz nova MÍNIMA mas IFR faz mínima MAIOR
+  // Contexto: precisa estar acima da MME200 ou em zona de ZS
+  // ===========================================================
+  divBaixa := (low0 < low1) and (ifr0 > ifr2) and (ifr0 < IFR_ZS);
+
+  if divBaixa and (close0 > mme200) then
+  begin
+    stopC := low1 - atr * 0.5;           // stop abaixo da mínima da divergência
+    alvoC := close0 + (close0 - stopC) * Multiplicador_Alvo;
+    BuyAtMarket;
+    SetStopLoss(stopC);
+    SetTakeProfit(alvoC);
+  end;
+
+end;

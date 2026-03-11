@@ -1,0 +1,128 @@
+﻿{
+  Robo:       mar_5M1_05_v1_macd_histograma_explosao
+  Grupo:      50mais1 – Tier 1 (#05)
+  Descricao:  Entra quando histograma MACD cresce >= X ticks consecutivos E candle
+              tem range >= 40pts. Explosoes de momentum no MACD + preco confirma.
+  Timeframe:  15min, 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 – marco/2026
+}
+
+input
+  MACDRapida(12);
+  MACDLenta(26);
+  MACDSinal(9);
+  MinGrowthTicks(3);             // histograma crescendo X barras seguidas
+  MinRangeCandle(40);
+  StopATRPeriodo(14);
+  StopATRMult(2.0);
+  AlvoATRMult(3.0);
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fHist, fATR       : float;
+  bHistCrescendo    : boolean;
+  bHistCaindo       : boolean;
+  fPrecoEntrada     : float;
+  fStop, fAlvo      : float;
+  fResultadoDia     : float;
+  fResultadoSemana  : float;
+  fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+  i : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_5M1_05_v1_macd_histograma_explosao");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then
+    begin
+      if IsBought then SellAtMarket;
+      if IsSold  then BuyAtMarket;
+      exit;
+    end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fATR  := ATR(StopATRPeriodo);
+  fHist := MACD(Close, MACDRapida, MACDLenta, MACDSinal) - MACDSignal(Close, MACDRapida, MACDLenta, MACDSinal);
+
+  // Verifica crescimento consecutivo do histograma
+  bHistCrescendo := true;
+  bHistCaindo    := true;
+  for i := 1 to MinGrowthTicks do
+  begin
+    if MACD(Close, MACDRapida, MACDLenta, MACDSinal)[i] - MACDSignal(Close, MACDRapida, MACDLenta, MACDSinal)[i] <=
+       MACD(Close, MACDRapida, MACDLenta, MACDSinal)[i+1] - MACDSignal(Close, MACDRapida, MACDLenta, MACDSinal)[i+1]
+    then bHistCrescendo := false;
+    if MACD(Close, MACDRapida, MACDLenta, MACDSinal)[i] - MACDSignal(Close, MACDRapida, MACDLenta, MACDSinal)[i] >=
+       MACD(Close, MACDRapida, MACDLenta, MACDSinal)[i+1] - MACDSignal(Close, MACDRapida, MACDLenta, MACDSinal)[i+1]
+    then bHistCaindo := false;
+  end;
+
+  if IsBought then
+  begin
+    if Close >= fAlvo then SellAtMarket;
+    if Close <= fStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if Close <= fAlvo then BuyAtMarket;
+    if Close >= fStop then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bHistCrescendo and (fHist > 0) and ((High - Low) >= MinRangeCandle) and (Close > Open) then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close;
+      fStop := Close - fATR * StopATRMult;
+      fAlvo := Close + fATR * AlvoATRMult;
+      iDirecaoPosicao := 1;
+    end;
+    if bHistCaindo and (fHist < 0) and ((High - Low) >= MinRangeCandle) and (Close < Open) then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada := Close;
+      fStop := Close + fATR * StopATRMult;
+      fAlvo := Close - fATR * AlvoATRMult;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;

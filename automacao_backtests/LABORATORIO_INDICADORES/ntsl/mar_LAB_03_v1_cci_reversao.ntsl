@@ -1,0 +1,140 @@
+﻿// ============================================================
+// Robô: mar_LAB_03_v1_cci_reversao
+// Grupo: LABORATORIO_INDICADORES
+// Versão: v1 | Timeframe sugerido: 15min / 30min
+// Descrição: Entrada por reversão no CCI extremo (>+100 / <-100).
+//            Alvo fixo de 1:2, stop baseado em ATR×1.5.
+//            Filtro de tendência: preço acima/abaixo da MME200.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoCCI    = 14;
+input NivelExtremo  = 100;    // CCI acima/abaixo deste nível = extremo
+input PeriodoATR    = 14;
+input MultiplosATR  = 1.5;    // stop = ATR×MultiplosATR
+input RelacaoRR     = 2.0;    // alvo = risco × RelacaoRR
+input PeriodoMME200 = 200;
+input HoraIni       = 900;
+input HoraFim       = 1700;
+
+var
+  Risco, PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior, DataInicioSemana: date;
+  CCI14, ATR14: float;
+  MME200: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAB_03_v1_cci_reversao");
+
+  // ---- Reset de risco ----
+  Risco := (SaldoConta * RiscoDiaPct / 100);
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana    := 0;
+        StopsConsec    := 0;
+        DataInicioSemana := Date;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  // ---- Verificação de limites ----
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then
+        ClosePosition;
+      exit;
+    end;
+  end;
+
+  // ---- Indicadores ----
+  CCI14  := CCI(PeriodoCCI, 0);
+  ATR14  := ATR(PeriodoATR, 0);
+  MME200 := Media(PeriodoMME200, Close);
+
+  EmPosicao := IsBought or IsSold;
+
+  // ---- Saída por stops ----
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia     := PerdaDia     + (EntryPrice   - Close) * ValorPorPonto;
+        PerdaSemana  := PerdaSemana  + (EntryPrice   - Close) * ValorPorPonto;
+        StopsConsec  := StopsConsec  + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia     := PerdaDia     + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana  := PerdaSemana  + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec  := StopsConsec  + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  // ---- Entradas ----
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: CCI saiu de sobrevendido + preço acima da MME200
+    if (CCI14[1] < -NivelExtremo) and (CCI14 >= -NivelExtremo) and
+       (Close > MME200) then
+    begin
+      StopLoss   := Close - ATR14 * MultiplosATR;
+      TakeProfit := Close + (Close - StopLoss) * RelacaoRR;
+      BuyAtMarket;
+    end;
+
+    // SHORT: CCI saiu de sobrecomprado + preço abaixo da MME200
+    if (CCI14[1] > NivelExtremo) and (CCI14 <= NivelExtremo) and
+       (Close < MME200) then
+    begin
+      StopLoss   := Close + ATR14 * MultiplosATR;
+      TakeProfit := Close - (StopLoss - Close) * RelacaoRR;
+      SellAtMarket;
+    end;
+  end;
+
+end;

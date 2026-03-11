@@ -1,0 +1,119 @@
+﻿// ============================================================
+// Robô: mar_TND_04_v1_donchian_tendencia
+// Grupo: TENDENCIA_SEGUIR
+// Versão: v1 | Timeframe: 30min / 60min
+// Descrição: Canal de Donchian para trend-following puro.
+//            Compra na nova máxima de 20 barras se ADX>20.
+//            Vende na nova mínima de 20 barras se ADX>20.
+//            Saída: rompimento do canal contrário (10 barras).
+//            Stop: ATR×2.5 da entrada.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 2.0;
+input RiscoSemanaPct       = 4.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoDonchianEnt  = 20;
+input PeriodoDonchianSai  = 10;
+input PeriodoADX          = 14;
+input ADXMin              = 20;
+input PeriodoATR          = 14;
+input MultATR             = 2.5;
+input HoraIni             = 930;
+input HoraFim             = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  DonMaxEnt, DonMinEnt, DonMaxSai, DonMinSai, ADX14, ATR14: float;
+  StopLoss: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_TND_04_v1_donchian_tendencia");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  DonMaxEnt := Highest(High, PeriodoDonchianEnt);
+  DonMinEnt := Lowest(Low,   PeriodoDonchianEnt);
+  DonMaxSai := Highest(High, PeriodoDonchianSai);
+  DonMinSai := Lowest(Low,   PeriodoDonchianSai);
+  ADX14     := ADX(PeriodoADX, 0);
+  ATR14     := ATR(PeriodoATR, 0);
+  EmPosicao := IsBought or IsSold;
+
+  // ---- Saída pelo canal de Donchian menor ----
+  if IsBought and (Low  <= DonMinSai[1]) then SellAtMarket;
+  if IsSold   and (High >= DonMaxSai[1]) then BuyAtMarket;
+
+  // ---- Stop por ATR ----
+  if IsBought and (Close <= StopLoss) then
+  begin
+    SellAtMarket;
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+      PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+      StopsConsec := StopsConsec + 1;
+    end;
+  end;
+  if IsSold and (Close >= StopLoss) then
+  begin
+    BuyAtMarket;
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+      PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+      StopsConsec := StopsConsec + 1;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (ADX14 >= ADXMin) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: nova máxima de 20 barras
+    if (High > DonMaxEnt[1]) then
+    begin
+      StopLoss := Close - ATR14 * MultATR;
+      BuyAtMarket;
+    end;
+
+    // SHORT: nova mínima de 20 barras
+    if (Low < DonMinEnt[1]) then
+    begin
+      StopLoss := Close + ATR14 * MultATR;
+      SellAtMarket;
+    end;
+  end;
+
+end;

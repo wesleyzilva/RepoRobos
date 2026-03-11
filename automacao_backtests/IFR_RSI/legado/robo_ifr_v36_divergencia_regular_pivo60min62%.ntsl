@@ -1,0 +1,54 @@
+﻿{
+  Estrategia: robo_ifr_v36_divergencia_regular_pivo
+  Autor: Wesley
+  Descricao: Divergencia regular de IFR com confirmacao por rompimento de pivo curto.
+             Compra em divergencia de fundo e venda em divergencia de topo.
+}
+
+input
+  PeriodoIFR(9);
+  DeltaIFRMinimo(2.0);
+  LookbackPivo(3);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(12);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR, fIFRAnt, fPivoAlta, fPivoBaixa : float;
+  bDivCompra, bDivVenda : boolean;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v36_divergencia_regular_pivo60min62%");
+  fIFR := IFR(PeriodoIFR);
+  fIFRAnt := IFR(PeriodoIFR)[1];
+  fPivoAlta := Highest(High, LookbackPivo)[1];
+  fPivoBaixa := Lowest(Low, LookbackPivo)[1];
+
+  bDivCompra := (Low < Low[1]) and (fIFR > (fIFRAnt + DeltaIFRMinimo));
+  bDivVenda := (High > High[1]) and (fIFR < (fIFRAnt - DeltaIFRMinimo));
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bDivCompra and (Close > fPivoAlta) then
+    begin
+      BuyAtMarket;
+    end
+    else if bDivVenda and (Close < fPivoBaixa) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

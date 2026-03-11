@@ -1,0 +1,54 @@
+﻿{
+  Estrategia: robo_ifr_v11_agressivo_reentrada
+  Autor: Wesley
+  Descricao: Abordagem agressiva com zona IFR mais aberta e uma reentrada por direcao.
+             Foco em maior numero de oportunidades com controle por tempo.
+}
+
+input
+  PeriodoIFR(9);
+  IFREntradaCompra(40);
+  IFREntradaVenda(60);
+  IFRExtremoCompra(30);
+  IFRExtremoVenda(70);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(10);
+  MaxReentradasDirecao(1);
+
+var
+  iBarrasEmPosicao, iReentradaCompra, iReentradaVenda : integer;
+  fIFR : float;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: robo_ifr_v11_agressivo_reentrada30min58%");
+  fIFR := IFR(PeriodoIFR);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREntradaCompra) and (iReentradaCompra <= MaxReentradasDirecao) then
+    begin
+      BuyAtMarket;
+      iReentradaCompra := iReentradaCompra + 1;
+      iReentradaVenda := 0;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREntradaVenda) and (iReentradaVenda <= MaxReentradasDirecao) then
+    begin
+      SellShortAtMarket;
+      iReentradaVenda := iReentradaVenda + 1;
+      iReentradaCompra := 0;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

@@ -1,0 +1,64 @@
+{
+  Estrategia: robo_ifr_v48_circuit_breaker_tempo
+  Autor: Wesley
+  Descricao: IFR com circuit breaker por excesso de saidas por tempo no dia.
+             Se exceder limite, bloqueia novas entradas ate o dia seguinte.
+}
+
+input
+  PeriodoIFR(9);
+  IFRExtremoCompra(30);
+  IFREtornoCompra(35);
+  IFRExtremoVenda(70);
+  IFREtornoVenda(65);
+  MaxSaidasTempoDia(2);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(10);
+
+var
+  iBarrasEmPosicao, iSaidasTempoDia : integer;
+  fIFR : float;
+  bBloqueadoDia, bSaiuPorTempo : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  if Date <> Date[1] then
+    iSaidasTempoDia := 0;
+
+  bBloqueadoDia := (iSaidasTempoDia >= MaxSaidasTempoDia);
+
+  if (not IsBought) and (not IsSold) and (not bBloqueadoDia) then
+  begin
+    if (fIFR[1] <= IFRExtremoCompra) and (fIFR >= IFREtornoCompra) then
+    begin
+      BuyAtMarket;
+    end
+    else if (fIFR[1] >= IFRExtremoVenda) and (fIFR <= IFREtornoVenda) then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  bSaiuPorTempo := UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao);
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or bSaiuPorTempo) then
+  begin
+    ClosePosition;
+    if bSaiuPorTempo then
+      iSaidasTempoDia := iSaidasTempoDia + 1;
+  end;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or bSaiuPorTempo) then
+  begin
+    ClosePosition;
+    if bSaiuPorTempo then
+      iSaidasTempoDia := iSaidasTempoDia + 1;
+  end;
+end;

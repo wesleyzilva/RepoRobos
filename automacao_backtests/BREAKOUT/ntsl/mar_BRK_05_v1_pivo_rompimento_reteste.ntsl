@@ -1,0 +1,94 @@
+﻿{
+  Robo:       mar_BRK_05_v1_pivo_rompimento_reteste
+  Grupo:      BREAKOUT – Tier 1 (#05)
+  Descricao:  Rompimento do pivo de alta/baixa (maxima/minima do dia anterior).
+              Aguarda reteste apos rompimento para entrada mais precisa.
+              Stop abaixo do pivo. Alvo projetado por amplitude do pivo.
+  Timeframe:  15min, 30min | Versao: 1.0 – marco/2026
+}
+input
+  MargemRompimento(10);          // pts acima/abaixo do pivo para confirmar
+  BarrasAguardaReteste(5);       // max barras para reteste apos rompimento
+  MultiplicadorAlvo(2.0);
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fPivoAlta, fPivoBaixa : float;   // max e min do dia anterior
+  bRompeuAlta, bRompeuBaixa : boolean;
+  iBrk : integer;                   // barras desde o rompimento
+  fPrecoEntrada, fStop, fAlvo : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_BRK_05_v1_pivo_rompimento_reteste");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    // Pivos do dia anterior
+    fPivoAlta  := Highest(High, 1, 1);   // max do dia anterior (aproximado)
+    fPivoBaixa := Lowest(Low,  1, 1);
+    bRompeuAlta := false; bRompeuBaixa := false; iBrk := 0;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  if IsBought then begin if Close >= fAlvo then SellAtMarket; if Close <= fStop then SellAtMarket; end;
+  if IsSold   then begin if Close <= fAlvo then BuyAtMarket;  if Close >= fStop then BuyAtMarket;  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    // Detecta rompimento
+    if High > fPivoAlta + MargemRompimento then begin bRompeuAlta := true; iBrk := 0; end;
+    if Low  < fPivoBaixa - MargemRompimento then begin bRompeuBaixa := true; iBrk := 0; end;
+    iBrk := iBrk + 1;
+
+    // Reteste: preco volta ao pivo apos rompimento
+    if bRompeuAlta and (iBrk <= BarrasAguardaReteste) and
+       (Low <= fPivoAlta + MargemRompimento) and (Close > fPivoAlta) then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close;
+      fStop := fPivoBaixa;
+      fAlvo := Close + (fPivoAlta - fPivoBaixa) * MultiplicadorAlvo;
+      bRompeuAlta := false;
+      iDirecaoPosicao := 1;
+    end;
+    if bRompeuBaixa and (iBrk <= BarrasAguardaReteste) and
+       (High >= fPivoBaixa - MargemRompimento) and (Close < fPivoBaixa) then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close;
+      fStop := fPivoAlta;
+      fAlvo := Close - (fPivoAlta - fPivoBaixa) * MultiplicadorAlvo;
+      bRompeuBaixa := false;
+      iDirecaoPosicao := -1;
+    end;
+    if iBrk > BarrasAguardaReteste then begin bRompeuAlta := false; bRompeuBaixa := false; end;
+  end;
+end;

@@ -1,0 +1,78 @@
+﻿{
+  Robo:       mar_BRK_03_v1_bollinger_squeeze_expansao
+  Grupo:      BREAKOUT – Tier 1 (#03)
+  Descricao:  Bollinger Bands squeeze (largura < X%) + rompimento da banda.
+              Entra na direcao do rompimento com stop na banda media.
+  Timeframe:  15min, 30min | Versao: 1.0 – marco/2026
+}
+input
+  PeriodoBB(20); DesvBB(2.0);
+  MaxLarguraSqueeze(0.015);      // largura / preco < 1.5% = squeeze
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fBBSup, fBBInf, fBBMedio, fLargura : float;
+  fPrecoEntrada, fStop, fAlvo : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_BRK_03_v1_bollinger_squeeze_expansao");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fBBSup   := BBandUpper(Close, PeriodoBB, DesvBB);
+  fBBInf   := BBandLower(Close, PeriodoBB, DesvBB);
+  fBBMedio := Media(PeriodoBB, Close);
+  fLargura := (fBBSup - fBBInf) / fBBMedio;
+
+  if IsBought then begin if Close >= fAlvo then SellAtMarket; if Close <= fStop then SellAtMarket; end;
+  if IsSold   then begin if Close <= fAlvo then BuyAtMarket;  if Close >= fStop then BuyAtMarket;  end;
+
+  if (not IsBought) and (not IsSold) and (fLargura[1] <= MaxLarguraSqueeze) then
+  begin
+    if Close > fBBSup then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close;
+      fStop := fBBMedio; fAlvo := Close + (Close - fBBInf);
+      iDirecaoPosicao := 1;
+    end;
+    if Close < fBBInf then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close;
+      fStop := fBBMedio; fAlvo := Close - (fBBSup - Close);
+      iDirecaoPosicao := -1;
+    end;
+  end;
+end;

@@ -1,0 +1,121 @@
+﻿// ============================================================
+// Robô: mar_LAT_02_v1_bollinger_reversao_range
+// Grupo: LATERALIZACAO_DAYTRADE
+// Versão: v1 | Timeframe sugerido: 5min / 15min
+// Descrição: Usa Bandas de Bollinger com período curto para
+//            identificar reversões em mercado lateral. Entra
+//            quando toca a banda e fecha quando volta à média.
+//            Filtro ADX < limiar para garantir lateralização.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoBB    = 20;
+input DesvBB       = 2.0;
+input PeriodoADX   = 14;
+input ADXMaxLateral= 25;    // ADX abaixo disto = mercado lateral
+input StopPontos   = 80;    // stop fixo em pontos
+input HoraIni      = 930;
+input HoraFim      = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  BBSup, BBInf, BBMed: float;
+  ADX14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAT_02_v1_bollinger_reversao_range");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  BBSup := BollingerUpper(PeriodoBB, DesvBB, 0);
+  BBInf := BollingerLower(PeriodoBB, DesvBB, 0);
+  BBMed := Media(PeriodoBB, Close);
+  ADX14 := ADX(PeriodoADX, 0);
+
+  EmPosicao := IsBought or IsSold;
+
+  // ---- Saída quando preço retorna à média ----
+  if IsBought  and (Close >= BBMed) then SellAtMarket;
+  if IsSold    and (Close <= BBMed) then BuyAtMarket;
+
+  // ---- Stop por pontos ----
+  if IsBought and (Close <= StopLoss) then
+  begin
+    SellAtMarket;
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+      PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+      StopsConsec := StopsConsec + 1;
+    end;
+  end;
+
+  if IsSold and (Close >= StopLoss) then
+  begin
+    BuyAtMarket;
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+      PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+      StopsConsec := StopsConsec + 1;
+    end;
+  end;
+
+  // ---- Entradas ----
+  if (not EmPosicao) and
+     (ADX14 < ADXMaxLateral) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: fecha abaixo da banda inferior
+    if (Close[1] < BBInf[1]) and (Close > BBInf) then
+    begin
+      StopLoss   := Close - StopPontos;
+      TakeProfit := BBMed;
+      BuyAtMarket;
+    end;
+
+    // SHORT: fecha acima da banda superior
+    if (Close[1] > BBSup[1]) and (Close < BBSup) then
+    begin
+      StopLoss   := Close + StopPontos;
+      TakeProfit := BBMed;
+      SellAtMarket;
+    end;
+  end;
+
+end;

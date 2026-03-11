@@ -1,0 +1,139 @@
+﻿// ============================================================
+// Robô: mar_REV_02_v1_zscore_afastamento
+// Grupo: REVERSAO_MEDIA
+// Versão: v1 | Timeframe: 15min / 30min
+// Descrição: Calcula o Z-Score do preço em relação à média móvel
+//            de N períodos (desvios acima/abaixo da média).
+//            Z > +2: sobrecomprado → short / Z < -2: sobrevendido → long
+//            Stop: ATR×1.5. Alvo: retorno ao Z=0 (média).
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoMedia  = 20;
+input LimiteZScore  = 2.0;    // |Z| >= este valor para entrar
+input PeriodoATR    = 14;
+input MultATR       = 1.5;
+input HoraIni       = 930;
+input HoraFim       = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  Media20, Desvio, ZScore, ATR14: float;
+  i: integer;
+  SomaQuad: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_REV_02_v1_zscore_afastamento");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  Media20 := Media(PeriodoMedia, Close);
+  ATR14   := ATR(PeriodoATR, 0);
+
+  // Cálculo do desvio padrão amostral dos últimos N fechamentos
+  SomaQuad := 0;
+  for i := 0 to PeriodoMedia - 1 do
+    SomaQuad := SomaQuad + Power(Close[i] - Media20, 2);
+  Desvio := Sqrt(SomaQuad / PeriodoMedia);
+
+  if (Desvio > 0) then
+    ZScore := (Close - Media20) / Desvio
+  else
+    ZScore := 0;
+
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: Z-Score muito negativo (sobrevendido)
+    if (ZScore <= -LimiteZScore) then
+    begin
+      StopLoss   := Close - ATR14 * MultATR;
+      TakeProfit := Media20;
+      BuyAtMarket;
+    end;
+
+    // SHORT: Z-Score muito positivo (sobrecomprado)
+    if (ZScore >= LimiteZScore) then
+    begin
+      StopLoss   := Close + ATR14 * MultATR;
+      TakeProfit := Media20;
+      SellAtMarket;
+    end;
+  end;
+
+end;

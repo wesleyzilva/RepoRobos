@@ -1,0 +1,126 @@
+﻿{
+  Robo:       mar_5M1_03_v1_gap_continuacao
+  Grupo:      50mais1 – Tier 1 (#03)
+  Descricao:  Entra no gap de abertura (diferenca entre abertura e fechamento anterior
+              >= 30pts) e segue a direcao do gap com alvo de continuacao.
+              Cancela se preco fechar o gap.
+  Timeframe:  15min, 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 – marco/2026
+}
+
+input
+  MinGapPontos(30);
+  StopFixo(60);
+  AlvoFixo(120);
+  HoraLimite(1100);              // so opera gaps ate 11h
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fGap             : float;
+  bGapAlta         : boolean;
+  bGapBaixa        : boolean;
+  bEntradaFeita    : boolean;
+  fPrecoEntrada    : float;
+  fResultadoDia    : float;
+  fResultadoSemana : float;
+  fLimiteDia       : float;
+  fLimiteSemana    : float;
+  bBloqueioDia     : boolean;
+  bBloqueioSemana  : boolean;
+  iStopsConsec     : integer;
+  iDirecaoPosicao  : integer;
+  iDiaSemanaAtual  : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_5M1_03_v1_gap_continuacao");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    bEntradaFeita   := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia    := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then
+    begin
+      if IsBought then SellAtMarket;
+      if IsSold  then BuyAtMarket;
+      exit;
+    end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  // Stops e alvos
+  if IsBought then
+  begin
+    if Close >= fPrecoEntrada + AlvoFixo  then SellAtMarket;
+    if Close <= fPrecoEntrada - StopFixo  then SellAtMarket;
+    // fecha o gap = cancela trade
+    if (iDirecaoPosicao = 1) and (Close < Open[CurrentBar - iBarrasEmPosicao]) then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if Close <= fPrecoEntrada - AlvoFixo  then BuyAtMarket;
+    if Close >= fPrecoEntrada + StopFixo  then BuyAtMarket;
+  end;
+
+  // Gap na abertura do dia (primeira barra)
+  if (not bEntradaFeita) and (not IsBought) and (not IsSold) and
+     (Time <= HoraLimite) and (Date = Date[1]) then
+  begin
+    // first bar of the day: Open vs previous Close
+    fGap      := Open - Close[1];
+    bGapAlta  := fGap >= MinGapPontos;
+    bGapBaixa := fGap <= -MinGapPontos;
+
+    if bGapAlta then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada   := Close;
+      bEntradaFeita   := true;
+      iDirecaoPosicao := 1;
+    end;
+    if bGapBaixa then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada   := Close;
+      bEntradaFeita   := true;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;

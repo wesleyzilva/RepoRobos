@@ -1,0 +1,173 @@
+﻿{
+  Robo:       mar_IFR_09_v1_pullback_mme200
+  Grupo:      IFR_RSI — Tier 1 (#09)
+  Descricao:  Opera pullback do IFR quando o preco esta acima da MME200
+              (tendencia de alta) ou abaixo da MME200 (tendencia de baixa).
+              O IFR extremo durante o pullback indica a conclusao da correcao
+              e o ponto de retomada da tendencia principal.
+              Alta seletividade: so opera a favor da tendencia macro.
+  Timeframe:  60min (referencia: ~67%)
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 — marco/2026
+  Legado:     robo_ifr_v33_pullback_mme20060min67%
+}
+
+input
+  // ── IFR ──────────────────────────────────────────────────────
+  PeriodoIFR(14);
+  NivelPullbackCompra(40);       // IFR cai ate 40 durante pullback de alta
+  NivelPullbackVenda(60);        // IFR sobe ate 60 durante pullback de baixa
+  NivelSaidaCompra(60);          // IFR retorna a 60 = sair compra
+  NivelSaidaVenda(40);
+  // ── MME200 ───────────────────────────────────────────────────
+  PeriodoMME(200);
+  MargemMME(100);                // pontos de margem para confirmar posicao vs MME
+  // ── Saida ───────────────────────────────────────────────────
+  UsarSaidaIFR(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(16);
+  UsarTrailing(true);
+  PontosTrailing(200);           // trailing stop de 200 pontos WIN
+  HorarioEncerramentoH(17);
+  HorarioEncerramentoM(15);
+  // ── Gestao de risco ─────────────────────────────────────────
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fIFR, fMME200 : float;
+  fTendenciaAlta, fTendenciaBaixa : boolean;
+  bPullbackAlta, bPullbackBaixa : boolean;
+  fPicoPositivo : float;              // maximo atingido desde entrada compra
+  fPicoBaixo    : float;              // minimo atingido desde entrada venda
+  iBarrasPosicao : integer;
+  fPrecoEntrada, fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana, fResultadoPontos, fResultadoReais : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iDirecaoPosicao, iStopsConsec, iDiaSemanaAtual : integer;
+  bEncerramento : boolean;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_IFR_09_v1_pullback_mme200");
+  // ── RESET DIARIO ─────────────────────────────────────────────
+  if Date <> Date[1] then
+  begin
+    fResultadoDia   := 0;
+    bBloqueioDia    := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then
+    begin
+      fResultadoSemana := 0;
+      bBloqueioSemana  := false;
+    end;
+  end;
+
+  // ── GESTAO DE RISCO ──────────────────────────────────────────
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia    := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := Close - fPrecoEntrada;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; fPicoPositivo := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoPontos := fPrecoEntrada - Close;
+      fResultadoReais  := fResultadoPontos * ValorPorPonto;
+      fResultadoDia    := fResultadoDia + fResultadoReais;
+      fResultadoSemana := fResultadoSemana + fResultadoReais;
+      if fResultadoReais < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      fPrecoEntrada := 0; iDirecaoPosicao := 0; fPicoBaixo := 999999;
+    end;
+    if UsarHardLock then
+    begin
+      if fResultadoDia <= -fLimiteDia then bBloqueioDia := true;
+      if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+      if iStopsConsec >= MaxStopsConsecutivos then bBloqueioDia := true;
+    end;
+  end;
+
+  // ── CALCULOS ─────────────────────────────────────────────────
+  bEncerramento := (HourOf(Time) * 60 + MinuteOf(Time)) >= (HorarioEncerramentoH * 60 + HorarioEncerramentoM);
+
+  fIFR    := IFR(PeriodoIFR);
+  fMME200 := MediaExp(PeriodoMME, Close);
+
+  fTendenciaAlta  := Close > fMME200 + MargemMME;
+  fTendenciaBaixa := Close < fMME200 - MargemMME;
+
+  // Pullback de alta: IFR caiu ate zona inferior e agora cruza de volta acima
+  bPullbackAlta  := fTendenciaAlta
+                and (IFR(PeriodoIFR)[1] < NivelPullbackCompra)
+                and (fIFR >= NivelPullbackCompra);
+
+  // Pullback de baixa: IFR subiu ate zona superior e agora cruza de volta abaixo
+  bPullbackBaixa := fTendenciaBaixa
+                and (IFR(PeriodoIFR)[1] > NivelPullbackVenda)
+                and (fIFR <= NivelPullbackVenda);
+
+  // ── TRAILING (atualiza pico) ──────────────────────────────────
+  if IsBought then
+  begin
+    if High > fPicoPositivo then fPicoPositivo := High;
+  end;
+  if IsSold then
+  begin
+    if (fPicoBaixo = 0) or (Low < fPicoBaixo) then fPicoBaixo := Low;
+  end;
+
+  // ── SAIDAS ───────────────────────────────────────────────────
+  if IsBought then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaIFR and (fIFR >= NivelSaidaCompra)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) or
+       (UsarTrailing and (Close < fPicoPositivo - PontosTrailing)) then
+      SellAtMarket;
+  end;
+
+  if IsSold then
+  begin
+    iBarrasPosicao := iBarrasPosicao + 1;
+    if bEncerramento or
+       (UsarSaidaIFR and (fIFR <= NivelSaidaVenda)) or
+       (UsarSaidaTempo and (iBarrasPosicao >= MaxBarrasPosicao)) or
+       (UsarTrailing and (Close > fPicoBaixo + PontosTrailing)) then
+      BuyAtMarket;
+  end;
+
+  // ── ENTRADAS ─────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) and (not bEncerramento) then
+  begin
+    iBarrasPosicao := 0;
+    if UsarGestaoRisco and (bBloqueioDia or bBloqueioSemana) then exit;
+
+    if bPullbackAlta then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := 1;
+      fPicoPositivo := Close;
+    end
+    else if bPullbackBaixa then
+    begin
+      SellAtMarket;
+      fPrecoEntrada := Close; iDirecaoPosicao := -1;
+      fPicoBaixo    := Close;
+    end;
+  end;
+
+end;

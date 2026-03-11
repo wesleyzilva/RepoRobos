@@ -1,0 +1,135 @@
+﻿// ============================================================
+// Robô: mar_LAT_05_v1_ifr_duplo_confirmacao
+// Grupo: LATERALIZACAO_DAYTRADE
+// Versão: v1 | Timeframe sugerido: 5min / 15min
+// Descrição: Dupla confirmação de reversão em mercado lateral.
+//            IFR(7) para entrada rápida + IFR(14) para filtro
+//            de direção geral. Ambos devem estar no mesmo
+//            extremo. ADX<25 confirma lateralização.
+//            Stop: mínima/máxima de 2 candles. Alvo: 1:1.5
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 2;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoIFR1    = 7;
+input PeriodoIFR2    = 14;
+input IFRSobVend1    = 30;
+input IFRSobVend2    = 40;   // IFR14 mais tolerante
+input IFRSobComp1    = 70;
+input IFRSobComp2    = 60;
+input PeriodoADX     = 14;
+input ADXMax         = 25;
+input RelacaoRR      = 1.5;
+input HoraIni        = 930;
+input HoraFim        = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  IFR7, IFR14, ADX14: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_LAT_05_v1_ifr_duplo_confirmacao");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  IFR7  := IFR(PeriodoIFR1, 0);
+  IFR14 := IFR(PeriodoIFR2, 0);
+  ADX14 := ADX(PeriodoADX,  0);
+  EmPosicao := IsBought or IsSold;
+
+  // ---- Saída ----
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  // ---- Entradas ----
+  if (not EmPosicao) and
+     (ADX14 < ADXMax) and
+     (Time >= HoraIni) and (Time <= HoraFim) then
+  begin
+    // LONG: IFR7 sobrevendido + IFR14 sobrevendido (confirmação dupla)
+    if (IFR7 <= IFRSobVend1) and (IFR14 <= IFRSobVend2) then
+    begin
+      StopLoss   := MinList(Low, Low[1]) - 10;
+      TakeProfit := Close + (Close - StopLoss) * RelacaoRR;
+      BuyAtMarket;
+    end;
+
+    // SHORT: IFR7 sobrecomprado + IFR14 sobrecomprado
+    if (IFR7 >= IFRSobComp1) and (IFR14 >= IFRSobComp2) then
+    begin
+      StopLoss   := MaxList(High, High[1]) + 10;
+      TakeProfit := Close - (StopLoss - Close) * RelacaoRR;
+      SellAtMarket;
+    end;
+  end;
+
+end;

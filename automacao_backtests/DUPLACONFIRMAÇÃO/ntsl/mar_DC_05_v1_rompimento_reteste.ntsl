@@ -1,0 +1,108 @@
+﻿{
+  Robo:       mar_DC_05_v1_rompimento_reteste
+  Grupo:      DUPLACONFIRMACAO – Tier 1 (#05)
+  Descricao:  Dupla confirmacao temporal: rompimento de nivel chave (1a) +
+              reteste do nivel rompido sem rompê-lo de volta (2a).
+              Dois eventos diferentes em sequencia = confirmacao solida.
+  Timeframe:  15min, 30min | Versao: 1.0 – marco/2026
+}
+input
+  PeriodoNivel(20);              // nivel = maxima/minima das ultimas N barras
+  MargemRompimento(15);
+  MaxBarrasAguardaReteste(6);
+  StopATR(14); StopMult(1.5); AlvoRR(2.2);
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fNivelAlta, fNivelBaixa, fATR : float;
+  bRompeuAlta, bRompeuBaixa : boolean;
+  iBarrasAposRompimento : integer;
+  fNivelRompido : float;
+  fPrecoEntrada, fStop, fAlvo : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DC_05_v1_rompimento_reteste");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    bRompeuAlta := false; bRompeuBaixa := false; iBarrasAposRompimento := 0;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0); fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fNivelAlta  := Highest(High, PeriodoNivel, 1);
+  fNivelBaixa := Lowest(Low,   PeriodoNivel, 1);
+  fATR        := ATR(StopATR);
+
+  if IsBought then begin if Close >= fAlvo then SellAtMarket; if Close <= fStop then SellAtMarket; end;
+  if IsSold   then begin if Close <= fAlvo then BuyAtMarket;  if Close >= fStop then BuyAtMarket;  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    // Detecta rompimento (1a confirmacao)
+    if (not bRompeuAlta) and (Close > fNivelAlta + MargemRompimento) then
+    begin
+      bRompeuAlta := true; fNivelRompido := fNivelAlta; iBarrasAposRompimento := 0;
+    end;
+    if (not bRompeuBaixa) and (Close < fNivelBaixa - MargemRompimento) then
+    begin
+      bRompeuBaixa := true; fNivelRompido := fNivelBaixa; iBarrasAposRompimento := 0;
+    end;
+
+    if bRompeuAlta or bRompeuBaixa then iBarrasAposRompimento := iBarrasAposRompimento + 1;
+
+    // Reteste (2a confirmacao)
+    if bRompeuAlta and (iBarrasAposRompimento <= MaxBarrasAguardaReteste) then
+    begin
+      if (Low <= fNivelRompido + MargemRompimento) and (Close > fNivelRompido) then
+      begin
+        BuyAtMarket; fPrecoEntrada := Close;
+        fStop := fNivelBaixa;
+        fAlvo := Close + fATR * StopMult * AlvoRR;
+        bRompeuAlta := false; iDirecaoPosicao := 1;
+      end;
+    end;
+    if bRompeuBaixa and (iBarrasAposRompimento <= MaxBarrasAguardaReteste) then
+    begin
+      if (High >= fNivelRompido - MargemRompimento) and (Close < fNivelRompido) then
+      begin
+        SellShortAtMarket; fPrecoEntrada := Close;
+        fStop := fNivelAlta;
+        fAlvo := Close - fATR * StopMult * AlvoRR;
+        bRompeuBaixa := false; iDirecaoPosicao := -1;
+      end;
+    end;
+    if iBarrasAposRompimento > MaxBarrasAguardaReteste then
+    begin
+      bRompeuAlta := false; bRompeuBaixa := false; iBarrasAposRompimento := 0;
+    end;
+  end;
+end;

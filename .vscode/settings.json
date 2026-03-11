@@ -1,0 +1,12 @@
+{
+  "python.defaultInterpreterPath": "C:/Program Files/Python310/python.exe",
+  "chat.tools.terminal.autoApprove": {
+    "ForEach-Object": true
+  },
+  "editor.wordWrap": "on",
+  "editor.rulers": [100],
+  "files.associations": {
+    "*.txt": "plaintext",
+    "*.ntsl": "plaintext"
+  }
+}

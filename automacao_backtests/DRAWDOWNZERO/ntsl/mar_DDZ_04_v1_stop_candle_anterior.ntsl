@@ -1,0 +1,106 @@
+﻿{
+  Robo:       mar_DDZ_04_v1_stop_candle_anterior
+  Grupo:      DRAWDOWNZERO – Tier 1 (#04)
+  Descricao:  Stop na extremidade do candle anterior (estrutural).
+              Ao atingir 1:1, move stop para candle anterior mais recente.
+              Drawdown zero depois da confirmacao de 1:1.
+  Timeframe:  30min, 60min | Versao: 1.0 – marco/2026
+}
+input
+  PeriodoMME9(9); PeriodoMME21(21); PeriodoMME50(50);
+  RRMinimo(1.5);                 // trade so entra se stop estrutural permite RR >= 1.5
+  MargemStop(10);                // margem extra no stop estrutural
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fMME9, fMME21, fMME50 : float;
+  fPrecoEntrada, fStop, fAlvo : float;
+  bBreakevenFeito : boolean;
+  fStopEstrutura : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DDZ_04_v1_stop_candle_anterior");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0); fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0; bBreakevenFeito := false;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0; bBreakevenFeito := false;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fMME9  := Media(PeriodoMME9, Close);
+  fMME21 := Media(PeriodoMME21, Close);
+  fMME50 := Media(PeriodoMME50, Close);
+
+  if IsBought then
+  begin
+    // Move stop para estrutura do novo candle anterior quando preco evolui
+    if (not bBreakevenFeito) and (Close >= fAlvo) then bBreakevenFeito := true;
+    if bBreakevenFeito then fStop := Max(fStop, Low[1] - MargemStop);
+    if Close >= fAlvo * 1.5 then SellAtMarket;
+    if Close <= fStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if (not bBreakevenFeito) and (Close <= fAlvo) then bBreakevenFeito := true;
+    if bBreakevenFeito then fStop := Min(fStop, High[1] + MargemStop);
+    if Close <= fAlvo * 0.67 then BuyAtMarket;
+    if Close >= fStop then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    // 3 medias alinhadas para cima + candle de alta
+    if (fMME9 > fMME21) and (fMME21 > fMME50) and (Close > Open) then
+    begin
+      fStopEstrutura := Low[1] - MargemStop;
+      if (Close - fStopEstrutura) > 0 then
+        if ((Close - fStopEstrutura) * RRMinimo <= 300) then  // RR viavel
+        begin
+          BuyAtMarket; fPrecoEntrada := Close;
+          fStop := fStopEstrutura;
+          fAlvo := Close + (Close - fStop);
+          bBreakevenFeito := false; iDirecaoPosicao := 1;
+        end;
+    end;
+    if (fMME9 < fMME21) and (fMME21 < fMME50) and (Close < Open) then
+    begin
+      fStopEstrutura := High[1] + MargemStop;
+      if (fStopEstrutura - Close) > 0 then
+        if ((fStopEstrutura - Close) * RRMinimo <= 300) then
+        begin
+          SellShortAtMarket; fPrecoEntrada := Close;
+          fStop := fStopEstrutura;
+          fAlvo := Close - (fStop - Close);
+          bBreakevenFeito := false; iDirecaoPosicao := -1;
+        end;
+    end;
+  end;
+end;

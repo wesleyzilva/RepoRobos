@@ -1,0 +1,133 @@
+﻿// ============================================================
+// Robô: mar_SCM_05_v1_volume_spike_direcional
+// Grupo: SCALPING
+// Versão: v1 | Timeframe: 1min / 2min
+// Descrição: Volume muito acima da média (≥2× média de 20 barras)
+//            com candle direcional forte (corpo ≥ 60% do range).
+//            Representa entrada institucional. Opera na direção
+//            do candle de volume. Alvo: 35pts. Stop: mínima/máxima.
+// ============================================================
+
+input UsarGestaoRisco      = true;
+input UsarHardLock         = true;
+input SaldoConta           = 10000.0;
+input RiscoDiaPct          = 1.5;
+input RiscoSemanaPct       = 3.0;
+input MaxStopsConsecutivos = 3;
+input ValorPorPonto        = 0.2;
+input DiaSemanaReset       = 2;
+
+input PeriodoVolMedia  = 20;
+input MultVolSpike     = 2.0;   // volume ≥ X × média
+input PctCorpoMin      = 60;
+input TamMinCandle     = 20;
+input AlvoFixo         = 35;
+input HoraIni          = 930;
+input HoraFim          = 1700;
+
+var
+  PerdaDia, PerdaSemana: float;
+  StopsConsec: integer;
+  DataAnterior: date;
+  VolMedia, CorpoCandle, RangeCandle, PctCorpo: float;
+  StopLoss, TakeProfit: float;
+  EmPosicao: boolean;
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_SCM_05_v1_volume_spike_direcional");
+
+  if (Date <> DataAnterior) then
+  begin
+    if (UsarGestaoRisco) then
+    begin
+      PerdaDia := 0;
+      if (DayOfWeek(Date) = DiaSemanaReset) then
+      begin
+        PerdaSemana := 0;
+        StopsConsec := 0;
+      end;
+    end;
+    DataAnterior := Date;
+  end;
+
+  if (UsarGestaoRisco) then
+  begin
+    if ((PerdaDia    >= SaldoConta * RiscoDiaPct    / 100) or
+        (PerdaSemana >= SaldoConta * RiscoSemanaPct / 100) or
+        (StopsConsec >= MaxStopsConsecutivos)) then
+    begin
+      if (UsarHardLock and (IsBought or IsSold)) then ClosePosition;
+      exit;
+    end;
+  end;
+
+  VolMedia    := Media(PeriodoVolMedia, Volume);
+  CorpoCandle := Abs(Close - Open);
+  RangeCandle := High - Low;
+  if (RangeCandle > 0) then
+    PctCorpo := CorpoCandle / RangeCandle * 100
+  else
+    PctCorpo := 0;
+
+  EmPosicao := IsBought or IsSold;
+
+  if IsBought then
+  begin
+    if (Close <= StopLoss) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (EntryPrice - Close) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (EntryPrice - Close) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close >= TakeProfit) then
+    begin
+      SellAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if IsSold then
+  begin
+    if (Close >= StopLoss) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then
+      begin
+        PerdaDia    := PerdaDia    + (Close - EntryPrice) * ValorPorPonto;
+        PerdaSemana := PerdaSemana + (Close - EntryPrice) * ValorPorPonto;
+        StopsConsec := StopsConsec + 1;
+      end;
+    end
+    else if (Close <= TakeProfit) then
+    begin
+      BuyAtMarket;
+      if (UsarGestaoRisco) then StopsConsec := 0;
+    end;
+  end;
+
+  if (not EmPosicao) and
+     (Time >= HoraIni) and (Time <= HoraFim) and
+     (Volume >= VolMedia * MultVolSpike) and
+     (RangeCandle >= TamMinCandle) and
+     (PctCorpo >= PctCorpoMin) then
+  begin
+    if (Close > Open) then
+    begin
+      StopLoss   := Low;
+      TakeProfit := Close + AlvoFixo;
+      BuyAtMarket;
+    end;
+
+    if (Close < Open) then
+    begin
+      StopLoss   := High;
+      TakeProfit := Close - AlvoFixo;
+      SellAtMarket;
+    end;
+  end;
+
+end;

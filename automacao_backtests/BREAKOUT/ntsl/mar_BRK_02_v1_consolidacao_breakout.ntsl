@@ -1,0 +1,113 @@
+﻿{
+  Robo:       mar_BRK_02_v1_consolidacao_breakout
+  Grupo:      BREAKOUT – Tier 1 (#02)
+  Descricao:  Detecta consolidacao (range interno < X pts por N barras) e
+              entra no rompimento do teto ou piso da consolidacao.
+              Captura expansion apos squeeze de volatilidade.
+  Timeframe:  15min, 30min
+  Ativo:      WIN (minicontrato de indice)
+  Versao:     1.0 – marco/2026
+}
+
+input
+  BarrasConsolidacao(8);
+  MaxRangeConsolidacao(120);     // range maximo para caracterizar squeeze
+  AlvoExpansao(1.5);             // alvo = range da consolidacao × 1.5
+  StopInternoPct(0.3);           // stop = fora da consolidacao × 30%
+  UsarGestaoRisco(true);
+  UsarHardLock(true);
+  SaldoConta(10000.0);
+  RiscoDiaPct(1.5);
+  RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2);
+  ValorPorPonto(0.2);
+  DiaSemanaReset(2);
+
+var
+  fTopoConsolidacao, fPisoConsolidacao : float;
+  fRangeConsolid   : float;
+  bEmConsolidacao  : boolean;
+  fPrecoEntrada, fStop, fAlvo : float;
+  fResultadoDia, fResultadoSemana : float;
+  fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_BRK_02_v1_consolidacao_breakout");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then
+    begin
+      if IsBought then SellAtMarket;
+      if IsSold  then BuyAtMarket;
+      exit;
+    end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fTopoConsolidacao := Highest(High, BarrasConsolidacao, 1);
+  fPisoConsolidacao := Lowest(Low, BarrasConsolidacao, 1);
+  fRangeConsolid    := fTopoConsolidacao - fPisoConsolidacao;
+  bEmConsolidacao   := fRangeConsolid <= MaxRangeConsolidacao;
+
+  if IsBought then
+  begin
+    if Close >= fAlvo then SellAtMarket;
+    if Close <= fStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if Close <= fAlvo then BuyAtMarket;
+    if Close >= fStop then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) and bEmConsolidacao then
+  begin
+    // Rompimento para cima do teto
+    if High > fTopoConsolidacao then
+    begin
+      BuyAtMarket;
+      fPrecoEntrada   := Close;
+      fStop           := fPisoConsolidacao + fRangeConsolid * StopInternoPct;
+      fAlvo           := fTopoConsolidacao + fRangeConsolid * AlvoExpansao;
+      iDirecaoPosicao := 1;
+    end;
+    // Rompimento para baixo do piso
+    if Low < fPisoConsolidacao then
+    begin
+      SellShortAtMarket;
+      fPrecoEntrada   := Close;
+      fStop           := fTopoConsolidacao - fRangeConsolid * StopInternoPct;
+      fAlvo           := fPisoConsolidacao - fRangeConsolid * AlvoExpansao;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+
+end;

@@ -1,0 +1,49 @@
+{
+  Estrategia: robo_ifr_v17_failure_swing
+  Autor: Wesley
+  Descricao: Entrada por padrao Failure Swing no IFR com confirmacao de preco.
+             Objetivo: capturar reversao com pivoteamento do proprio IFR.
+}
+
+input
+  PeriodoIFR(9);
+  NivelSobrevendido(30);
+  NivelSobrecomprado(70);
+  UsarSaidaIFR50(true);
+  UsarSaidaTempo(true);
+  MaxBarrasPosicao(14);
+
+var
+  iBarrasEmPosicao : integer;
+  fIFR : float;
+  bFailureSwingCompra, bFailureSwingVenda : boolean;
+
+begin
+  fIFR := IFR(PeriodoIFR);
+
+  bFailureSwingCompra := (fIFR[3] < NivelSobrevendido) and (fIFR[2] > fIFR[3]) and (fIFR[1] > fIFR[2]) and (Close > High[1]);
+  bFailureSwingVenda := (fIFR[3] > NivelSobrecomprado) and (fIFR[2] < fIFR[3]) and (fIFR[1] < fIFR[2]) and (Close < Low[1]);
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if bFailureSwingCompra then
+    begin
+      BuyAtMarket;
+    end
+    else if bFailureSwingVenda then
+    begin
+      SellShortAtMarket;
+    end;
+  end;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if IsBought and ((UsarSaidaIFR50 and (fIFR >= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+
+  if IsSold and ((UsarSaidaIFR50 and (fIFR <= 50)) or (UsarSaidaTempo and (iBarrasEmPosicao >= MaxBarrasPosicao))) then
+    ClosePosition;
+end;

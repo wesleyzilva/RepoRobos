@@ -1,0 +1,104 @@
+﻿{
+  Robo:       mar_DDZ_01_v1_breakeven_11
+  Grupo:      DRAWDOWNZERO – Tier 1 (#01)
+  Descricao:  Entrada por IFR extremo. Assim que preco atinge 1:1 (alvo = stop),
+              move stop para breakeven (preco de entrada). Drawdown teorico zero
+              apos o primeiro movimento favoravel.
+  Timeframe:  15min, 30min | Versao: 1.0 – marco/2026
+}
+input
+  PeriodoIFR(14);
+  IFRSobreVendido(30); IFRSobreComprado(70);
+  StopInicial(80);               // stop = 80pts; apos 1:1 → breakeven
+  UsarMMEFiltro(true);
+  PeriodoMME(200);
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fIFR, fMME : float;
+  fPrecoEntrada, fStop, fAlvo : float;
+  bBreakevenFeito : boolean;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_DDZ_01_v1_breakeven_11");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0; bBreakevenFeito := false;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0; bBreakevenFeito := false;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fIFR := RSI(Close, PeriodoIFR);
+  fMME := Media(PeriodoMME, Close);
+
+  if IsBought then
+  begin
+    // Move breakeven quando atinge 1:1
+    if (not bBreakevenFeito) and (Close >= fPrecoEntrada + StopInicial) then
+    begin
+      fStop := fPrecoEntrada;
+      bBreakevenFeito := true;
+    end;
+    if Close >= fAlvo then SellAtMarket;
+    if Close <= fStop then SellAtMarket;
+  end;
+  if IsSold then
+  begin
+    if (not bBreakevenFeito) and (Close <= fPrecoEntrada - StopInicial) then
+    begin
+      fStop := fPrecoEntrada;
+      bBreakevenFeito := true;
+    end;
+    if Close <= fAlvo then BuyAtMarket;
+    if Close >= fStop then BuyAtMarket;
+  end;
+
+  if (not IsBought) and (not IsSold) then
+  begin
+    if (fIFR[1] < IFRSobreVendido) and (fIFR >= IFRSobreVendido) and
+       (not UsarMMEFiltro or Close > fMME) then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close;
+      fStop := Close - StopInicial;
+      fAlvo := Close + StopInicial * 2;
+      bBreakevenFeito := false; iDirecaoPosicao := 1;
+    end;
+    if (fIFR[1] > IFRSobreComprado) and (fIFR <= IFRSobreComprado) and
+       (not UsarMMEFiltro or Close < fMME) then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close;
+      fStop := Close + StopInicial;
+      fAlvo := Close - StopInicial * 2;
+      bBreakevenFeito := false; iDirecaoPosicao := -1;
+    end;
+  end;
+end;

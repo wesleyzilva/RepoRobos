@@ -1,0 +1,91 @@
+﻿{
+  Robo:       mar_BRK_04_v1_maxmin_abertura_dia
+  Grupo:      BREAKOUT – Tier 1 (#04)
+  Descricao:  Mapeia range das primeiras N barras do dia e entra no rompimento.
+              Stop no oposto do range de abertura. Alvo projetado por ATR.
+  Timeframe:  5min, 15min | Versao: 1.0 – marco/2026
+}
+input
+  BarrasRangeAbertura(6);        // primeiras 6 barras = 30min no 5min
+  MultiplicadorAlvo(1.8);
+  PeriodoATR(14);
+  UsarGestaoRisco(true); UsarHardLock(true);
+  SaldoConta(10000.0); RiscoDiaPct(1.5); RiscoSemanaPct(3.0);
+  MaxStopsConsecutivos(2); ValorPorPonto(0.2); DiaSemanaReset(2);
+
+var
+  fTopoAbertura, fPisoAbertura : float;
+  bRangeMapeado : boolean;
+  iBarrasDia : integer;
+  fPrecoEntrada, fStop, fAlvo, fATR : float;
+  fResultadoDia, fResultadoSemana, fLimiteDia, fLimiteSemana : float;
+  bBloqueioDia, bBloqueioSemana : boolean;
+  iStopsConsec, iDirecaoPosicao, iDiaSemanaAtual : integer;
+
+begin
+  if CurrentBar = 1 then
+    Print("Robo ativo: mar_BRK_04_v1_maxmin_abertura_dia");
+  if Date <> Date[1] then
+  begin
+    fResultadoDia := 0; bBloqueioDia := false;
+    bRangeMapeado := false; iBarrasDia := 0;
+    fTopoAbertura := 0; fPisoAbertura := 9999999;
+    iDiaSemanaAtual := DayOfWeek(Date);
+    if iDiaSemanaAtual = DiaSemanaReset then begin fResultadoSemana := 0; bBloqueioSemana := false; end;
+  end;
+  if UsarGestaoRisco then
+  begin
+    fLimiteDia := SaldoConta * (RiscoDiaPct / 100.0);
+    fLimiteSemana := SaldoConta * (RiscoSemanaPct / 100.0);
+    if (iDirecaoPosicao = 1) and (not IsBought) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (Close - fPrecoEntrada) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (Close - fPrecoEntrada) * ValorPorPonto;
+      if (Close - fPrecoEntrada) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (iDirecaoPosicao = -1) and (not IsSold) and (fPrecoEntrada > 0) then
+    begin
+      fResultadoDia := fResultadoDia + (fPrecoEntrada - Close) * ValorPorPonto;
+      fResultadoSemana := fResultadoSemana + (fPrecoEntrada - Close) * ValorPorPonto;
+      if (fPrecoEntrada - Close) < 0 then iStopsConsec := iStopsConsec + 1 else iStopsConsec := 0;
+      iDirecaoPosicao := 0; fPrecoEntrada := 0;
+    end;
+    if (fResultadoDia <= -fLimiteDia) or (iStopsConsec >= MaxStopsConsecutivos) then bBloqueioDia := true;
+    if fResultadoSemana <= -fLimiteSemana then bBloqueioSemana := true;
+    if UsarHardLock and (bBloqueioDia or bBloqueioSemana) then begin if IsBought then SellAtMarket; if IsSold then BuyAtMarket; exit; end;
+    if bBloqueioDia or bBloqueioSemana then exit;
+  end;
+
+  fATR := ATR(PeriodoATR);
+
+  // Mapeia range das N primeiras barras
+  if not bRangeMapeado then
+  begin
+    iBarrasDia := iBarrasDia + 1;
+    if High > fTopoAbertura then fTopoAbertura := High;
+    if Low  < fPisoAbertura  then fPisoAbertura  := Low;
+    if iBarrasDia >= BarrasRangeAbertura then bRangeMapeado := true;
+  end;
+
+  if IsBought then begin if Close >= fAlvo then SellAtMarket; if Close <= fStop then SellAtMarket; end;
+  if IsSold   then begin if Close <= fAlvo then BuyAtMarket;  if Close >= fStop then BuyAtMarket;  end;
+
+  if bRangeMapeado and (not IsBought) and (not IsSold) then
+  begin
+    if High > fTopoAbertura then
+    begin
+      BuyAtMarket; fPrecoEntrada := Close;
+      fStop := fPisoAbertura;
+      fAlvo := Close + fATR * MultiplicadorAlvo;
+      iDirecaoPosicao := 1;
+    end;
+    if Low < fPisoAbertura then
+    begin
+      SellShortAtMarket; fPrecoEntrada := Close;
+      fStop := fTopoAbertura;
+      fAlvo := Close - fATR * MultiplicadorAlvo;
+      iDirecaoPosicao := -1;
+    end;
+  end;
+end;
