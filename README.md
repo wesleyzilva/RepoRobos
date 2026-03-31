@@ -10,9 +10,11 @@ Este repositório é dedicado ao estudo e desenvolvimento de estratégias para r
 
 ## Estrutura Sugerida
 - `python/` — Scripts e notebooks para análise de dados e prototipagem de estratégias.
-- `TS/` — Códigos NTFL e arquivos de configuração para robôs.
-- `docs/` — Documentação complementar, artigos e referências.
-
+- `teorias/` — teorias de price action, indicadores e tudo que se precisa saber para trade.
+- `operacionais/` — Documentação de padrões de operação.
+- `backtest/` — Anotação de informações dos ultimos 5 anos de candles para formular teorias.
+- `codigos/` — Códigos de robôs e estratégias implementadas.
+https://github.com/wesleyzilva/PriceAction_Fisica/tree/main
 ## Como contribuir
 1. Crie uma branch para sua teoria, experimento ou ajuste.
 2. Documente claramente hipóteses, resultados e aprendizados.

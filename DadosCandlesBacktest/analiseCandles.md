@@ -1,0 +1,1 @@
+Nesta pasta estão os dados de abertura, fechamento, máxima, mínima e volume dos candles de 1 minuto do ativos desde 2012. Esses dados podem ser usados para análise de price action, desenvolvimento de estratégias e backtesting.
