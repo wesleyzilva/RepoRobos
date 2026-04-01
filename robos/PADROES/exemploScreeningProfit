@@ -1,0 +1,16 @@
+begin
+  if (RSI(9, 0) < 70) then
+    begin
+      Select;
+    end
+  else if (RSI(9, 0) > 70) then
+    BuyAtMarket;
+end;
+//varios ativos
+input
+  A1("PETR4", feedBovespa);
+
+begin
+  if (A1.Close > Close) then
+    Select;
+end;
