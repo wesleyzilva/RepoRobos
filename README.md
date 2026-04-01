@@ -3,7 +3,7 @@
 > Repositório de desenvolvimento de robôs NTSL/NTFL para Neologica Profit, focado em identificar **áreas de confluência geométrica** como zonas de gatilho de alta probabilidade, com RRR ≥ 2.0.
 
 **Autor:** Wesley Zilva (wesley.zilva@gmail.com) — Trader + Mestre em Matemática + Desenvolvedor Python  
-**Objetivo:** criar e backtestear robôs que operam a favor da estatística: SG máximo, SL mínimo, custo real descontado.
+**Objetivo:** criar e backtestear robôs que operam a favor da estatística: SG máximo, SL mínimo, custo real descontado dentro de áreas de confluencia.
 
 ---
 
