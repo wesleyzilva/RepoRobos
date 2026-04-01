@@ -30,6 +30,7 @@ input
 var
   fCorpo, fRange, fVolMedia, fMassa, fAceleracao, fForca : float;
   fForcaAbs, fEscalaCor : float;
+  fCorpoAnterior : float;
   r, g, b : integer;
   bDeveOperar   : boolean;
   fTrailStop    : float;
@@ -56,14 +57,19 @@ begin
   fTrailDist := fATR * ATR_TrailMult;
 
   // --- DEGRADÊ ---
-  r := 128; g := 128; b := 128;
+  r := 255; g := 255; b := 255;  // branco = sem sinal
+  fCorpoAnterior := Close[1] - Open[1];
   fEscalaCor := (fForcaAbs - ForcaMinimaEntrada) / (100 - ForcaMinimaEntrada);
   if fEscalaCor < 0 then fEscalaCor := 0;
   if fEscalaCor > 1 then fEscalaCor := 1;
   fEscalaCor := fEscalaCor * fEscalaCor;
   if abs(fCorpo) < 0.1 * fRange then
   begin
-    r := 255; g := 255; b := 255;
+    r := 128; g := 128; b := 128;  // cinza = indecisao (doji)
+  end
+  else if (fForcaAbs >= ForcaMinimaEntrada) and (fForca * fCorpoAnterior < 0) then
+  begin
+    r := 255; g := 165; b := 0;    // laranja = reversao (forca contraria ao candle anterior)
   end
   else if (fForca > 0) and (fForcaAbs >= ForcaMinimaEntrada) then
   begin

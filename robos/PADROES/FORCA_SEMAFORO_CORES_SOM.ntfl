@@ -25,6 +25,7 @@ input
 var
   fCorpo, fRange, fVolMedia, fMassa, fAceleracao, fForca : float;
   fForcaAbs, fEscalaCor : float;
+  fCorpoAnterior : float;
   r, g, b : integer;
   iBarrasEmPosicao : integer;
   bDeveOperar : boolean;
@@ -48,9 +49,10 @@ begin
   if fForca < -100 then fForca := -100;
 
   // --- LÓGICA DE CORES (DEGRADE RGB) ---
-  // Todo candle começa cinza
-  r := 128; g := 128; b := 128; // Cinza padrão
+  // Branco = sem sinal (visível sobre qualquer fundo)
+  r := 255; g := 255; b := 255;
   fForcaAbs := abs(fForca);
+  fCorpoAnterior := Close[1] - Open[1];
 
   // Escala 0..1 para deixar o degradê perceptível
   if ForcaMaximaCor <= ForcaMinimaEntrada then
@@ -63,10 +65,15 @@ begin
   // curva para realçar diferenças no meio do gradiente (mais perceptível visualmente)
   fEscalaCor := fEscalaCor * fEscalaCor;
 
-  // Indecisão: corpo pequeno (ex: < 10% do range)
+  // Indecisão: corpo pequeno (doji) → cinza
   if (abs(fCorpo) < 0.1 * fRange) then
   begin
-    r := 255; g := 255; b := 255; // Branco
+    r := 128; g := 128; b := 128; // Cinza = doji/indecisao
+  end
+  // Reversão: força forte mas contraria ao candle anterior → laranja
+  else if (fForcaAbs >= ForcaMinimaEntrada) and (fForca * fCorpoAnterior < 0) then
+  begin
+    r := 255; g := 165; b := 0;   // Laranja = reversao
   end
   // Compra: força positiva
   else if (fForca > 0) and (fForcaAbs >= ForcaMinimaEntrada) then
@@ -90,7 +97,7 @@ begin
     if g < 0 then g := 0;
     if b < 0 then b := 0;
   end;
-  // Senão, permanece cinza
+  // Senão, permanece branco (sem sinal)
 
   PaintBar(RGB(r, g, b));
 
