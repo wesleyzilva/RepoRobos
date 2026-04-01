@@ -2,15 +2,13 @@
   Robo: FORCA_SEMAFORO_CORES_SOM
   Descricao: Coloracao por forca F=MA com degradê visivel e confirmacao multi-timeframe (Contexto+Direcao+Gatilho).
              Entradas somente quando os 3 TFs estao alinhados.
-  Versao: 7.0
+  Versao: 8.0
 
-  Esquema de cores:
-    Branco          = sem sinal (forca abaixo do threshold)
-    Cinza           = indecisao / doji (corpo < 10% do range)
-    Ciano  (0,200,200) = reversao de ALTA (forca positiva contraria ao candle anterior)
-    Magenta(200,0,200) = reversao de BAIXA (forca negativa contraria ao candle anterior)
-    Verde  (degrade) = sinal de compra confirmado
-    Vermelho(degrade)= sinal de venda confirmado
+  Esquema de cores (simplificado):
+    Branco           = sem sinal (forca abaixo do threshold ou doji)
+    Verde  (degrade) = forca positiva >= ForcaMinimaEntrada  (inclui reversoes de alta)
+    Vermelho(degrade)= forca negativa >= ForcaMinimaEntrada  (inclui reversoes de baixa)
+    Intensidade do degrade proporcional a magnitude da forca (55..100)
 
   Tripleta recomendada (indicador roda no TF3 = gatilho):
     60/30/15 -> roda em 15min -> iJanelaDir=2 (30min), iJanelaCtx=4 (60min)
@@ -75,61 +73,42 @@ begin
   bDirecaoAlta   := (Close > fMediaDir) and (fMediaDir > fMediaDir[iJanelaDir]);
   bDirecaoBaixa  := (Close < fMediaDir) and (fMediaDir < fMediaDir[iJanelaDir]);
 
-  // --- LÓGICA DE CORES (DEGRADE RGB) ---
-  // Branco = sem sinal (visível sobre qualquer fundo)
+  // --- LÓGICA DE CORES (apenas Verde/Vermelho degradê) ---
+  // Branco = sem sinal (força abaixo do threshold ou corpo muito pequeno)
   r := 255; g := 255; b := 255;
   fForcaAbs := abs(fForca);
   fCorpoAnterior := Close[1] - Open[1];
 
-  // Escala 0..1 para deixar o degradê perceptível
+  // Escala 0..1 proporcional à magnitude da força (ForcaMinimaEntrada..ForcaMaximaCor)
   if ForcaMaximaCor <= ForcaMinimaEntrada then
     fEscalaCor := 1
   else
     fEscalaCor := (fForcaAbs - ForcaMinimaEntrada) / (ForcaMaximaCor - ForcaMinimaEntrada);
   if fEscalaCor < 0 then fEscalaCor := 0;
   if fEscalaCor > 1 then fEscalaCor := 1;
+  fEscalaCor := fEscalaCor * fEscalaCor; // curva quadratica — realca diferenca de intensidade
 
-  // curva para realçar diferenças no meio do gradiente (mais perceptível visualmente)
-  fEscalaCor := fEscalaCor * fEscalaCor;
-
-  // Indecisão: corpo pequeno (doji) → cinza
-  if (abs(fCorpo) < 0.1 * fRange) then
+  // Verde degradê: força positiva >= limiar (inclui reversoes de alta)
+  if (fForca >= ForcaMinimaEntrada) then
   begin
-    r := 128; g := 128; b := 128; // Cinza = doji/indecisao
-  end
-  // Reversão de ALTA: força positiva forte mas contraria ao candle anterior → ciano
-  else if (fForca > 0) and (fForcaAbs >= ForcaMinimaEntrada) and (fForca * fCorpoAnterior < 0) then
-  begin
-    r := 0; g := 200; b := 200;  // Ciano = reversão de alta (potencial compra após queda)
-  end
-  // Reversão de BAIXA: força negativa forte mas contraria ao candle anterior → magenta
-  else if (fForca < 0) and (fForcaAbs >= ForcaMinimaEntrada) and (fForca * fCorpoAnterior < 0) then
-  begin
-    r := 200; g := 0; b := 200;  // Magenta = reversão de baixa (potencial venda após alta)
-  end
-  // Compra: força positiva
-  else if (fForca > 0) and (fForcaAbs >= ForcaMinimaEntrada) then
-  begin
-    // Verde degradê: quanto maior a força, mais forte o verde
     g := 110 + Round(fEscalaCor * 145); // 110 a 255
     r := 110 - Round(fEscalaCor * 110); // 110 a 0
     b := 110 - Round(fEscalaCor * 110); // 110 a 0
     if g > 255 then g := 255;
-    if r < 0 then r := 0;
-    if b < 0 then b := 0;
+    if r < 0   then r := 0;
+    if b < 0   then b := 0;
   end
-  // Venda: força negativa
-  else if (fForca < 0) and (fForcaAbs >= ForcaMinimaEntrada) then
+  // Vermelho degradê: força negativa >= limiar (inclui reversoes de baixa)
+  else if (fForca <= -ForcaMinimaEntrada) then
   begin
-    // Vermelho degradê: quanto menor a força, mais forte o vermelho
     r := 110 + Round(fEscalaCor * 145); // 110 a 255
     g := 110 - Round(fEscalaCor * 110); // 110 a 0
     b := 110 - Round(fEscalaCor * 110); // 110 a 0
     if r > 255 then r := 255;
-    if g < 0 then g := 0;
-    if b < 0 then b := 0;
+    if g < 0   then g := 0;
+    if b < 0   then b := 0;
   end;
-  // Senão, permanece branco (sem sinal)
+  // Senao permanece branco (sem sinal)
 
   PaintBar(RGB(r, g, b));
 
