@@ -6,3 +6,12 @@ begin
   else if (RSI(9, 0) > 70) then
     Alert(1);
 end;
+
+
+input
+  A1("PETR4", feedBovespa);
+
+begin
+  if (A1.Close > Close) then
+    Alert(1);
+end;
