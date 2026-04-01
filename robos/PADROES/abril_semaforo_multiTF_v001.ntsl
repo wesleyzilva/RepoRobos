@@ -1,0 +1,208 @@
+{
+  Robo: ROB_SEMAFORO_MULTI_TF_V1
+  Descricao: Semáforo de tripleta — Contexto > Direção > Gatilho. Opera somente com TF1+TF2 alinhados.
+             Versao executavel para backtest, com paleta verde/vermelho/cinza/branco.
+  Ativo: WIN B3 / WDO B3
+  Timeframe: TF3 (Gatilho) — configurar via iJanelaDir e iJanelaCtx
+  Versao: 2.0
+  RRR_minimo: 2.0
+  SL_referencia: extremo do candle gatilho ± BufferStop
+
+  TRIPLETAS RECOMENDADAS (configurar iJanelaDir e iJanelaCtx):
+    60/30/15 → rob. roda em 15min → iJanelaDir=2, iJanelaCtx=4
+    30/15/5  → rob. roda em 5min  → iJanelaDir=3, iJanelaCtx=6  ← PADRAO
+    15/5/1   → rob. roda em 1min  → iJanelaDir=5, iJanelaCtx=15
+
+  REGRA CARDINAL: Opera SOMENTE quando Contexto(TF1) E Direcao(TF2) estao alinhados.
+}
+
+input
+  iJanelaDir(3);
+  iJanelaCtx(6);
+  ForcaMinimaEntrada(30.0);     // default mais permissivo para backtest inicial
+  ForcaMinimaContexto(10.0);    // default mais permissivo para backtest inicial
+  VolumeMultiplicador(1.0);     // volume atual ao menos na media
+  RRR_Minimo(2.0);
+  BufferStop(5.0);
+  StopHorario_H(17);
+  StopHorario_M(45);
+  MaxBarrasEmPosicao(8);
+  HoraInicioOperacao_H(9);
+  HoraInicioOperacao_M(15);
+
+var
+  fCorpoCandle         : float;
+  fRangeCandle         : float;
+  fMassa               : float;
+  fAceleracao          : float;
+  fForca               : float;
+  fVolumeMedio         : float;
+  iCorR, iCorG, iCorB  : integer;
+
+  fMediaDir            : float;
+  fMediaCtx            : float;
+  bContextoAlta        : boolean;
+  bContextoBaixa       : boolean;
+  bDirecaoAlta         : boolean;
+  bDirecaoBaixa        : boolean;
+
+  bSemVerdeCompra      : boolean;
+  bSemVerdeVenda       : boolean;
+
+  iContadorCompra      : integer;
+  iContadorVenda       : integer;
+  bEntradaConfirmada   : boolean;
+
+  fEntrada             : float;
+  fStopLoss            : float;
+  fTakeProfit          : float;
+  fRiscoEmPontos       : float;
+  iBarrasEmPosicao     : integer;
+  bRRROk               : boolean;
+  bDeveOperar          : boolean;
+
+begin
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+
+  fMassa       := fCorpoCandle / fRangeCandle;
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio > 0 then fAceleracao := Volume / fVolumeMedio
+  else fAceleracao := 1;
+
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  fMediaDir := Media(iJanelaDir, Close);
+  fMediaCtx := Media(iJanelaCtx, Close);
+
+  bContextoAlta  := (Close > fMediaCtx) and (fMediaCtx > fMediaCtx[iJanelaCtx]);
+  bContextoBaixa := (Close < fMediaCtx) and (fMediaCtx < fMediaCtx[iJanelaCtx]);
+  bDirecaoAlta   := (Close > fMediaDir) and (fMediaDir > fMediaDir[iJanelaDir]);
+  bDirecaoBaixa  := (Close < fMediaDir) and (fMediaDir < fMediaDir[iJanelaDir]);
+
+  iCorR := 128; iCorG := 128; iCorB := 128;
+
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if fForca >= ForcaMinimaEntrada then
+  begin
+    if bContextoAlta then
+    begin
+      // VERDE forte = confirmacao multi-TF de compra
+      iCorG := 160 + Round((fForca / 100) * 95);
+      iCorR := 96  - Round((fForca / 100) * 96);
+      iCorB := 96  - Round((fForca / 100) * 96);
+    end
+    else
+    begin
+      iCorG := 128 + Round((fForca / 100) * 127);
+      iCorR := 128 - Round((fForca / 100) * 128);
+      iCorB := 128 - Round((fForca / 100) * 128);
+    end;
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if fForca <= -ForcaMinimaEntrada then
+  begin
+    if bContextoBaixa then
+    begin
+      // VERMELHO forte = confirmacao multi-TF de venda
+      iCorR := 160 + Round((-fForca / 100) * 95);
+      iCorG := 96  - Round((-fForca / 100) * 96);
+      iCorB := 96  - Round((-fForca / 100) * 96);
+    end
+    else
+    begin
+      iCorR := 128 + Round((-fForca / 100) * 127);
+      iCorG := 128 - Round((-fForca / 100) * 128);
+      iCorB := 128 - Round((-fForca / 100) * 128);
+    end;
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  bSemVerdeCompra := (fForca >= ForcaMinimaEntrada) and
+                     bContextoAlta and bDirecaoAlta and
+                     (Volume >= fVolumeMedio * VolumeMultiplicador);
+
+  bSemVerdeVenda  := (fForca <= -ForcaMinimaEntrada) and
+                     bContextoBaixa and bDirecaoBaixa and
+                     (Volume >= fVolumeMedio * VolumeMultiplicador);
+
+  if bSemVerdeCompra then
+    iContadorCompra := iContadorCompra + 1
+  else
+    iContadorCompra := 0;
+
+  if bSemVerdeVenda then
+    iContadorVenda := iContadorVenda + 1
+  else
+    iContadorVenda := 0;
+
+  bEntradaConfirmada := (iContadorCompra >= 2) or (iContadorVenda >= 2);
+
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := Time() >= (HoraInicioOperacao_H * 10000 + HoraInicioOperacao_M * 100);
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
+    ClosePosition;
+    iBarrasEmPosicao := 0;
+    bDeveOperar := false;
+  end;
+
+  if bDeveOperar and (not IsBought) and (not IsSold) and bEntradaConfirmada then
+  begin
+    if iContadorCompra >= 2 then
+    begin
+      fEntrada       := Close;
+      fStopLoss      := Low - BufferStop;
+      fRiscoEmPontos := fEntrada - fStopLoss;
+      fTakeProfit    := fEntrada + fRiscoEmPontos * RRR_Minimo;
+      bRRROk         := (fTakeProfit - fEntrada) >= (fRiscoEmPontos * RRR_Minimo);
+
+      if bRRROk and (fRiscoEmPontos > 0) then
+      begin
+        BuyAtMarket;
+        iBarrasEmPosicao := 0;
+        iContadorCompra  := 0;
+      end;
+    end;
+
+    if iContadorVenda >= 2 then
+    begin
+      fEntrada       := Close;
+      fStopLoss      := High + BufferStop;
+      fRiscoEmPontos := fStopLoss - fEntrada;
+      fTakeProfit    := fEntrada - fRiscoEmPontos * RRR_Minimo;
+      bRRROk         := (fEntrada - fTakeProfit) >= (fRiscoEmPontos * RRR_Minimo);
+
+      if bRRROk and (fRiscoEmPontos > 0) then
+      begin
+        SellShortAtMarket;
+        iBarrasEmPosicao := 0;
+        iContadorVenda   := 0;
+      end;
+    end;
+  end;
+
+end;

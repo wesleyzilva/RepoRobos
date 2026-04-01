@@ -1,0 +1,254 @@
+{
+  Robo: ROB_CONFLUENCIA_V1
+  Descricao: Robô de confluência geométrica — entradas em zonas com >=2 referências sobrepostas.
+             Backtest-ready a partir do template, com gradiente verde/vermelho, cinza neutro e branco indecisão.
+  Ativo: WIN B3
+  Timeframe: 5min
+  Versao: 1.0
+  RRR_minimo: 2.0
+  SL_referencia: minima/maxima da zona de confluencia detectada
+  Spread_descontado: 10 pts
+  Slippage_descontado: 15 pts
+  Periodo_minimo_backtest: 90 dias / 100 trades
+  Aprovado_em: pendente backtest
+}
+
+input
+  ForcaMinimaEntrada(30.0);       // default mais permissivo para backtest inicial
+  RRR_Minimo(2.0);
+  VolumeMultiplicador(1.0);       // volume atual ao menos na média
+  ToleranciaZona(50.0);
+  FatorTamanhoArea(1.0);
+  StopHorario_H(17);
+  StopHorario_M(45);
+  MaxBarrasEmPosicao(8);
+  CapitalConta(10000.0);
+  RiscoPorcentagem(2.0);
+
+var
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fMassa            : float;
+  fAceleracao       : float;
+  fForca            : float;
+  fVolumeMedio      : float;
+
+  iCorR, iCorG, iCorB : integer;
+
+  fZonaCompraMin    : float;
+  fZonaCompraMax    : float;
+  fZonaVendaMin     : float;
+  fZonaVendaMax     : float;
+  iConfluenciasCompra : integer;
+  iConfluenciasVenda  : integer;
+
+  fEntrada          : float;
+  fStopLoss         : float;
+  fTakeProfit       : float;
+  fRiscoEmPontos    : float;
+  fRiscoEmReais     : float;
+  fQuantidade       : float;
+
+  bSinalCompra      : boolean;
+  bSinalVenda       : boolean;
+  bNaZonaCompra     : boolean;
+  bNaZonaVenda      : boolean;
+  bVolConfirmado    : boolean;
+  bRRROk            : boolean;
+
+  iBarrasEmPosicao  : integer;
+  bDeveOperar       : boolean;
+
+begin
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+
+  fMassa       := fCorpoCandle / fRangeCandle;
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio > 0 then
+    fAceleracao := Volume / fVolumeMedio
+  else
+    fAceleracao := 1;
+
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  iCorR := 128; iCorG := 128; iCorB := 128;
+
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if fForca >= ForcaMinimaEntrada then
+  begin
+    iCorG := 128 + Round((fForca / 100) * 127);
+    iCorR := 128 - Round((fForca / 100) * 128);
+    iCorB := 128 - Round((fForca / 100) * 128);
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if fForca <= -ForcaMinimaEntrada then
+  begin
+    iCorR := 128 + Round((-fForca / 100) * 127);
+    iCorG := 128 - Round((-fForca / 100) * 128);
+    iCorB := 128 - Round((-fForca / 100) * 128);
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  iConfluenciasCompra := 0;
+  iConfluenciasVenda  := 0;
+  fZonaCompraMin := 999999; fZonaCompraMax := 0;
+  fZonaVendaMin  := 999999; fZonaVendaMax  := 0;
+
+  if (Close[1] > Open[1]) and (abs(Close[1]-Open[1]) >= 0.40 * (High[1]-Low[1])) then
+  begin
+    fZonaCompraMin := Open[1];
+    fZonaCompraMax := Close[1];
+    iConfluenciasCompra := iConfluenciasCompra + 1;
+  end;
+  if (Close[1] < Open[1]) and (abs(Close[1]-Open[1]) >= 0.40 * (High[1]-Low[1])) then
+  begin
+    fZonaVendaMin := Close[1];
+    fZonaVendaMax := Open[1];
+    iConfluenciasVenda := iConfluenciasVenda + 1;
+  end;
+
+  if (Close[2] > Open[2]) and (abs(Close[2]-Open[2]) >= 0.40 * (High[2]-Low[2])) then
+  begin
+    if (fZonaCompraMin < 999999) then
+    begin
+      if (Open[2] <= fZonaCompraMax + ToleranciaZona) and
+         (Close[2] >= fZonaCompraMin - ToleranciaZona) then
+      begin
+        if Open[2]  > fZonaCompraMin then fZonaCompraMin := Open[2];
+        if Close[2] < fZonaCompraMax then fZonaCompraMax := Close[2];
+        iConfluenciasCompra := iConfluenciasCompra + 1;
+      end;
+    end
+    else
+    begin
+      fZonaCompraMin := Open[2];
+      fZonaCompraMax := Close[2];
+      iConfluenciasCompra := 1;
+    end;
+  end;
+
+  if (Close[2] < Open[2]) and (abs(Close[2]-Open[2]) >= 0.40 * (High[2]-Low[2])) then
+  begin
+    if (fZonaVendaMin < 999999) then
+    begin
+      if (Close[2] <= fZonaVendaMax + ToleranciaZona) and
+         (Open[2]  >= fZonaVendaMin - ToleranciaZona) then
+      begin
+        if Close[2] > fZonaVendaMin then fZonaVendaMin := Close[2];
+        if Open[2]  < fZonaVendaMax then fZonaVendaMax := Open[2];
+        iConfluenciasVenda := iConfluenciasVenda + 1;
+      end;
+    end
+    else
+    begin
+      fZonaVendaMin := Close[2];
+      fZonaVendaMax := Open[2];
+      iConfluenciasVenda := 1;
+    end;
+  end;
+
+  if (Close[3] > Open[3]) and (abs(Close[3]-Open[3]) >= 0.40 * (High[3]-Low[3])) then
+    if (fZonaCompraMin < 999999) and
+       (Open[3] <= fZonaCompraMax + ToleranciaZona) and
+       (Close[3] >= fZonaCompraMin - ToleranciaZona) then
+      iConfluenciasCompra := iConfluenciasCompra + 1;
+
+  if (Close[3] < Open[3]) and (abs(Close[3]-Open[3]) >= 0.40 * (High[3]-Low[3])) then
+    if (fZonaVendaMin < 999999) and
+       (Close[3] <= fZonaVendaMax + ToleranciaZona) and
+       (Open[3]  >= fZonaVendaMin - ToleranciaZona) then
+      iConfluenciasVenda := iConfluenciasVenda + 1;
+
+  bNaZonaCompra := (iConfluenciasCompra >= 2) and
+                   (Close >= fZonaCompraMin - ToleranciaZona) and
+                   (Close <= fZonaCompraMax + ToleranciaZona);
+
+  bNaZonaVenda  := (iConfluenciasVenda >= 2) and
+                   (Close >= fZonaVendaMin  - ToleranciaZona) and
+                   (Close <= fZonaVendaMax  + ToleranciaZona);
+
+  bVolConfirmado := (Volume >= fVolumeMedio * VolumeMultiplicador);
+
+  bSinalCompra := bNaZonaCompra and
+                  (fForca >= ForcaMinimaEntrada) and
+                  bVolConfirmado;
+
+  bSinalVenda  := bNaZonaVenda and
+                  (fForca <= -ForcaMinimaEntrada) and
+                  bVolConfirmado;
+
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := Time() >= 91500;
+
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
+    ClosePosition;
+    iBarrasEmPosicao := 0;
+    bDeveOperar := false;
+  end;
+
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+    if bSinalCompra then
+    begin
+      fEntrada       := Close;
+      fStopLoss      := fZonaCompraMin - 5;
+      fRiscoEmPontos := fEntrada - fStopLoss;
+      fTakeProfit    := fEntrada + fRiscoEmPontos * RRR_Minimo;
+      bRRROk := (fTakeProfit - fEntrada) >= (fRiscoEmPontos * RRR_Minimo);
+
+      if bRRROk and (fRiscoEmPontos > 0) then
+      begin
+        fRiscoEmReais := CapitalConta * (RiscoPorcentagem / 100);
+        fQuantidade   := fRiscoEmReais / (fRiscoEmPontos * 0.20);
+        if fQuantidade < 1 then fQuantidade := 1;
+
+        BuyAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+    if bSinalVenda then
+    begin
+      fEntrada       := Close;
+      fStopLoss      := fZonaVendaMax + 5;
+      fRiscoEmPontos := fStopLoss - fEntrada;
+      fTakeProfit    := fEntrada - fRiscoEmPontos * RRR_Minimo;
+      bRRROk := (fEntrada - fTakeProfit) >= (fRiscoEmPontos * RRR_Minimo);
+
+      if bRRROk and (fRiscoEmPontos > 0) then
+      begin
+        fRiscoEmReais := CapitalConta * (RiscoPorcentagem / 100);
+        fQuantidade   := fRiscoEmReais / (fRiscoEmPontos * 0.20);
+        if fQuantidade < 1 then fQuantidade := 1;
+
+        SellShortAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+  end;
+
+end;
