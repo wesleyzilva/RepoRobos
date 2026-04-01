@@ -26,8 +26,8 @@
 input
   iJanelaDir(3);
   iJanelaCtx(6);
-  ForcaMinimaConfirmacao(40.0);  // força mínima do candle de reversão
-  VolumeMultiplicador(1.2);
+  ForcaMinimaConfirmacao(20.0);  // default mais permissivo para backtest inicial
+  VolumeMultiplicador(1.0);      // volume atual ao menos na média
   RRR_Minimo(2.0);
   BufferStop(5.0);
   StopHorario_H(17);

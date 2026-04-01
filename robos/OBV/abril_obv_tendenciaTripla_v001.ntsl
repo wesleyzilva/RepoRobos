@@ -23,7 +23,7 @@ input
   // 15/5/1   em 1min  → iJanelaDir=5, iJanelaCtx=15
   iJanelaDir(3);             // barras do TF2 em TF3
   iJanelaCtx(6);             // barras do TF1 em TF3
-  VolumeMultiplicador(1.2);  // volume mínimo para confirmar sinal
+  VolumeMultiplicador(1.0);  // default mais permissivo para backtest inicial
   RRR_Minimo(2.0);
   BufferStop(5.0);
   StopHorario_H(17);

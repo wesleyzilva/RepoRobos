@@ -22,8 +22,8 @@
 input
   iJanelaDir(3);
   iJanelaCtx(6);
-  ForcaMinimaEntrada(60.0);
-  VolumeMultiplicador(1.3);
+  ForcaMinimaEntrada(30.0);    // default mais permissivo para backtest inicial
+  VolumeMultiplicador(1.0);    // volume atual ao menos na média
   RRR_Minimo(2.0);
   BufferStop(5.0);
   StopHorario_H(17);
