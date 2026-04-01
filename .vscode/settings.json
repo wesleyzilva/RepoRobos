@@ -1,0 +1,34 @@
+{
+  "editor.rulers": [100],
+  "editor.wordWrap": "bounded",
+  "editor.wordWrapColumn": 100,
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  "[markdown]": {
+    "editor.defaultFormatter": "yzhang.markdown-all-in-one",
+    "editor.wordWrap": "on"
+  },
+  "csv-preview.separator": ";",
+  "csv-preview.formatValues": "always",
+  "rainbow_csv.enable_separator_info": true,
+  "search.exclude": {
+    "**/DadosCandlesBacktest/**": false
+  },
+  "files.associations": {
+    "*.ntsl": "pascal",
+    "*.ntfl": "pascal"
+  },
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": "comment",
+        "settings": { "fontStyle": "italic" }
+      }
+    ]
+  },
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.promptFiles": true,
+  "chat.promptFilesLocations": {
+    ".github/prompts": true
+  }
+}

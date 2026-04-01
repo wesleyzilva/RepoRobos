@@ -1,0 +1,24 @@
+CONTROLE DE CONSUMO — REQUESTS PREMIUM GITHUB COPILOT
+======================================================
+Ciclo: abril/2026
+Cota total: 100%
+Meta diária máxima: ~3,2% (100% / 31 dias)
+======================================================
+
+DATA        | CONSUMO DO DIA | ACUMULADO | SALDO   | PROJEÇÃO FIM DO MÊS
+------------|----------------|-----------|---------|--------------------
+01/04/2026  |          3,3%  |      3,3% |  96,7%  | ~102%  ⚠️ acima da cota
+------------|----------------|-----------|---------|--------------------
+
+LEGENDA
+  ✅  Acumulado ≤ (dia × 3,2%)  →  dentro do ritmo
+  ⚠️  Acumulado entre 100-110%  →  risco de estourar
+  🔴  Acumulado > 110%          →  cortar uso imediatamente
+
+CÁLCULO DA PROJEÇÃO
+  Projeção = (acumulado / dia_do_mês) × 31
+
+NOTAS
+  - Dia 01: sessão longa de setup inicial do workspace (esperado ser o pico do mês)
+  - Estrutura criada: skills, agents, templates, docs, copilot-instructions, MCP
+  - A partir do dia 02 o consumo deve cair — workspace pronto, skills locais evitam requests

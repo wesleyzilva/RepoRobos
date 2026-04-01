@@ -1,0 +1,20 @@
+{
+  "servers": {
+    "filesystem-candles": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\repositorio_wes\\RepoRobos\\DadosCandlesBacktest",
+        "C:\\repositorio_wes\\RepoRobos\\skills",
+        "C:\\repositorio_wes\\RepoRobos\\agents",
+        "C:\\repositorio_wes\\RepoRobos\\templates",
+        "C:\\repositorio_wes\\RepoRobos\\robos",
+        "C:\\repositorio_wes\\RepoRobos\\docs",
+        "C:\\repositorio_wes\\RepoRobos\\scripts",
+        "C:\\repositorio_wes\\PriceAction_Fisica"
+      ]
+    }
+  }
+}

@@ -20,4 +20,3 @@
 - Sinal verde aparece, mas no candle seguinte volta para cinza: não operar.
 - Sinal verde aparece e permanece por 2 candles: permitido operar.
 - Sinal verde aparece, volta para cinza, depois verde de novo: só operar se novamente houver confirmação de 2 candles.
-

@@ -1,0 +1,193 @@
+{
+  Robo: ROB_OBV_FMA_COMBINADO_V1
+  Descricao: F=MA gera o sinal e define o gradiente. OBV filtra: só opera se volume
+             institucional confirmar a mesma direção da força do candle.
+             Cor cheia (azul/roxo) = F=MA + OBV alinhados. Verde/vermelho = só F=MA.
+  Ativo: WIN B3 / WDO B3
+  Timeframe: TF3 (Gatilho) — padrão 5min, tripleta 30/15/5
+  Versao: 1.0
+  RRR_minimo: 2.0
+  SL_referencia: mínima/máxima do candle gatilho + BufferStop
+  Spread_descontado: 25 pts
+
+  Lógica:
+    F=MA = (Corpo/Range) × (Volume/MediaVolume) × 100  → -100..+100
+    OBV Delta TF2 = fOBV - fOBV[iJanelaDir]  → direção da acumulação
+    Entrada: fForca >= ForcaMinima E OBV confirmando mesma direção
+    Cor intensa (azul/roxo) = dupla confirmação F=MA + OBV
+    Cor normal (verde/vermelho) = só F=MA, OBV neutro
+    Cor cinza/branca = sem sinal
+}
+
+input
+  iJanelaDir(3);
+  iJanelaCtx(6);
+  ForcaMinimaEntrada(60.0);
+  VolumeMultiplicador(1.3);
+  RRR_Minimo(2.0);
+  BufferStop(5.0);
+  StopHorario_H(17);
+  StopHorario_M(45);
+  MaxBarrasEmPosicao(8);
+  HoraInicioH(9);
+  HoraInicioM(15);
+
+var
+  // F = M × A
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fMassa            : float;
+  fAceleracao       : float;
+  fForca            : float;
+  fVolumeMedio      : float;
+  // OBV
+  fOBV              : float;
+  fOBVDeltaDir      : float;   // delta OBV no TF2
+  fOBVDeltaCtx      : float;   // delta OBV no TF1
+  bOBVConfirmaCompra  : boolean;
+  bOBVConfirmaVenda   : boolean;
+  bContextoAlta       : boolean;
+  bContextoBaixa      : boolean;
+  // Cores
+  iCorR, iCorG, iCorB : integer;
+  // Gestão
+  fEntrada          : float;
+  fStopLoss         : float;
+  fTakeProfit       : float;
+  fRisco            : float;
+  iBarrasEmPosicao  : integer;
+
+begin
+
+  // ─── SEÇÃO 1: F = M × A ──────────────────────────────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+  fMassa       := fCorpoCandle / fRangeCandle;
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio > 0 then fAceleracao := Volume / fVolumeMedio
+  else fAceleracao := 1;
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─── SEÇÃO 2: OBV ACUMULADO + DELTA POR JANELA ───────────────────────────
+  if Close > Close[1] then
+    fOBV := fOBV + Volume
+  else if Close < Close[1] then
+    fOBV := fOBV - Volume;
+
+  fOBVDeltaDir := fOBV - fOBV[iJanelaDir];
+  fOBVDeltaCtx := fOBV - fOBV[iJanelaCtx];
+
+  bOBVConfirmaCompra := (fOBVDeltaDir > 0) and (fOBVDeltaCtx > 0);
+  bOBVConfirmaVenda  := (fOBVDeltaDir < 0) and (fOBVDeltaCtx < 0);
+
+  // Contexto de preço (proxy TF1)
+  bContextoAlta  := (Close > Media(iJanelaCtx, Close));
+  bContextoBaixa := (Close < Media(iJanelaCtx, Close));
+
+  // ─── SEÇÃO 3: GRADIENTE — F=MA BASE, OBV MODIFICA A COR ─────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;
+
+  // Indecisão: corpo < 10% do range
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if fForca >= ForcaMinimaEntrada then
+  begin
+    if bOBVConfirmaCompra and bContextoAlta then
+    begin
+      // AZUL = F=MA + OBV + contexto todos confirmam compra
+      iCorR := 0; iCorG := 150; iCorB := 255;
+    end
+    else
+    begin
+      // VERDE degradê = força do candle sem confirmação do OBV
+      iCorG := 128 + Round((fForca / 100) * 127);
+      iCorR := 128 - Round((fForca / 100) * 128);
+      iCorB := 128 - Round((fForca / 100) * 128);
+      if iCorG > 255 then iCorG := 255;
+      if iCorR < 0   then iCorR := 0;
+      if iCorB < 0   then iCorB := 0;
+    end;
+  end
+  else if fForca <= -ForcaMinimaEntrada then
+  begin
+    if bOBVConfirmaVenda and bContextoBaixa then
+    begin
+      // ROXO = F=MA + OBV + contexto todos confirmam venda
+      iCorR := 160; iCorG := 0; iCorB := 220;
+    end
+    else
+    begin
+      // VERMELHO degradê = força do candle sem confirmação do OBV
+      iCorR := 128 + Round((-fForca / 100) * 127);
+      iCorG := 128 - Round((-fForca / 100) * 128);
+      iCorB := 128 - Round((-fForca / 100) * 128);
+      if iCorR > 255 then iCorR := 255;
+      if iCorG < 0   then iCorG := 0;
+      if iCorB < 0   then iCorB := 0;
+    end;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─── SEÇÃO 4: STOP HORÁRIO ────────────────────────────────────────────────
+  if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    Exit;
+  end;
+  if (Hour < HoraInicioH) or ((Hour = HoraInicioH) and (Minute < HoraInicioM)) then Exit;
+
+  // ─── SEÇÃO 5: CONTROLE DE BARRAS ─────────────────────────────────────────
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
+    ClosePosition;
+    iBarrasEmPosicao := 0;
+    Exit;
+  end;
+
+  // ─── SEÇÃO 6: ENTRADAS — F=MA + OBV DUPLA CONFIRMAÇÃO ───────────────────
+  if (not IsBought) and (not IsSold) then
+  begin
+    // COMPRA: candle de força + OBV confirmando acumulação + volume
+    if (fForca >= ForcaMinimaEntrada)
+       and bOBVConfirmaCompra and bContextoAlta
+       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+    begin
+      fEntrada    := Close;
+      fStopLoss   := Low - BufferStop;
+      fRisco      := fEntrada - fStopLoss;
+      fTakeProfit := fEntrada + fRisco * RRR_Minimo;
+      if (fRisco > 0) and ((fTakeProfit - fEntrada) >= fRisco * RRR_Minimo) then
+      begin
+        BuyAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+    // VENDA: candle de força vendedora + OBV confirmando distribuição + volume
+    if (fForca <= -ForcaMinimaEntrada)
+       and bOBVConfirmaVenda and bContextoBaixa
+       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+    begin
+      fEntrada    := Close;
+      fStopLoss   := High + BufferStop;
+      fRisco      := fStopLoss - fEntrada;
+      fTakeProfit := fEntrada - fRisco * RRR_Minimo;
+      if (fRisco > 0) and ((fEntrada - fTakeProfit) >= fRisco * RRR_Minimo) then
+      begin
+        SellShortAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+  end;
+
+end;

@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "GitHub.copilot",
+    "GitHub.copilot-chat",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-toolsai.jupyter",
+    "mechatroner.rainbow-csv",
+    "GrapeCity.gc-excelviewer",
+    "streetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-portuguese-brazilian",
+    "yzhang.markdown-all-in-one",
+    "bierner.markdown-mermaid"
+  ]
+}

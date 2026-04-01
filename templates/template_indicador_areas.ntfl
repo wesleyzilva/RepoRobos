@@ -1,0 +1,146 @@
+{
+  Indicador: IND_AREAS_CONFLUENCIA_V1
+  Descricao: Indicador visual de áreas de confluência geométrica — corpos sobrepostos
+  Ativo: WIN B3
+  Timeframe: qualquer
+  Versao: 1.0
+  Tipo: Indicador (.ntfl) — para validação visual antes de implementar robô
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════════════════════════
+input
+  ForcaMinimaEntrada(60.0);     // força mínima para marcar candle como relevante
+  VolumeMultiplicador(1.5);     // volume mínimo vs média 20
+  ToleranciaZona(50.0);         // buffer de sobreposição em pts
+  MostrarTextoForca(true);      // exibir valor da força no candle
+  MostrarAlertas(true);         // emitir alerta quando zona de confluência detectada
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VARIÁVEIS
+// ═══════════════════════════════════════════════════════════════════════════════
+var
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fMassa            : float;
+  fAceleracao       : float;
+  fForca            : float;
+  fVolumeMedio      : float;
+  iCorR, iCorG, iCorB : integer;
+  bSinalCompra      : boolean;
+  bSinalVenda       : boolean;
+  bRejeicaoForte    : boolean;
+  bAnomaliaVolume   : boolean;
+  fPavioSup         : float;
+  fPavioInf         : float;
+
+  // Zonas para visualização
+  iConfluenciasCompra : integer;
+  iConfluenciasVenda  : integer;
+
+begin
+
+  // ─── SEÇÃO 1: FORÇA F = M × A ──────────────────────────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+
+  fMassa       := fCorpoCandle / fRangeCandle;
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio > 0 then fAceleracao := Volume / fVolumeMedio
+  else fAceleracao := 1;
+
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─── SEÇÃO 2: PADRÕES ESPECIAIS ───────────────────────────────────────────
+  fPavioSup := High - Max(Open, Close);
+  fPavioInf := Min(Open, Close) - Low;
+
+  // Rejeição forte: pavios totalizam > 60% do range
+  bRejeicaoForte := ((fPavioSup + fPavioInf) / fRangeCandle) >= 0.60;
+
+  // Anomalia de volume: volume > 3× média
+  bAnomaliaVolume := (Volume >= fVolumeMedio * 3.0);
+
+  // ─── SEÇÃO 3: GRADIENTE DE CORES + CORES ESPECIAIS ───────────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;  // cinza = padrão
+
+  if bRejeicaoForte then
+  begin
+    // Laranja = rejeição forte
+    iCorR := 255; iCorG := 165; iCorB := 0;
+  end
+  else if bAnomaliaVolume then
+  begin
+    // Amarelo = anomalia de volume
+    iCorR := 255; iCorG := 215; iCorB := 0;
+  end
+  else if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    // Branco = indecisão
+    iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if fForca >= ForcaMinimaEntrada then
+  begin
+    iCorG := 128 + Round((fForca / 100) * 127);
+    iCorR := 128 - Round((fForca / 100) * 128);
+    iCorB := 128 - Round((fForca / 100) * 128);
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if fForca <= -ForcaMinimaEntrada then
+  begin
+    iCorR := 128 + Round((-fForca / 100) * 127);
+    iCorG := 128 - Round((-fForca / 100) * 128);
+    iCorB := 128 - Round((-fForca / 100) * 128);
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─── SEÇÃO 4: TEXTO DE FORÇA (apenas indicador) ───────────────────────────
+  if MostrarTextoForca and (abs(fForca) >= ForcaMinimaEntrada) then
+  begin
+    if fForca >= ForcaMinimaEntrada then
+      PlotText(Format('%.0f', [fForca]), RGB(0, 200, 0), 8, 0, Low * 0.998)
+    else
+      PlotText(Format('%.0f', [fForca]), RGB(200, 0, 0), 8, 0, High * 1.002);
+  end;
+
+  // ─── SEÇÃO 5: SETAS DE CONFLUÊNCIA ───────────────────────────────────────
+  // Detectar confluência simplificada: 2 candles de força na mesma direção
+  // dentro de uma janela de ToleranciaZona pts
+
+  bSinalCompra := (fForca >= ForcaMinimaEntrada) and
+                  (Volume >= fVolumeMedio * VolumeMultiplicador) and
+                  (Close[1] > Open[1]) and
+                  (abs(Close[1] - Open[1]) >= 0.40 * (High[1] - Low[1])) and
+                  (abs(Close - Open[1]) <= ToleranciaZona);
+
+  bSinalVenda := (fForca <= -ForcaMinimaEntrada) and
+                 (Volume >= fVolumeMedio * VolumeMultiplicador) and
+                 (Close[1] < Open[1]) and
+                 (abs(Close[1] - Open[1]) >= 0.40 * (High[1] - Low[1])) and
+                 (abs(Close - Open[1]) <= ToleranciaZona);
+
+  if bSinalCompra then
+  begin
+    DrawArrow(1, RGB(0, 255, 0), 2, Low * 0.995);  // seta para cima = compra
+    if MostrarAlertas then Alert(RGB(0, 255, 0));
+    PlotText('CONFLUÊNCIA COMPRA', RGB(0, 200, 0), 9, 1, Low * 0.993);
+  end;
+
+  if bSinalVenda then
+  begin
+    DrawArrow(0, RGB(255, 0, 0), 2, High * 1.005);  // seta para baixo = venda
+    if MostrarAlertas then Alert(RGB(255, 0, 0));
+    PlotText('CONFLUÊNCIA VENDA', RGB(200, 0, 0), 9, 1, High * 1.007);
+  end;
+
+end;

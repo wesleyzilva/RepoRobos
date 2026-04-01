@@ -1,0 +1,216 @@
+{
+  Robo: ROB_OBV_BREAKOUT_V1
+  Descricao: Opera quando o OBV rompe o delta máximo ou mínimo das últimas iJanelaCtx barras.
+             Breakout do OBV = pressão institucional acumulada se liberando.
+             Cor AMARELA intensa = pré-breakout. AZUL/ROXO = breakout confirmado.
+  Ativo: WIN B3 / WDO B3
+  Timeframe: TF3 (Gatilho) — padrão 5min, tripleta 30/15/5
+  Versao: 1.0
+  RRR_minimo: 2.0
+  SL_referencia: mínima/máxima do candle de breakout + BufferStop
+  Spread_descontado: 25 pts
+
+  Lógica de breakout:
+    fOBVDeltaAtual   = fOBV - fOBV[iJanelaDir]     (delta recente = TF2)
+    fOBVDeltaAnterior = fOBV[iJanelaDir] - fOBV[iJanelaCtx] (delta anterior = TF1)
+    Breakout ALTA:  fOBVDeltaAtual > fOBVDeltaAnterior E fOBVDeltaAtual > 0
+      = OBV acelerando para cima: mais volume comprando agora que antes
+    Breakout BAIXA: fOBVDeltaAtual < fOBVDeltaAnterior E fOBVDeltaAtual < 0
+      = OBV acelerando para baixo: mais volume vendendo agora que antes
+    Gradiente: escala com a magnitude do breakout (quanto maior o delta, mais intenso)
+}
+
+input
+  iJanelaDir(3);
+  iJanelaCtx(6);
+  ForcaMinimaCandle(30.0);     // força mínima do candle no momento do breakout
+  VolumeMultiplicador(1.5);    // volume mínimo para confirmar breakout
+  RRR_Minimo(2.0);
+  BufferStop(5.0);
+  StopHorario_H(17);
+  StopHorario_M(45);
+  MaxBarrasEmPosicao(8);
+  HoraInicioH(9);
+  HoraInicioM(15);
+
+var
+  // OBV
+  fOBV                 : float;
+  fOBVDeltaAtual       : float;   // fOBV - fOBV[iJanelaDir]
+  fOBVDeltaAnterior    : float;   // fOBV[iJanelaDir] - fOBV[iJanelaCtx]
+  fOBVAceleracao       : float;   // diferença entre os dois deltas (normalized)
+  fVolumeMedio         : float;
+  // F = M × A (filtro de candle)
+  fCorpoCandle         : float;
+  fRangeCandle         : float;
+  fMassa               : float;
+  fAceleracao          : float;
+  fForca               : float;
+  // Sinais
+  bBreakoutAlta        : boolean;
+  bBreakoutBaixa       : boolean;
+  fOBVNorm             : float;  // normalizado para gradiente
+  // Cores
+  iCorR, iCorG, iCorB  : integer;
+  // Gestão
+  fEntrada             : float;
+  fStopLoss            : float;
+  fTakeProfit          : float;
+  fRisco               : float;
+  iBarrasEmPosicao     : integer;
+
+begin
+
+  // ─── SEÇÃO 1: OBV ACUMULADO ───────────────────────────────────────────────
+  if Close > Close[1] then
+    fOBV := fOBV + Volume
+  else if Close < Close[1] then
+    fOBV := fOBV - Volume;
+
+  fVolumeMedio := Media(20, Volume);
+
+  // ─── SEÇÃO 2: F = M × A ──────────────────────────────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+  fMassa       := fCorpoCandle / fRangeCandle;
+  if fVolumeMedio > 0 then fAceleracao := Volume / fVolumeMedio
+  else fAceleracao := 1;
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─── SEÇÃO 3: DETECÇÃO DE BREAKOUT ───────────────────────────────────────
+  // Delta atual (janela TF2): variação do OBV nas últimas iJanelaDir barras
+  fOBVDeltaAtual    := fOBV - fOBV[iJanelaDir];
+  // Delta anterior (janela TF1): variação do OBV no período antes do TF2
+  fOBVDeltaAnterior := fOBV[iJanelaDir] - fOBV[iJanelaCtx];
+
+  // Aceleração = quanto o delta atual supera o anterior
+  fOBVAceleracao := fOBVDeltaAtual - fOBVDeltaAnterior;
+
+  // Breakout: delta atual maior que anterior E na mesma direção
+  bBreakoutAlta  := (fOBVDeltaAtual > 0) and (fOBVDeltaAtual > fOBVDeltaAnterior);
+  bBreakoutBaixa := (fOBVDeltaAtual < 0) and (fOBVDeltaAtual < fOBVDeltaAnterior);
+
+  // Normalização para gradiente (escala relativa ao volume médio)
+  if fVolumeMedio > 0 then
+    fOBVNorm := (fOBVDeltaAtual / (fVolumeMedio * iJanelaDir + 1)) * 100
+  else
+    fOBVNorm := 0;
+  if fOBVNorm >  100 then fOBVNorm :=  100;
+  if fOBVNorm < -100 then fOBVNorm := -100;
+
+  // ─── SEÇÃO 4: GRADIENTE DE CORES ─────────────────────────────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;
+
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255; // branco = indecisão
+  end
+  else if bBreakoutAlta and (fForca >= ForcaMinimaCandle) then
+  begin
+    // AZUL INTENSO = breakout de OBV para cima + candle confirmando
+    iCorR := 0;
+    iCorG := 100 + Round((fOBVNorm / 100) * 155);
+    iCorB := 255;
+    if iCorG > 255 then iCorG := 255;
+    if iCorG < 0   then iCorG := 0;
+  end
+  else if bBreakoutAlta then
+  begin
+    // AMARELO = breakout de OBV para cima, candle ainda fraco
+    iCorR := 255; iCorG := 215; iCorB := 0;
+  end
+  else if bBreakoutBaixa and (fForca <= -ForcaMinimaCandle) then
+  begin
+    // ROXO INTENSO = breakout de OBV para baixo + candle confirmando
+    iCorR := 100 + Round((-fOBVNorm / 100) * 155);
+    iCorG := 0;
+    iCorB := 220;
+    if iCorR > 255 then iCorR := 255;
+    if iCorR < 0   then iCorR := 0;
+  end
+  else if bBreakoutBaixa then
+  begin
+    // LARANJA = breakout de OBV para baixo, candle ainda fraco
+    iCorR := 255; iCorG := 140; iCorB := 0;
+  end
+  else if fOBVNorm >= 10 then
+  begin
+    // Verde fraco = OBV crescendo sem breakout
+    iCorG := 128 + Round((fOBVNorm / 100) * 80);
+    iCorR := 128 - Round((fOBVNorm / 100) * 60);
+    iCorB := 128 - Round((fOBVNorm / 100) * 60);
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if fOBVNorm <= -10 then
+  begin
+    // Vermelho fraco = OBV caindo sem breakout
+    iCorR := 128 + Round((-fOBVNorm / 100) * 80);
+    iCorG := 128 - Round((-fOBVNorm / 100) * 60);
+    iCorB := 128 - Round((-fOBVNorm / 100) * 60);
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
+  if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    Exit;
+  end;
+  if (Hour < HoraInicioH) or ((Hour = HoraInicioH) and (Minute < HoraInicioM)) then Exit;
+
+  // ─── SEÇÃO 6: CONTROLE DE BARRAS ─────────────────────────────────────────
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
+    ClosePosition;
+    iBarrasEmPosicao := 0;
+    Exit;
+  end;
+
+  // ─── SEÇÃO 7: ENTRADAS — BREAKOUT + CANDLE CONFIRMADOR ───────────────────
+  if (not IsBought) and (not IsSold) then
+  begin
+    // COMPRA: breakout do OBV para cima + candle de força + volume
+    if bBreakoutAlta and (fForca >= ForcaMinimaCandle)
+       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+    begin
+      fEntrada    := Close;
+      fStopLoss   := Low - BufferStop;
+      fRisco      := fEntrada - fStopLoss;
+      fTakeProfit := fEntrada + fRisco * RRR_Minimo;
+      if (fRisco > 0) and ((fTakeProfit - fEntrada) >= fRisco * RRR_Minimo) then
+      begin
+        BuyAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+    // VENDA: breakout do OBV para baixo + candle de força + volume
+    if bBreakoutBaixa and (fForca <= -ForcaMinimaCandle)
+       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+    begin
+      fEntrada    := Close;
+      fStopLoss   := High + BufferStop;
+      fRisco      := fStopLoss - fEntrada;
+      fTakeProfit := fEntrada - fRisco * RRR_Minimo;
+      if (fRisco > 0) and ((fEntrada - fTakeProfit) >= fRisco * RRR_Minimo) then
+      begin
+        SellShortAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+  end;
+
+end;
