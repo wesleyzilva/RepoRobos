@@ -1,10 +1,15 @@
 {
   Robo: FORCA_SAIDA_TRAILING
-  Descricao: Entrada por F=MA. Saida com Trailing Stop — o stop segue o preco
-             a uma distancia fixa em pontos, protegendo ganhos acumulados.
+  Descricao: Entrada por F=MA. Saida com Trailing Stop dinamico via ATR.
+             O stop segue o melhor preco a uma distancia de ATR * multiplicador.
              Sem alvo fixo: deixa o movimento correr. 3 contratos.
-  Versao: 1.0
-  Estrategia_saida: Trailing Stop — stop dinamico que acompanha o preco
+  Versao: 2.0
+  Estrategia_saida: Trailing Stop ATR — stop dinamico que acompanha o preco
+
+  Configuracoes por TF:
+    15min: ATR_TrailMult=0.5
+    30min: ATR_TrailMult=0.75
+    60min: ATR_TrailMult=1.0
 }
 
 input
@@ -14,8 +19,9 @@ input
   PeriodoMediaVolume(20);
   UsarFiltroVolume(true);
   Contratos(3);
-  // Trailing
-  TrailInicial(100.0);       // distancia inicial do trailing stop em pontos
+  // Trailing ATR
+  PeriodoATR(14);
+  ATR_TrailMult(0.5);        // distancia do trail em ATR  (15min=0.5, 30min=0.75, 60min=1.0)
   TrailOffset(5.0);          // slippage do stop limit
   // Horario
   StopHorario_H(17);
@@ -26,8 +32,9 @@ var
   fForcaAbs, fEscalaCor : float;
   r, g, b : integer;
   bDeveOperar   : boolean;
-  fTrailStop    : float;     // preco atual do trailing stop
-  fMelhorPreco  : float;     // melhor preco atingido na posicao
+  fTrailStop    : float;
+  fMelhorPreco  : float;
+  fATR, fTrailDist : float;
 
 begin
   // --- F = M x A ---
@@ -42,6 +49,11 @@ begin
   if fForca >  100 then fForca :=  100;
   if fForca < -100 then fForca := -100;
   fForcaAbs := abs(fForca);
+
+  // --- ATR dinamico ---
+  fATR       := ATR(PeriodoATR);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+  fTrailDist := fATR * ATR_TrailMult;
 
   // --- DEGRADÊ ---
   r := 128; g := 128; b := 128;
@@ -81,16 +93,12 @@ begin
   // --- TRAILING STOP: COMPRADO ---
   if IsBought then
   begin
-    // Atualizar maior preco atingido
     if (fMelhorPreco = 0) or (High > fMelhorPreco) then
       fMelhorPreco := High;
 
-    // Trail calculado a partir do maior High atingido
-    fTrailStop := fMelhorPreco - TrailInicial * MinPriceIncrement;
-
-    // Garantir que o trail nao piore (so sobe)
-    if fTrailStop < BuyPrice - TrailInicial * MinPriceIncrement then
-      fTrailStop := BuyPrice - TrailInicial * MinPriceIncrement;
+    fTrailStop := fMelhorPreco - fTrailDist;
+    if fTrailStop < BuyPrice - fTrailDist then
+      fTrailStop := BuyPrice - fTrailDist;
 
     SellToCoverStop(fTrailStop, fTrailStop - TrailOffset * MinPriceIncrement, Contratos);
   end;
@@ -98,16 +106,12 @@ begin
   // --- TRAILING STOP: VENDIDO ---
   if IsSold then
   begin
-    // Atualizar menor preco atingido
     if (fMelhorPreco = 0) or (Low < fMelhorPreco) then
       fMelhorPreco := Low;
 
-    // Trail calculado a partir do menor Low atingido
-    fTrailStop := fMelhorPreco + TrailInicial * MinPriceIncrement;
-
-    // Garantir que o trail nao piore (so desce)
-    if fTrailStop > SellPrice + TrailInicial * MinPriceIncrement then
-      fTrailStop := SellPrice + TrailInicial * MinPriceIncrement;
+    fTrailStop := fMelhorPreco + fTrailDist;
+    if fTrailStop > SellPrice + fTrailDist then
+      fTrailStop := SellPrice + fTrailDist;
 
     BuyToCoverStop(fTrailStop, fTrailStop + TrailOffset * MinPriceIncrement, Contratos);
   end;

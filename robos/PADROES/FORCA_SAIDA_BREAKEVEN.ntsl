@@ -1,10 +1,15 @@
 {
   Robo: FORCA_SAIDA_BREAKEVEN
-  Descricao: Entrada por F=MA. Saida com Breakeven + Alvo fixo.
-             Apos N pontos a favor, move o stop para o preco de entrada (risco zero).
-             Mantem alvo fixo. 3 contratos.
-  Versao: 1.0
-  Estrategia_saida: Breakeven (stop move para entrada apos gatilho) + Alvo OCO
+  Descricao: Entrada por F=MA. Saida com Breakeven + Alvo ATR.
+             Apos ATR*BreakevenMult a favor, move stop para entrada (risco zero).
+             Alvo = ATR * AlvoMult. 3 contratos.
+  Versao: 2.0
+  Estrategia_saida: Breakeven (stop move para entrada apos gatilho ATR) + Alvo ATR
+
+  Configuracoes por TF:
+    15min: ATR_StopMult=0.5  ATR_BEMult=0.3  ATR_AlvoMult=1.0
+    30min: ATR_StopMult=0.75 ATR_BEMult=0.4  ATR_AlvoMult=1.5
+    60min: ATR_StopMult=1.0  ATR_BEMult=0.5  ATR_AlvoMult=2.0
 }
 
 input
@@ -14,11 +19,12 @@ input
   PeriodoMediaVolume(20);
   UsarFiltroVolume(true);
   Contratos(3);
-  // Breakeven
-  BreakevenGatilho(50.0);    // pontos a favor para ativar breakeven
-  StopInicial(100.0);        // stop antes de ativar breakeven
-  AlvoPontos(200.0);         // alvo fixo em pontos (mantido apos breakeven)
-  StopLimitOffset(5.0);      // slippage do stop limit
+  // ATR — Stop, Breakeven e Alvo dinamicos
+  PeriodoATR(14);
+  ATR_StopMult(0.5);         // stop inicial em ATR        (15min=0.5, 30min=0.75, 60min=1.0)
+  ATR_BEMult(0.3);           // gatilho breakeven em ATR   (15min=0.3, 30min=0.4,  60min=0.5)
+  ATR_AlvoMult(1.0);         // alvo em ATR                (15min=1.0, 30min=1.5,  60min=2.0)
+  StopLimitOffset(5.0);
   // Horario
   StopHorario_H(17);
   StopHorario_M(45);
@@ -28,9 +34,10 @@ var
   fForcaAbs, fEscalaCor : float;
   r, g, b : integer;
   bDeveOperar   : boolean;
-  bBreakevenOn  : boolean;   // true = breakeven ja ativado nesta operacao
+  bBreakevenOn  : boolean;
   fStopAtual    : float;
   fAlvoAtual    : float;
+  fATR, fStopDist, fBEDist, fAlvoDist : float;
 
 begin
   // --- F = M x A ---
@@ -45,6 +52,13 @@ begin
   if fForca >  100 then fForca :=  100;
   if fForca < -100 then fForca := -100;
   fForcaAbs := abs(fForca);
+
+  // --- ATR dinamico ---
+  fATR     := ATR(PeriodoATR);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+  fStopDist := fATR * ATR_StopMult;
+  fBEDist   := fATR * ATR_BEMult;
+  fAlvoDist := fATR * ATR_AlvoMult;
 
   // --- DEGRADÊ ---
   r := 128; g := 128; b := 128;
@@ -84,17 +98,16 @@ begin
   // --- SAÍDA: COMPRADO ---
   if IsBought then
   begin
-    fAlvoAtual := BuyPrice + AlvoPontos * MinPriceIncrement;
+    fAlvoAtual := BuyPrice + fAlvoDist;
 
-    // Ativar breakeven quando preco favoravel o suficiente
-    if (not bBreakevenOn) and (Close >= BuyPrice + BreakevenGatilho * MinPriceIncrement) then
+    // Ativar breakeven quando preco favoravel (ATR * BEMult)
+    if (not bBreakevenOn) and (Close >= BuyPrice + fBEDist) then
       bBreakevenOn := true;
 
-    // Stop: breakeven (entrada) ou stop inicial
     if bBreakevenOn then
-      fStopAtual := BuyPrice                          // risco zero
+      fStopAtual := BuyPrice
     else
-      fStopAtual := BuyPrice - StopInicial * MinPriceIncrement;
+      fStopAtual := BuyPrice - fStopDist;
 
     SellToCoverStop (fStopAtual,  fStopAtual  - StopLimitOffset * MinPriceIncrement, Contratos);
     SellToCoverLimit(fAlvoAtual, Contratos);
@@ -103,17 +116,16 @@ begin
   // --- SAÍDA: VENDIDO ---
   if IsSold then
   begin
-    fAlvoAtual := SellPrice - AlvoPontos * MinPriceIncrement;
+    fAlvoAtual := SellPrice - fAlvoDist;
 
-    // Ativar breakeven quando preco favoravel o suficiente
-    if (not bBreakevenOn) and (Close <= SellPrice - BreakevenGatilho * MinPriceIncrement) then
+    // Ativar breakeven quando preco favoravel (ATR * BEMult)
+    if (not bBreakevenOn) and (Close <= SellPrice - fBEDist) then
       bBreakevenOn := true;
 
-    // Stop: breakeven (entrada) ou stop inicial
     if bBreakevenOn then
-      fStopAtual := SellPrice                         // risco zero
+      fStopAtual := SellPrice
     else
-      fStopAtual := SellPrice + StopInicial * MinPriceIncrement;
+      fStopAtual := SellPrice + fStopDist;
 
     BuyToCoverStop (fStopAtual,  fStopAtual  + StopLimitOffset * MinPriceIncrement, Contratos);
     BuyToCoverLimit(fAlvoAtual, Contratos);

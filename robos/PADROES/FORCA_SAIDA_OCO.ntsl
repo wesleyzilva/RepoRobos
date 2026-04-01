@@ -1,10 +1,15 @@
 {
   Robo: FORCA_SAIDA_OCO
   Descricao: Entrada por F=MA. Saida com OCO fixo (Stop + Alvo simultaneos).
-             Ao entrar, envia stop e alvo ao mesmo tempo — o primeiro que bater cancela o outro.
+             Stop e Alvo calculados dinamicamente via ATR14 * multiplicador.
              3 contratos. RRR configuravel.
-  Versao: 1.0
-  Estrategia_saida: OCO — Stop fixo + Alvo fixo (RRR 1:2 por padrao)
+  Versao: 2.0
+  Estrategia_saida: OCO — Stop ATR + Alvo ATR (RRR 1:2 por padrao)
+
+  Configuracoes por TF:
+    15min: ATR_StopMult=0.5  ATR_AlvoMult=1.0
+    30min: ATR_StopMult=0.75 ATR_AlvoMult=1.5
+    60min: ATR_StopMult=1.0  ATR_AlvoMult=2.0
 }
 
 input
@@ -14,9 +19,10 @@ input
   PeriodoMediaVolume(20);
   UsarFiltroVolume(true);
   Contratos(3);
-  // OCO
-  StopPontos(100.0);         // distancia do stop em pontos
-  AlvoPontos(200.0);         // distancia do alvo em pontos (RRR 1:2)
+  // ATR — Stop e Alvo dinamicos
+  PeriodoATR(14);            // periodo do ATR
+  ATR_StopMult(0.5);         // multiplicador ATR para o stop  (15min=0.5, 30min=0.75, 60min=1.0)
+  ATR_AlvoMult(1.0);         // multiplicador ATR para o alvo  (15min=1.0, 30min=1.5,  60min=2.0)
   StopLimitOffset(5.0);      // slippage do stop limit apos o stop
   // Horario
   StopHorario_H(17);
@@ -29,6 +35,7 @@ var
   bDeveOperar : boolean;
   fStopCompra, fAtivoCompra : float;
   fStopVenda, fAtivoVenda   : float;
+  fATR, fStopDist, fAlvoDist : float;
 
 begin
   // --- F = M x A ---
@@ -43,6 +50,12 @@ begin
   if fForca >  100 then fForca :=  100;
   if fForca < -100 then fForca := -100;
   fForcaAbs := abs(fForca);
+
+  // --- ATR dinamico ---
+  fATR      := ATR(PeriodoATR);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+  fStopDist := fATR * ATR_StopMult;
+  fAlvoDist := fATR * ATR_AlvoMult;
 
   // --- DEGRADÊ ---
   r := 128; g := 128; b := 128;
@@ -79,16 +92,16 @@ begin
   // Envia stop + alvo a cada barra enquanto em posição (Profit mantem a ultima ativa)
   if IsBought then
   begin
-    fStopCompra  := BuyPrice - StopPontos * MinPriceIncrement;
-    fAtivoCompra := BuyPrice + AlvoPontos * MinPriceIncrement;
+    fStopCompra  := BuyPrice - fStopDist;
+    fAtivoCompra := BuyPrice + fAlvoDist;
     SellToCoverStop (fStopCompra,  fStopCompra  - StopLimitOffset * MinPriceIncrement, Contratos);
     SellToCoverLimit(fAtivoCompra, Contratos);
   end;
 
   if IsSold then
   begin
-    fStopVenda  := SellPrice + StopPontos * MinPriceIncrement;
-    fAtivoVenda := SellPrice - AlvoPontos * MinPriceIncrement;
+    fStopVenda  := SellPrice + fStopDist;
+    fAtivoVenda := SellPrice - fAlvoDist;
     BuyToCoverStop (fStopVenda,  fStopVenda  + StopLimitOffset * MinPriceIncrement, Contratos);
     BuyToCoverLimit(fAtivoVenda, Contratos);
   end;
