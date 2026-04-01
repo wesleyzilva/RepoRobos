@@ -183,15 +183,18 @@ begin
   bEntradaConfirmada := (iContadorCompra >= 2) or (iContadorVenda >= 2);
 
   // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
-  if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  iHoraAtual   := Time() div 10000;
+  iMinutoAtual := (Time() mod 10000) div 100;
+
+  if (iHoraAtual > StopHorario_H) or
+     ((iHoraAtual = StopHorario_H) and (iMinutoAtual >= StopHorario_M)) then
   begin
     if IsBought or IsSold then ClosePosition;
-    Exit;
-  end;
-
-  // Aguardar após abertura
-  if (Hour = HoraInicioOperacao_H) and (Minute < HoraInicioOperacao_M) then Exit;
-  if Hour < HoraInicioOperacao_H then Exit;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := (iHoraAtual > HoraInicioOperacao_H) or
+                   ((iHoraAtual = HoraInicioOperacao_H) and (iMinutoAtual >= HoraInicioOperacao_M));
 
   // ─── SEÇÃO 6: CONTROLE DE BARRAS ──────────────────────────────────────────
   if IsBought or IsSold then
@@ -203,11 +206,11 @@ begin
   begin
     ClosePosition;
     iBarrasEmPosicao := 0;
-    Exit;
+    bDeveOperar := false;
   end;
 
   // ─── SEÇÃO 7: ENTRADAS ────────────────────────────────────────────────────
-  if (not IsBought) and (not IsSold) and bEntradaConfirmada then
+  if bDeveOperar and (not IsBought) and (not IsSold) and bEntradaConfirmada then
   begin
 
     if iContadorCompra >= 2 then

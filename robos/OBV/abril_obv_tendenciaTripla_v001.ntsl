@@ -131,12 +131,18 @@ begin
   PaintBar(RGB(iCorR, iCorG, iCorB));
 
   // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
-  if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  iHoraAtual   := Time() div 10000;
+  iMinutoAtual := (Time() mod 10000) div 100;
+
+  if (iHoraAtual > StopHorario_H) or
+     ((iHoraAtual = StopHorario_H) and (iMinutoAtual >= StopHorario_M)) then
   begin
     if IsBought or IsSold then ClosePosition;
-    Exit;
-  end;
-  if (Hour < HoraInicioH) or ((Hour = HoraInicioH) and (Minute < HoraInicioM)) then Exit;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := (iHoraAtual > HoraInicioH) or
+                   ((iHoraAtual = HoraInicioH) and (iMinutoAtual >= HoraInicioM));
 
   // ─── SEÇÃO 6: CONTROLE DE BARRAS ─────────────────────────────────────────
   if IsBought or IsSold then
@@ -147,15 +153,15 @@ begin
   begin
     ClosePosition;
     iBarrasEmPosicao := 0;
-    Exit;
+    bDeveOperar := false;
   end;
 
   // ─── SEÇÃO 7: ENTRADAS — REGRA CARDINAL: 3 TFs ALINHADOS ─────────────────
-  if (not IsBought) and (not IsSold) then
+  if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
     // COMPRA: OBV crescente nos 3 TFs + volume confirmando
-    if bOBVAltaContexto and bOBVAltaDirecao and bOBVAltaGatilho
-       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+    if (bOBVAltaContexto and bOBVAltaDirecao and bOBVAltaGatilho
+       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
     begin
       fEntrada    := Close;
       fStopLoss   := Low - BufferStop;
@@ -169,8 +175,8 @@ begin
     end;
 
     // VENDA: OBV decrescente nos 3 TFs + volume confirmando
-    if (bOBVBaixaContexto and bOBVBaixaDirecao and bOBVBaixaGatilho)
-       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+    if (bOBVBaixaContexto and bOBVBaixaDirecao and bOBVBaixaGatilho
+       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
     begin
       fEntrada    := Close;
       fStopLoss   := High + BufferStop;
