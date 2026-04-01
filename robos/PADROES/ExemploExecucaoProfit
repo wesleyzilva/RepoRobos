@@ -1,0 +1,61 @@
+input
+  dTicksGain(10.0);
+  dTicksLoss(10.0);
+  dTicksEntry(1.0);
+var
+  bBuySignal     : Boolean;
+  bSellSignal    : Boolean;
+  dGain          : Float;
+  dLoss          : Float;
+  dLossStopLimit : Float;
+  dPriceEntry    : Float;
+  dEntryPrice    : Float;
+  dSimpleAverage : Float;
+begin
+  // Gets the Simple Moving Average of last 20 candles
+  dSimpleAverage := SMA(20);
+ 
+  // Define buy/sell signals based on last close
+  bBuySignal := Close < dSimpleAverage;
+  bSellSignal := Close > dSimpleAverage;
+
+  // Entry logic: place buy/sell limit orders based on dTicksEntry input
+  // MinPriceIncrement represents the minimum price increment allowed for the asset.
+  // It ensures all price calculations respect the instrument's tick size 
+  if not HasPosition then
+    begin
+      dPriceEntry := dTicksEntry * MinPriceIncrement;
+      if bBuySignal then
+        BuyLimit(Close - dPriceEntry)
+      else if bSellSignal then
+        SellShortLimit(Close + dPriceEntry);
+    end;
+
+  // Exit logic for long positions
+  if IsBought then
+    begin
+      //Calculate Prices
+      dEntryPrice := buyPrice;
+      dGain := dEntryPrice + (dTicksGain * MinPriceIncrement);
+      dLoss := dEntryPrice - (dTicksLoss * MinPriceIncrement);
+      dLossStopLimit := dLoss - (30 * MinPriceIncrement);
+
+      //Send Cover Orders
+      SellToCoverLimit(dGain, BuyPosition);
+      SellToCoverStop(dLoss, dLossStopLimit, BuyPosition);
+    end
+  
+  // Exit logic for short positions
+  else if IsSold then
+    begin       
+      //Calculate Prices
+      dEntryPrice := sellPrice;
+      dGain := dEntryPrice - (dTicksGain * MinPriceIncrement);
+      dLoss := dEntryPrice + (dTicksLoss * MinPriceIncrement);
+      dLossStopLimit := dLoss + (30 * MinPriceIncrement);
+
+      //Send Cover Orders
+      BuyToCoverLimit(dGain, SellPosition);
+      BuyToCoverStop(dLoss, dLossStopLimit, SellPosition);
+    end;
+end;
