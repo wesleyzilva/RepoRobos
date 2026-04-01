@@ -1,0 +1,166 @@
+{
+  Robo: ROB_NOME_DO_ROBO_V1
+  Descricao: Template padrão para novos robôs NTSL.
+             Estrutura segura para backtest inicial e evolução posterior.
+  Ativo: WIN B3 / WDO B3
+  Timeframe: 5min
+  Versao: 1.0
+  RRR_minimo: 2.0
+  SL_referencia: Low/High do candle gatilho + BufferStop
+  Spread_descontado: 25 pts
+}
+
+input
+  ForcaMinimaEntrada(30.0);     // default mais permissivo para backtest inicial
+  VolumeMultiplicador(1.0);     // volume atual ao menos na media
+  RRR_Minimo(2.0);
+  BufferStop(5.0);
+  StopHorario_H(17);
+  StopHorario_M(45);
+  MaxBarrasEmPosicao(8);
+  HoraInicioH(9);
+  HoraInicioM(15);
+  ModoBacktestInicial(true);    // relaxa filtros para gerar operacoes no backtest inicial
+
+var
+  // F = M x A
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fMassa            : float;
+  fAceleracao       : float;
+  fForca            : float;
+  fVolumeMedio      : float;
+
+  // Sinais da estrategia (substituir pela logica do robo)
+  bSinalCompra      : boolean;
+  bSinalVenda       : boolean;
+
+  // Cores
+  iCorR, iCorG, iCorB : integer;
+
+  // Gestao
+  fEntrada          : float;
+  fStopLoss         : float;
+  fTakeProfit       : float;
+  fRisco            : float;
+  iBarrasEmPosicao  : integer;
+  bDeveOperar       : boolean;
+
+begin
+
+  // ─── SEÇÃO 1: FORÇA F = M x A ─────────────────────────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+
+  fMassa       := fCorpoCandle / fRangeCandle;
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio > 0 then fAceleracao := Volume / fVolumeMedio
+  else fAceleracao := 1;
+
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─── SEÇÃO 2: LÓGICA DA ESTRATÉGIA ───────────────────────────────────────
+  // Substituir pelos sinais reais do robô.
+  // Regras mínimas do template:
+  // - Compra deve gerar bSinalCompra = true
+  // - Venda deve gerar bSinalVenda  = true
+  // - ModoBacktestInicial pode relaxar filtros para gerar amostra de trades
+
+  bSinalCompra := (ModoBacktestInicial and (fForca > 0))
+               or ((fForca >= ForcaMinimaEntrada)
+               and (Volume >= fVolumeMedio * VolumeMultiplicador));
+
+  bSinalVenda  := (ModoBacktestInicial and (fForca < 0))
+               or ((fForca <= -ForcaMinimaEntrada)
+               and (Volume >= fVolumeMedio * VolumeMultiplicador));
+
+  // ─── SEÇÃO 3: PALETA PADRÃO ───────────────────────────────────────────────
+  // Branco = indecisao
+  // Cinza  = neutro
+  // Verde  = compra
+  // Vermelho = venda
+  iCorR := 128; iCorG := 128; iCorB := 128;
+
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if bSinalCompra then
+  begin
+    iCorG := 128 + Round((abs(fForca) / 100) * 127);
+    iCorR := 128 - Round((abs(fForca) / 100) * 128);
+    iCorB := 128 - Round((abs(fForca) / 100) * 128);
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if bSinalVenda then
+  begin
+    iCorR := 128 + Round((abs(fForca) / 100) * 127);
+    iCorG := 128 - Round((abs(fForca) / 100) * 128);
+    iCorB := 128 - Round((abs(fForca) / 100) * 128);
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─── SEÇÃO 4: STOP HORÁRIO ────────────────────────────────────────────────
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
+
+  // ─── SEÇÃO 5: CONTROLE DE BARRAS ──────────────────────────────────────────
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
+    ClosePosition;
+    iBarrasEmPosicao := 0;
+    bDeveOperar := false;
+  end;
+
+  // ─── SEÇÃO 6: ENTRADAS ────────────────────────────────────────────────────
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+    if bSinalCompra then
+    begin
+      fEntrada    := Close;
+      fStopLoss   := Low - BufferStop;
+      fRisco      := fEntrada - fStopLoss;
+      fTakeProfit := fEntrada + fRisco * RRR_Minimo;
+
+      if (fRisco > 0) and ((fTakeProfit - fEntrada) >= fRisco * RRR_Minimo) then
+      begin
+        BuyAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+    if bSinalVenda then
+    begin
+      fEntrada    := Close;
+      fStopLoss   := High + BufferStop;
+      fRisco      := fStopLoss - fEntrada;
+      fTakeProfit := fEntrada - fRisco * RRR_Minimo;
+
+      if (fRisco > 0) and ((fEntrada - fTakeProfit) >= fRisco * RRR_Minimo) then
+      begin
+        SellShortAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+  end;
+
+end;
