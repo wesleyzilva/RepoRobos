@@ -1,0 +1,118 @@
+{
+  Robo: FORCA_SAIDA_OCO_60MIN
+  Descricao: Entrada por F=MA. Saida com OCO fixo (Stop + Alvo simultaneos).
+             Stop e Alvo calculados dinamicamente via ATR14 * multiplicador.
+             3 contratos. Configuracao padrao: 60min.
+  Versao: 1.0
+  Estrategia_saida: OCO — Stop ATR + Alvo ATR (RRR 1:2)
+  TF_alvo: 60min
+
+  Parametros 60min:
+    ATR_StopMult = 1.0   -> stop = ATR * 1.0
+    ATR_AlvoMult = 2.0   -> alvo = ATR * 2.0  (RRR 1:2)
+}
+
+input
+  // Entrada
+  ForcaMinimaEntrada(55);
+  VolumeMinimo(2000);
+  PeriodoMediaVolume(20);
+  UsarFiltroVolume(true);
+  Contratos(3);
+  // ATR — Stop e Alvo dinamicos (60min)
+  PeriodoATR(14);
+  ATR_StopMult(1.0);         // 60min = 1.0
+  ATR_AlvoMult(2.0);         // 60min = 2.0  (RRR 1:2)
+  StopLimitOffset(5.0);
+  // Horario
+  StopHorario_H(17);
+  StopHorario_M(45);
+
+var
+  fCorpo, fRange, fVolMedia, fMassa, fAceleracao, fForca : float;
+  fForcaAbs, fEscalaCor : float;
+  r, g, b : integer;
+  bDeveOperar : boolean;
+  fStopCompra, fAtivoCompra : float;
+  fStopVenda, fAtivoVenda   : float;
+  fATR, fStopDist, fAlvoDist : float;
+
+begin
+  // --- F = M x A ---
+  fCorpo := Close - Open;
+  fRange := High - Low;
+  if fRange <= 0 then fRange := 0.0001;
+  fVolMedia := Media(PeriodoMediaVolume, Volume);
+  if fVolMedia <= 0 then fVolMedia := 1;
+  fMassa       := fCorpo / fRange;
+  fAceleracao  := Volume / fVolMedia;
+  fForca       := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+  fForcaAbs := abs(fForca);
+
+  // --- ATR dinamico ---
+  fATR      := ATR(PeriodoATR);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+  fStopDist := fATR * ATR_StopMult;
+  fAlvoDist := fATR * ATR_AlvoMult;
+
+  // --- DEGRADÊ ---
+  r := 128; g := 128; b := 128;
+  fEscalaCor := (fForcaAbs - ForcaMinimaEntrada) / (100 - ForcaMinimaEntrada);
+  if fEscalaCor < 0 then fEscalaCor := 0;
+  if fEscalaCor > 1 then fEscalaCor := 1;
+  fEscalaCor := fEscalaCor * fEscalaCor;
+  if abs(fCorpo) < 0.1 * fRange then
+  begin
+    r := 255; g := 255; b := 255;
+  end
+  else if (fForca > 0) and (fForcaAbs >= ForcaMinimaEntrada) then
+  begin
+    g := 110 + Round(fEscalaCor * 145); r := 110 - Round(fEscalaCor * 110); b := 110 - Round(fEscalaCor * 110);
+    if g > 255 then g := 255; if r < 0 then r := 0; if b < 0 then b := 0;
+  end
+  else if (fForca < 0) and (fForcaAbs >= ForcaMinimaEntrada) then
+  begin
+    r := 110 + Round(fEscalaCor * 145); g := 110 - Round(fEscalaCor * 110); b := 110 - Round(fEscalaCor * 110);
+    if r > 255 then r := 255; if g < 0 then g := 0; if b < 0 then b := 0;
+  end;
+  PaintBar(RGB(r, g, b));
+
+  // --- STOP HORÁRIO ---
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := true;
+
+  // --- OCO: ORDENS DE SAÍDA ATIVAS ---
+  if IsBought then
+  begin
+    fStopCompra  := BuyPrice - fStopDist;
+    fAtivoCompra := BuyPrice + fAlvoDist;
+    SellToCoverStop (fStopCompra,  fStopCompra  - StopLimitOffset * MinPriceIncrement, Contratos);
+    SellToCoverLimit(fAtivoCompra, Contratos);
+  end;
+
+  if IsSold then
+  begin
+    fStopVenda  := SellPrice + fStopDist;
+    fAtivoVenda := SellPrice - fAlvoDist;
+    BuyToCoverStop (fStopVenda,  fStopVenda  + StopLimitOffset * MinPriceIncrement, Contratos);
+    BuyToCoverLimit(fAtivoVenda, Contratos);
+  end;
+
+  // --- ENTRADA ---
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+    if (fForca >= ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+      BuyAtMarket(Contratos);
+
+    if (fForca <= -ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+      SellShortAtMarket(Contratos);
+  end;
+
+end;
