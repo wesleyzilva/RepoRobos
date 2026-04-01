@@ -9,6 +9,20 @@ description: Gera o PLANO de um robô NTSL antes de qualquer código — para o 
 
 ---
 
+## 🤖 Modelo recomendado por etapa (economizar request premium)
+
+| Etapa | Modelo | Motivo |
+|---|---|---|
+| **Este plano** (descrever + aprovar) | **GPT-4o-mini** | Texto estruturado simples, sem código |
+| **Gerar o robô completo** (após "ok, gera") | **Claude Sonnet** | Contexto longo + código complexo |
+| **Corrigir erro de sintaxe pontual** | **GPT-4o-mini** + anexar `skill_ntsl_syntax.md` | Correção local, barata |
+| **Ajustar template existente** | **GPT-4o** | Edição média com contexto dado |
+| **Avaliar resultado do backtest** | **o3-mini** | Raciocínio estatístico |
+
+> ⚠️ Troca de modelo é **manual** no seletor do Copilot Chat — o Copilot ativo não se autosubstitui.
+
+---
+
 ## Instruções
 
 Apresente o plano abaixo em formato de tabela e checklist **sem escrever nenhuma linha de código**.
