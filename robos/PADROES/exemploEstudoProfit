@@ -1,0 +1,91 @@
+// This script plots custom horizontal lines
+// At the high and low prices of the current
+// Month, week, and day
+
+var
+  PriceVariation: Float;
+begin
+  // Calculate PriceVariation based on asset's MinPriceIncrement
+  PriceVariation := 50 * MinPriceIncrement();
+
+  // ==== Monthly Levels ====
+  HorizontalLineCustom(
+    HighM(0),       // Price level (monthly high)
+    clGreen,        // Line color
+    3,              // Line width
+    0,              // Style (solid)
+    "Monthly High", // Label text
+    10,             // Font size
+    tpTopRight,     // Label position
+    0,              // Offset X
+    0,              // Offset Y
+    PriceVariation
+  );
+
+  HorizontalLineCustom(
+    LowM(0),        // Price level (monthly low)
+    clRed,          // Line color
+    3,              // Line width
+    0,              // Style (solid)
+    "Monthly Low",  // Label text
+    10,             // Font size
+    tpTopRight,     // Label position
+    0,              // Offset X
+    0,              // Offset Y
+    PriceVariation
+  );
+
+  // ==== Weekly Levels ====
+  HorizontalLineCustom(
+    HighW(0),       // Price level (weekly high)
+    clBlue,         // Line color
+    3,              // Line width
+    0,              // Style (solid)
+    "Weekly High",  // Label text
+    10,             // Font size
+    tpTopRight,     // Label position
+    0,              // Offset X
+    0,              // Offset Y
+    PriceVariation
+  );
+
+  HorizontalLineCustom(
+    LowW(0),        // Price level (weekly low)
+    clNavy,         // Line color
+    3,              // Line width
+    0,              // Style (solid)
+    "Weekly Low",   // Label text
+    10,             // Font size
+    tpTopRight,     // Label position
+    0,              // Offset X
+    0,              // Offset Y
+    PriceVariation
+  );
+
+  // ==== Daily Levels ====
+  HorizontalLineCustom(
+    HighD(0),       // Price level (daily high)
+    clFuchsia,      // Line color
+    3,              // Line width
+    0,              // Style (solid)
+    "Daily High",   // Label text
+    10,             // Font size
+    tpTopRight,     // Label position
+    0,              // Offset X
+    0,              // Offset Y
+    PriceVariation
+  );
+
+  HorizontalLineCustom(
+    LowD(0),      // Price level (daily low)
+    clMaroon,     // Line color
+    3,            // Line width
+    0,            // Style (solid)
+    "Daily Low",  // Label text
+    10,           // Font size
+    tpTopRight,   // Label position
+    0,            // Offset X
+    0,            // Offset Y
+    PriceVariation
+  );
+end;
