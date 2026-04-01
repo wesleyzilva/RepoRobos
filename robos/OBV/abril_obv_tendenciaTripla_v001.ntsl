@@ -32,6 +32,7 @@ input
   HoraInicioH(9);
   HoraInicioM(15);
   ModoBacktestInicial(true);   // relaxa filtros para gerar operacoes no backtest inicial
+  MostrarAlertas(true);         // emite alerta sonoro quando 3 TFs alinham (nao funciona em backtest)
 
 var
   fOBV              : float;   // OBV acumulado (persiste entre barras)
@@ -170,6 +171,7 @@ begin
       if (fRisco > 0) and ((fTakeProfit - fEntrada) >= fRisco * RRR_Minimo) then
       begin
         BuyAtMarket;
+        if MostrarAlertas and bOBVAltaContexto then Alert(RGB(0, 200, 0)); // noqa:E12 — sonoro so quando 3 TFs alinhados
         iBarrasEmPosicao := 0;
       end;
     end;
@@ -186,6 +188,7 @@ begin
       if (fRisco > 0) and ((fEntrada - fTakeProfit) >= fRisco * RRR_Minimo) then
       begin
         SellShortAtMarket;
+        if MostrarAlertas and bOBVBaixaContexto then Alert(RGB(200, 0, 0)); // noqa:E12 — sonoro so quando 3 TFs alinhados
         iBarrasEmPosicao := 0;
       end;
     end;
