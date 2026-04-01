@@ -1,0 +1,12 @@
+begin
+  PlotText("MyText", clGreen);
+end;
+
+//Multiplos aativos
+input
+  A1("PETR4", feedBovespa);
+
+begin
+  if (A1.Close > Close) then
+    PlotText("MyText", clGreen);
+end;
