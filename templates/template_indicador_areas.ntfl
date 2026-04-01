@@ -107,7 +107,7 @@ begin
   // ─── SEÇÃO 4: TEXTO DE FORÇA (apenas indicador) ───────────────────────────
   if MostrarTextoForca and (abs(fForca) >= ForcaMinimaEntrada) then
   begin
-    // Format() não existe em NTSL — usar IntToStr(Round(x))
+    // Format() nao existe em NTSL - usar IntToStr(Round(x))
     if fForca >= ForcaMinimaEntrada then
       PlotText(IntToStr(Round(fForca)), RGB(0, 200, 0), 8, 0, Low * 0.998)
     else
