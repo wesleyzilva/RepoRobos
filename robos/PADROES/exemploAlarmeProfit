@@ -1,0 +1,8 @@
+begin
+  if (RSI(9, 0) < 70) then
+    begin
+      BuyAtMarket;
+    end
+  else if (RSI(9, 0) > 70) then
+    Alert(1);
+end;
