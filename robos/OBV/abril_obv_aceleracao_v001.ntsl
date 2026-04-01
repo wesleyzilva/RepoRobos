@@ -201,8 +201,8 @@ begin
     end;
 
     // VENDA: OBV acelerando para baixo + candle de força + volume
-    if (bAcelerandoBaixa and (fForca <= -ForcaMinimaCandle))
-       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+    if ((bAcelerandoBaixa and (fForca <= -ForcaMinimaCandle))
+       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
     begin
       fEntrada    := Close;
       fStopLoss   := Maxima(iJanelaDir) + BufferStop;

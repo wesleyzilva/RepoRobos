@@ -178,9 +178,9 @@ begin
     end;
 
     // VENDA: candle de força vendedora + OBV confirmando distribuição + volume
-    if (fForca <= -ForcaMinimaEntrada)
+    if ((fForca <= -ForcaMinimaEntrada)
        and (bOBVConfirmaVenda and bContextoBaixa)
-       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
     begin
       fEntrada    := Close;
       fStopLoss   := High + BufferStop;

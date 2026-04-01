@@ -202,8 +202,8 @@ begin
     end;
 
     // VENDA: breakout do OBV para baixo + candle de força + volume
-    if (bBreakoutBaixa and (fForca <= -ForcaMinimaCandle))
-       and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+    if ((bBreakoutBaixa and (fForca <= -ForcaMinimaCandle))
+       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
     begin
       fEntrada    := Close;
       fStopLoss   := High + BufferStop;
