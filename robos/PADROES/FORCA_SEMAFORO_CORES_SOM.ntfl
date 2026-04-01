@@ -15,11 +15,19 @@ input
   MostrarAlertas(true);              // habilita alertas sonoros
   UsarSegundoCheckpointAlerta(true); // se true, alerta só dispara acima do limiar abaixo
   ForcaMinimaAlerta(70);             // segundo checkpoint para alertar compra/venda
+  // --- Saídas ---
+  StopHorario_H(17);                 // hora do stop horário (fechamento forçado)
+  StopHorario_M(45);                 // minuto do stop horário
+  UsarStopCandleContra(true);        // fecha se candle forte na direção contrária
+  ForcaStopContra(55);               // limiar de força contrária para fechar posição
+  MaxBarrasEmPosicao(0);             // 0 = desativado; N = fecha após N barras
 
 var
   fCorpo, fRange, fVolMedia, fMassa, fAceleracao, fForca : float;
   fForcaAbs, fEscalaCor : float;
   r, g, b : integer;
+  iBarrasEmPosicao : integer;
+  bDeveOperar : boolean;
 
 begin
   // --- Cálculos de Base ---
@@ -86,8 +94,47 @@ begin
 
   PaintBar(RGB(r, g, b));
 
-  // --- REGRAS DE OPERAÇÃO (PARAMETRIZÁVEIS) ---
-  if HabilitarOperacoes then
+  // --- SAÍDAS ---
+
+  // Stop horário: fecha tudo e bloqueia novas entradas
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := true;
+
+  // Controle de barras em posição
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if (MaxBarrasEmPosicao > 0) and (iBarrasEmPosicao >= MaxBarrasEmPosicao) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    iBarrasEmPosicao := 0;
+    bDeveOperar := false;
+  end;
+
+  // Stop por candle contra: fecha se força forte na direção oposta
+  if UsarStopCandleContra then
+  begin
+    if IsBought and (fForca <= -ForcaStopContra) then
+    begin
+      ClosePosition;
+      iBarrasEmPosicao := 0;
+    end;
+    if IsSold and (fForca >= ForcaStopContra) then
+    begin
+      ClosePosition;
+      iBarrasEmPosicao := 0;
+    end;
+  end;
+
+  // --- ENTRADAS ---
+  if HabilitarOperacoes and bDeveOperar then
   begin
     // COMPRA
     if (fForca >= ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
@@ -96,6 +143,7 @@ begin
       if (not IsBought) and (not IsSold) then
       begin
         BuyAtMarket;
+        iBarrasEmPosicao := 0;
         if MostrarAlertas and ((not UsarSegundoCheckpointAlerta) or (fForcaAbs >= ForcaMinimaAlerta)) then
           Alert(RGB(0, 200, 0));
       end;
@@ -108,6 +156,7 @@ begin
       if (not IsBought) and (not IsSold) then
       begin
         SellShortAtMarket;
+        iBarrasEmPosicao := 0;
         if MostrarAlertas and ((not UsarSegundoCheckpointAlerta) or (fForcaAbs >= ForcaMinimaAlerta)) then
           Alert(RGB(200, 0, 0));
       end;
