@@ -163,7 +163,7 @@ begin
   begin
     // COMPRA: candle de força + OBV confirmando acumulação + volume
     if ((fForca >= ForcaMinimaEntrada)
-       and bOBVConfirmaCompra and bContextoAlta
+       and bOBVConfirmaCompra and bContextoAlta  // noqa:W01
        and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
     begin
       fEntrada    := Close;
