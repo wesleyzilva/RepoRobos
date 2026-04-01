@@ -1,1 +1,1 @@
-Agora com o contexto quero criar um robo que opere com sinal de OBV nos 3 timeframes, cores degrade á partir do sinal para entender se está ficando forte ou fraco nas cores dos candles
+Agora com o contexto quero criar um robo que opere com sinal de OBV nos 3 timeframes, cores degrade á partir do sinal para entender se está ficando forte ou fraco nas cores dos candles o sinal sonoro so deve apitar para compra ou venda nos 3 timeframes. e tem que ser um robo que faze operação para teste em backtest
