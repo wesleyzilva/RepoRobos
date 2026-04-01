@@ -3228,3 +3228,229 @@ Parser[186,26]: Depois de um statement deve vir " ; "
 Parser[187,27]: Faltou um " ) "
 Parser[250,1]: O código deve começar com begin
 Erro de Sintaxe
+
+{
+  Robo: ROB_OBV_ACELERACAO_V1
+  Descricao: Opera aceleração do OBV — quando o fluxo institucional está acelerando
+             (delta atual > delta anterior na mesma direção e crescendo).
+             Cor escala com a VELOCIDADE de mudança do OBV, não apenas o valor.
+             Verde escurecendo = OBV acelerando compra. Vermelho escurecendo = OBV acelerando venda.
+  Ativo: WIN B3 / WDO B3
+  Timeframe: TF3 (Gatilho) — padrão 5min, tripleta 30/15/5
+  Versao: 1.0
+  RRR_minimo: 2.0
+  SL_referencia: mínima/máxima local (Minima/Maxima de iJanelaDir barras) + BufferStop
+  Spread_descontado: 25 pts
+
+  Lógica de aceleração:
+    fMomentum1 = fOBV - fOBV[iJanelaDir]         → velocidade recente (TF2)
+    fMomentum2 = fOBV[iJanelaDir] - fOBV[iJanelaCtx]  → velocidade anterior (TF1)
+    fAceleracao = fMomentum1 - fMomentum2         → variação da velocidade
+
+    Aceleração ALTA:  fAceleracao > 0 AND fMomentum1 > 0
+      = OBV subindo MAIS rápido que antes → pressão compradora crescendo
+    Aceleração BAIXA: fAceleracao < 0 AND fMomentum1 < 0
+      = OBV caindo MAIS rápido que antes → pressão vendedora crescendo
+
+    Gradiente: intensidade proporcional a fAceleracao normalizada
+    Azul vivo = aceleração máxima para cima (ponto de entrada ideal)
+    Roxo vivo = aceleração máxima para baixo
+    Cinza/branco = desaceleração ou lateralização do OBV
+}
+
+input
+  iJanelaDir(3);
+  iJanelaCtx(6);
+  ForcaMinimaCandle(40.0);    // F=MA mínimo para confirmar entrada
+  VolumeMultiplicador(1.3);
+  RRR_Minimo(2.0);
+  BufferStop(5.0);
+  StopHorario_H(17);
+  StopHorario_M(45);
+  MaxBarrasEmPosicao(8);
+  HoraInicioH(9);
+  HoraInicioM(15);
+
+var
+  // OBV
+  fOBV              : float;
+  fMomentum1        : float;   // velocidade atual: fOBV - fOBV[iJanelaDir]
+  fMomentum2        : float;   // velocidade anterior: fOBV[iJanelaDir] - fOBV[iJanelaCtx]
+  fOBVAceleracao    : float;   // fMomentum1 - fMomentum2
+  fVolumeMedio      : float;
+  fOBVNorm          : float;   // aceleração normalizada -100..+100
+  // F = M × A
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fMassa            : float;
+  fAceleracao       : float;
+  fForca            : float;
+  // Sinais
+  bAcelerandoAlta   : boolean;  // OBV subindo mais rápido que antes
+  bAcelerandoBaixa  : boolean;  // OBV caindo mais rápido que antes
+  // Cores
+  iCorR, iCorG, iCorB : integer;
+  // Gestão
+  fEntrada          : float;
+  fStopLoss         : float;
+  fTakeProfit       : float;
+  fRisco            : float;
+  iBarrasEmPosicao  : integer;
+  // Time() retorna HHMMSS — comparar com H*10000+M*100 (div/mod nao existem)
+  bDeveOperar       : boolean;
+
+begin
+
+  // ─── SEÇÃO 1: OBV ACUMULADO ───────────────────────────────────────────────
+  if Close > Close[1] then
+    fOBV := fOBV + Volume
+  else if Close < Close[1] then
+    fOBV := fOBV - Volume;
+
+  fVolumeMedio := Media(20, Volume);
+
+  // ─── SEÇÃO 2: F = M × A ──────────────────────────────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+  fMassa       := fCorpoCandle / fRangeCandle;
+  if fVolumeMedio > 0 then fAceleracao := Volume / fVolumeMedio
+  else fAceleracao := 1;
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─── SEÇÃO 3: MOMENTUM E ACELERAÇÃO DO OBV ───────────────────────────────
+  fMomentum1     := fOBV - fOBV[iJanelaDir];              // velocidade recente
+  fMomentum2     := fOBV[iJanelaDir] - fOBV[iJanelaCtx]; // velocidade anterior
+  fOBVAceleracao := fMomentum1 - fMomentum2;              // variação da velocidade
+
+  // Aceleração de alta: OBV subindo e mais rápido que antes
+  bAcelerandoAlta  := (fMomentum1 > 0) and (fOBVAceleracao > 0);
+  // Aceleração de baixa: OBV caindo e mais rápido que antes
+  bAcelerandoBaixa := (fMomentum1 < 0) and (fOBVAceleracao < 0);
+
+  // Normalizar aceleração para gradiente (referência: volume médio × janela)
+  if fVolumeMedio > 0 then
+    fOBVNorm := (fOBVAceleracao / (fVolumeMedio * iJanelaDir + 1)) * 100
+  else
+    fOBVNorm := 0;
+  if fOBVNorm >  100 then fOBVNorm :=  100;
+  if fOBVNorm < -100 then fOBVNorm := -100;
+
+  // ─── SEÇÃO 4: GRADIENTE — ESCALA COM A ACELERAÇÃO ────────────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;
+
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255; // branco = indecisão
+  end
+  else if bAcelerandoAlta then
+  begin
+    if fForca >= ForcaMinimaCandle then
+    begin
+      // AZUL VIVO = aceleração máxima + candle confirmando → sinal ideal
+      iCorR := 0;
+      iCorG := 180 + Round((fOBVNorm / 100) * 75);
+      iCorB := 255;
+      if iCorG > 255 then iCorG := 255;
+    end
+    else
+    begin
+      // VERDE degradê = OBV acelerando mas candle ainda fraco
+      iCorG := 128 + Round((fOBVNorm / 100) * 127);
+      iCorR := 128 - Round((fOBVNorm / 100) * 128);
+      iCorB := 128 - Round((fOBVNorm / 100) * 128);
+      if iCorG > 255 then iCorG := 255;
+      if iCorR < 0   then iCorR := 0;
+      if iCorB < 0   then iCorB := 0;
+    end;
+  end
+  else if bAcelerandoBaixa then
+  begin
+    if fForca <= -ForcaMinimaCandle then
+    begin
+      // ROXO VIVO = aceleração máxima para baixo + candle confirmando
+      iCorR := 180 + Round((-fOBVNorm / 100) * 75);
+      iCorG := 0;
+      iCorB := 220;
+      if iCorR > 255 then iCorR := 255;
+    end
+    else
+    begin
+      // VERMELHO degradê = OBV acelerando para baixo mas candle fraco
+      iCorR := 128 + Round((-fOBVNorm / 100) * 127);
+      iCorG := 128 - Round((-fOBVNorm / 100) * 128);
+      iCorB := 128 - Round((-fOBVNorm / 100) * 128);
+      if iCorR > 255 then iCorR := 255;
+      if iCorG < 0   then iCorG := 0;
+      if iCorB < 0   then iCorB := 0;
+    end;
+  end;
+  // Desaceleração: permanece cinza (padrão) indicando fim do momentum
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
+  // Time() retorna HHMMSS como numero — comparar diretamente (div/mod nao existem)
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
+
+  // ─── SEÇÃO 6: CONTROLE DE BARRAS ─────────────────────────────────────────
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
+    ClosePosition;
+    iBarrasEmPosicao := 0;
+    bDeveOperar := false;
+  end;
+
+  // ─── SEÇÃO 7: ENTRADAS — ACELERAÇÃO + CANDLE CONFIRMADOR ─────────────────
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+    // COMPRA: OBV acelerando para cima + candle de força + volume
+    if (bAcelerandoAlta and (fForca >= ForcaMinimaCandle)
+       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
+    begin
+      fEntrada    := Close;
+      fStopLoss   := Minima(iJanelaDir) - BufferStop;
+      fRisco      := fEntrada - fStopLoss;
+      fTakeProfit := fEntrada + fRisco * RRR_Minimo;
+      if (fRisco > 0) and ((fTakeProfit - fEntrada) >= fRisco * RRR_Minimo) then
+      begin
+        BuyAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+    // VENDA: OBV acelerando para baixo + candle de força + volume
+    if ((bAcelerandoBaixa and (fForca <= -ForcaMinimaCandle))
+       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
+    begin
+      fEntrada    := Close;
+      fStopLoss   := Maxima(iJanelaDir) + BufferStop;
+      fRisco      := fStopLoss - fEntrada;
+      fTakeProfit := fEntrada - fRisco * RRR_Minimo;
+      if (fRisco > 0) and ((fEntrada - fTakeProfit) >= fRisco * RRR_Minimo) then
+      begin
+        SellShortAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+  end;
+
+end;
+
+Compilando ...
+Parser[193,28]: Depois de um statement deve vir " ; "
+Parser[208,28]: Depois de um statement deve vir " ; "
+Parser[219,1]: O código deve começar com begin
+Erro de Sintaxe
