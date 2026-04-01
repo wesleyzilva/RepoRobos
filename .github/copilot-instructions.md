@@ -66,6 +66,7 @@ qualquer       → perguntas WIN/WDO/ATR (resposta já está nas skills locais)
 | 4. Robô `.ntsl` completo do zero | **Claude Sonnet** |
 | 5. Avaliação estatística do backtest | **o3-mini** |
 | 6. Documentar / atualizar README | **GPT-4o-mini** |
+| 7. 🔍 Revisar / corrigir sintaxe NTSL | **GPT-4o-mini** + anexar `skills/skill_ntsl_syntax.md` |
 
 ---
 
@@ -402,7 +403,17 @@ Ao analisar resultados, sempre reportar:
 1. **Ao gerar código NTSL**: sempre incluir cabeçalho padrão, validar RRR antes de entrar, aplicar stop horário às 17:45, descontar spread/slippage nos comentários
 2. **Ao analisar dados CSV**: usar pandas/Python, separador `;`, encoding `latin1`, formato de data `%d/%m/%Y %H:%M:%S`
 3. **Ao sugerir entradas**: sempre indicar onde colocar o SL baseado na estrutura geométrica mais próxima, calcular SG mínimo como SL × 2.0
-4. **Ao criar indicadores**: usar `.ntfl`, pode usar PlotText/Alert/DrawArrow para visualização
+4. **Ao criar indicadores**: usar `.ntfl`, pode usar PlotText/Alert para visualização (DrawArrow inválido)
 5. **Ao falar de confluência**: citar quantas referências geométricas se sobrepõem e de que tipo
 6. **Ao otimizar**: advertir sobre overfitting se o período de teste < 90 dias ou < 100 trades
 7. **Idioma**: sempre responder em **português brasileiro**
+
+### 📋 Regra do Plano (OBRIGATÓRIO antes de criar qualquer robô)
+> Antes de gerar código NTSL, **sempre apresentar o plano** usando o template de `.github/prompts/plano_pre_robo.prompt.md` e **aguardar aprovação**.
+> O plano é uma tabela estruturada sem código que responde: hipótese, tripleta, SL, RRR, nome do arquivo.
+> Só gerar o código após o usuário dizer **"ok, gera"** ou equivalente.
+
+### ✅ Regra do TODO (rastreamento de progressão)
+> A cada atividade iniciada ou concluída, **atualizar o TODO** com os estados `in-progress` → `completed`.
+> Ao receber uma nova tarefa multi-etapa, criar o TODO antes de iniciar qualquer trabalho.
+> O TODO é o contrato de progresso com o usuário.

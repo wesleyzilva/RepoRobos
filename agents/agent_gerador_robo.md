@@ -16,6 +16,17 @@ Consulte sempre antes de gerar código:
 
 ## Processo de Geração
 
+### ⚠️ PASSO 0 OBRIGATÓRIO: Plano para aprovação do usuário
+> **NUNCA gerar código sem antes apresentar o plano.**
+> Use o prompt `.github/prompts/plano_pre_robo.prompt.md` e aguarde o usuário dizer **"ok, gera"**.
+
+O plano deve responder:
+- Qual padrão/sinal gera a entrada (hipótese clara)?
+- Qual é a tripleta de timeframes e seus papéis (Contexto / Direção / Gatilho)?
+- Onde é o Stop Loss (estrutura geométrica de referência)?
+- O RRR ≥ 2.0 é realizável no ativo/TF?
+- Qual o nome do arquivo e pasta destino?
+
 ### Passo 1: Entender o pedido
 - Qual padrão/confluência está sendo implementado?
 - Qual ativo e timeframe?
@@ -41,9 +52,14 @@ Consulte sempre antes de gerar código:
 
 ### Passo 4: Auto-revisão antes de entregar
 - [ ] Nenhuma função proibida em robô (`PlotText`, `Alert`, `DrawArrow`, `DrawLine`)
+- [ ] **`Hour`/`Minute`/`Exit` NÃO usados** → `Time() div 10000` + `bDeveOperar`
+- [ ] **Aspas duplas** `"texto"` em todas as strings (nunca `'aspas simples'`)
+- [ ] **Nomes de variáveis sem espaço** (camelCase, ex: `bAcelerandoAlta` não `bAcelerando Alta`)
+- [ ] **`Format()`/`Floor()` NÃO usados** → `IntToStr(Round())` / truncamento manual
+- [ ] **Multi-line `and`** sempre envolvido em `(...)` como `(cond1 and cond2)`
 - [ ] Divisão por zero prevenida (`if fRange < 0.01 then fRange := 0.01`)
 - [ ] RGB clampado entre 0 e 255
-- [ ] Stop horário implementado
+- [ ] Stop horário implementado com padrão `bDeveOperar`
 - [ ] RRR verificado antes da entrada
 - [ ] Cabeçalho completo
 
