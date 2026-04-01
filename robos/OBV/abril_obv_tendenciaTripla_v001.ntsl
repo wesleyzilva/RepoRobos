@@ -1,7 +1,7 @@
 {
   Robo: ROB_OBV_TENDENCIA_TRIPLA_V1
   Descricao: Opera quando OBV está crescendo nos 3 TFs da tripleta (Contexto + Direção + Gatilho).
-             Cor azul = alinhamento total. Verde/vermelho degradê = sinal parcial.
+             Cor usa apenas verde/vermelho em degradê, com maior intensidade quando os 3 TFs alinham.
   Ativo: WIN B3 / WDO B3
   Timeframe: TF3 (Gatilho) — padrão 5min, tripleta 30/15/5
   Versao: 1.0
@@ -93,8 +93,10 @@ begin
   begin
     if bOBVAltaContexto and bOBVAltaDirecao then
     begin
-      // AZUL = alinhamento total nos 3 TFs → sinal máximo
-      iCorR := 0; iCorG := 128; iCorB := 255;
+      // VERDE forte = alinhamento total nos 3 TFs
+      iCorG := 160 + Round((fOBVNorm / 100) * 95);
+      iCorR := 96  - Round((fOBVNorm / 100) * 96);
+      iCorB := 96  - Round((fOBVNorm / 100) * 96);
     end
     else
     begin
@@ -102,17 +104,19 @@ begin
       iCorG := 128 + Round((fOBVNorm / 100) * 127);
       iCorR := 128 - Round((fOBVNorm / 100) * 128);
       iCorB := 128 - Round((fOBVNorm / 100) * 128);
-      if iCorG > 255 then iCorG := 255;
-      if iCorR < 0   then iCorR := 0;
-      if iCorB < 0   then iCorB := 0;
     end;
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
   end
   else if fOBVNorm <= -10 then
   begin
     if bOBVBaixaContexto and bOBVBaixaDirecao then
     begin
-      // ROXO ESCURO = alinhamento total nos 3 TFs para baixo
-      iCorR := 80; iCorG := 0; iCorB := 200;
+      // VERMELHO forte = alinhamento total nos 3 TFs para baixo
+      iCorR := 160 + Round((-fOBVNorm / 100) * 95);
+      iCorG := 96  - Round((-fOBVNorm / 100) * 96);
+      iCorB := 96  - Round((-fOBVNorm / 100) * 96);
     end
     else
     begin
@@ -120,10 +124,10 @@ begin
       iCorR := 128 + Round((-fOBVNorm / 100) * 127);
       iCorG := 128 - Round((-fOBVNorm / 100) * 128);
       iCorB := 128 - Round((-fOBVNorm / 100) * 128);
-      if iCorR > 255 then iCorR := 255;
-      if iCorG < 0   then iCorG := 0;
-      if iCorB < 0   then iCorB := 0;
     end;
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
   end;
 
   PaintBar(RGB(iCorR, iCorG, iCorB));

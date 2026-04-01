@@ -2,7 +2,7 @@
   Robo: ROB_OBV_FMA_COMBINADO_V1
   Descricao: F=MA gera o sinal e define o gradiente. OBV filtra: só opera se volume
              institucional confirmar a mesma direção da força do candle.
-             Cor cheia (azul/roxo) = F=MA + OBV alinhados. Verde/vermelho = só F=MA.
+             Cor usa apenas verde/vermelho em degradê, mais intensa quando F=MA + OBV alinham.
   Ativo: WIN B3 / WDO B3
   Timeframe: TF3 (Gatilho) — padrão 5min, tripleta 30/15/5
   Versao: 1.0
@@ -101,8 +101,10 @@ begin
   begin
     if bOBVConfirmaCompra and bContextoAlta then
     begin
-      // AZUL = F=MA + OBV + contexto todos confirmam compra
-      iCorR := 0; iCorG := 150; iCorB := 255;
+      // VERDE forte = F=MA + OBV + contexto todos confirmam compra
+      iCorG := 160 + Round((fForca / 100) * 95);
+      iCorR := 96  - Round((fForca / 100) * 96);
+      iCorB := 96  - Round((fForca / 100) * 96);
     end
     else
     begin
@@ -110,17 +112,19 @@ begin
       iCorG := 128 + Round((fForca / 100) * 127);
       iCorR := 128 - Round((fForca / 100) * 128);
       iCorB := 128 - Round((fForca / 100) * 128);
-      if iCorG > 255 then iCorG := 255;
-      if iCorR < 0   then iCorR := 0;
-      if iCorB < 0   then iCorB := 0;
     end;
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
   end
   else if fForca <= -ForcaMinimaEntrada then
   begin
     if bOBVConfirmaVenda and bContextoBaixa then
     begin
-      // ROXO = F=MA + OBV + contexto todos confirmam venda
-      iCorR := 160; iCorG := 0; iCorB := 220;
+      // VERMELHO forte = F=MA + OBV + contexto todos confirmam venda
+      iCorR := 160 + Round((-fForca / 100) * 95);
+      iCorG := 96  - Round((-fForca / 100) * 96);
+      iCorB := 96  - Round((-fForca / 100) * 96);
     end
     else
     begin
@@ -128,10 +132,10 @@ begin
       iCorR := 128 + Round((-fForca / 100) * 127);
       iCorG := 128 - Round((-fForca / 100) * 128);
       iCorB := 128 - Round((-fForca / 100) * 128);
-      if iCorR > 255 then iCorR := 255;
-      if iCorG < 0   then iCorG := 0;
-      if iCorB < 0   then iCorB := 0;
     end;
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
   end;
 
   PaintBar(RGB(iCorR, iCorG, iCorB));

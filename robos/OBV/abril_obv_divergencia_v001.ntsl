@@ -2,7 +2,7 @@
   Robo: ROB_OBV_DIVERGENCIA_V1
   Descricao: Opera divergência entre preço e OBV. Preço caindo mas OBV subindo
              (acumulação) = compra. Preço subindo mas OBV caindo (distribuição) = venda.
-             Cor LARANJA = divergência detectada. Verde/vermelho = confirmação.
+             Cor usa apenas verde/vermelho em degradê, com maior intensidade na confirmação.
   Ativo: WIN B3 / WDO B3
   Timeframe: TF3 (Gatilho) — padrão 5min, tripleta 30/15/5
   Versao: 1.0
@@ -102,30 +102,44 @@ begin
   // ─── SEÇÃO 4: GRADIENTE DE CORES ─────────────────────────────────────────
   iCorR := 128; iCorG := 128; iCorB := 128; // cinza padrão
 
-  if bConfirmCompra then
-  begin
-    // AZUL = divergência de alta confirmada por candle de força
-    iCorR := 0; iCorG := 180; iCorB := 255;
-  end
-  else if bConfirmVenda then
-  begin
-    // ROXO = divergência de baixa confirmada por candle de força
-    iCorR := 160; iCorG := 0; iCorB := 220;
-  end
-  else if bDivAltaAtiva then
-  begin
-    // LARANJA = divergência de alta detectada, aguardando confirmação
-    iCorR := 255; iCorG := 140; iCorB := 0;
-  end
-  else if bDivBaixaAtiva then
-  begin
-    // AMARELO = divergência de baixa detectada, aguardando confirmação
-    iCorR := 255; iCorG := 215; iCorB := 0;
-  end
-  else if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
   begin
     // BRANCO = indecisão
     iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if bConfirmCompra then
+  begin
+    // VERDE forte = divergência de alta confirmada por candle de força
+    iCorG := 170 + Round((fForca / 100) * 85);
+    iCorR := 80  - Round((fForca / 100) * 80);
+    iCorB := 80  - Round((fForca / 100) * 80);
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if bConfirmVenda then
+  begin
+    // VERMELHO forte = divergência de baixa confirmada por candle de força
+    iCorR := 170 + Round((-fForca / 100) * 85);
+    iCorG := 80  - Round((-fForca / 100) * 80);
+    iCorB := 80  - Round((-fForca / 100) * 80);
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if bDivAltaAtiva then
+  begin
+    // VERDE médio = divergência de alta detectada, aguardando confirmação
+    iCorG := 150;
+    iCorR := 90;
+    iCorB := 90;
+  end
+  else if bDivBaixaAtiva then
+  begin
+    // VERMELHO médio = divergência de baixa detectada, aguardando confirmação
+    iCorR := 150;
+    iCorG := 90;
+    iCorB := 90;
   end
   else if fForca >= 20 then
   begin

@@ -2,8 +2,8 @@
   Robo: ROB_OBV_ACELERACAO_V1
   Descricao: Opera aceleração do OBV — quando o fluxo institucional está acelerando
              (delta atual > delta anterior na mesma direção e crescendo).
-             Cor escala com a VELOCIDADE de mudança do OBV, não apenas o valor.
-             Verde escurecendo = OBV acelerando compra. Vermelho escurecendo = OBV acelerando venda.
+             Cor escala com a VELOCIDADE de mudança do OBV, usando apenas verde/vermelho em degradê.
+             Verde = OBV acelerando compra. Vermelho = OBV acelerando venda.
   Ativo: WIN B3 / WDO B3
   Timeframe: TF3 (Gatilho) — padrão 5min, tripleta 30/15/5
   Versao: 1.0
@@ -118,11 +118,10 @@ begin
   begin
     if fForca >= ForcaMinimaCandle then
     begin
-      // AZUL VIVO = aceleração máxima + candle confirmando → sinal ideal
-      iCorR := 0;
-      iCorG := 180 + Round((fOBVNorm / 100) * 75);
-      iCorB := 255;
-      if iCorG > 255 then iCorG := 255;
+      // VERDE forte = aceleração máxima + candle confirmando
+      iCorG := 170 + Round((fOBVNorm / 100) * 85);
+      iCorR := 80  - Round((fOBVNorm / 100) * 80);
+      iCorB := 80  - Round((fOBVNorm / 100) * 80);
     end
     else
     begin
@@ -130,20 +129,19 @@ begin
       iCorG := 128 + Round((fOBVNorm / 100) * 127);
       iCorR := 128 - Round((fOBVNorm / 100) * 128);
       iCorB := 128 - Round((fOBVNorm / 100) * 128);
-      if iCorG > 255 then iCorG := 255;
-      if iCorR < 0   then iCorR := 0;
-      if iCorB < 0   then iCorB := 0;
     end;
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
   end
   else if bAcelerandoBaixa then
   begin
     if fForca <= -ForcaMinimaCandle then
     begin
-      // ROXO VIVO = aceleração máxima para baixo + candle confirmando
-      iCorR := 180 + Round((-fOBVNorm / 100) * 75);
-      iCorG := 0;
-      iCorB := 220;
-      if iCorR > 255 then iCorR := 255;
+      // VERMELHO forte = aceleração máxima para baixo + candle confirmando
+      iCorR := 170 + Round((-fOBVNorm / 100) * 85);
+      iCorG := 80  - Round((-fOBVNorm / 100) * 80);
+      iCorB := 80  - Round((-fOBVNorm / 100) * 80);
     end
     else
     begin
@@ -151,10 +149,10 @@ begin
       iCorR := 128 + Round((-fOBVNorm / 100) * 127);
       iCorG := 128 - Round((-fOBVNorm / 100) * 128);
       iCorB := 128 - Round((-fOBVNorm / 100) * 128);
-      if iCorR > 255 then iCorR := 255;
-      if iCorG < 0   then iCorG := 0;
-      if iCorB < 0   then iCorB := 0;
     end;
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
   end;
   // Desaceleração: permanece cinza (padrão) indicando fim do momentum
 

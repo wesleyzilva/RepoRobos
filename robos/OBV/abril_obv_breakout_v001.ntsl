@@ -2,7 +2,7 @@
   Robo: ROB_OBV_BREAKOUT_V1
   Descricao: Opera quando o OBV rompe o delta máximo ou mínimo das últimas iJanelaCtx barras.
              Breakout do OBV = pressão institucional acumulada se liberando.
-             Cor AMARELA intensa = pré-breakout. AZUL/ROXO = breakout confirmado.
+             Cor usa apenas verde/vermelho em degradê, mais intensa quando o breakout confirma.
   Ativo: WIN B3 / WDO B3
   Timeframe: TF3 (Gatilho) — padrão 5min, tripleta 30/15/5
   Versao: 1.0
@@ -112,31 +112,43 @@ begin
   end
   else if bBreakoutAlta and (fForca >= ForcaMinimaCandle) then
   begin
-    // AZUL INTENSO = breakout de OBV para cima + candle confirmando
-    iCorR := 0;
-    iCorG := 100 + Round((fOBVNorm / 100) * 155);
-    iCorB := 255;
+    // VERDE forte = breakout de OBV para cima + candle confirmando
+    iCorG := 170 + Round((fOBVNorm / 100) * 85);
+    iCorR := 80  - Round((fOBVNorm / 100) * 80);
+    iCorB := 80  - Round((fOBVNorm / 100) * 80);
     if iCorG > 255 then iCorG := 255;
-    if iCorG < 0   then iCorG := 0;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
   end
   else if bBreakoutAlta then
   begin
-    // AMARELO = breakout de OBV para cima, candle ainda fraco
-    iCorR := 255; iCorG := 215; iCorB := 0;
+    // VERDE médio = breakout de OBV para cima, candle ainda fraco
+    iCorG := 150 + Round((fOBVNorm / 100) * 60);
+    iCorR := 110 - Round((fOBVNorm / 100) * 70);
+    iCorB := 110 - Round((fOBVNorm / 100) * 70);
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
   end
   else if bBreakoutBaixa and (fForca <= -ForcaMinimaCandle) then
   begin
-    // ROXO INTENSO = breakout de OBV para baixo + candle confirmando
-    iCorR := 100 + Round((-fOBVNorm / 100) * 155);
-    iCorG := 0;
-    iCorB := 220;
+    // VERMELHO forte = breakout de OBV para baixo + candle confirmando
+    iCorR := 170 + Round((-fOBVNorm / 100) * 85);
+    iCorG := 80  - Round((-fOBVNorm / 100) * 80);
+    iCorB := 80  - Round((-fOBVNorm / 100) * 80);
     if iCorR > 255 then iCorR := 255;
-    if iCorR < 0   then iCorR := 0;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
   end
   else if bBreakoutBaixa then
   begin
-    // LARANJA = breakout de OBV para baixo, candle ainda fraco
-    iCorR := 255; iCorG := 140; iCorB := 0;
+    // VERMELHO médio = breakout de OBV para baixo, candle ainda fraco
+    iCorR := 150 + Round((-fOBVNorm / 100) * 60);
+    iCorG := 110 - Round((-fOBVNorm / 100) * 70);
+    iCorB := 110 - Round((-fOBVNorm / 100) * 70);
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
   end
   else if fOBVNorm >= 10 then
   begin
