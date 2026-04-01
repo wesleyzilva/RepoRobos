@@ -1,0 +1,115 @@
+begin
+  Plot(Close - Close[2]);
+end;
+
+begin
+  Plot (Open  - Open[2] );
+  Plot2(Close - Close[2]);
+end;
+
+const
+  sLimiar = 1.01;
+
+begin
+  Plot(Close);
+  if ((Open * sLimiar) < Close)
+    then SetPlotColor(1, clGreen)
+    else SetPlotColor(1, clRed);
+end;
+
+input
+  Period(2);
+  Value(Close);
+var
+  sSum   : Float;
+  nIndex : Integer;
+begin
+  sSum := 0;
+  for nIndex := 0 to Period-1 do
+    sSum := sSum + Value[nIndex];
+  Plot(sSum/Period);
+end;
+
+var
+  sDiff : Float;
+ 
+procedure MyPaintBar(sPaintValue : Float);
+begin
+  if sPaintValue > 0 then
+    PaintBar(clGreen);
+  if sPaintValue < 0 then
+    PaintBar(clRed);
+end;
+ 
+function MyDiff(sValue1, sValue2 : Float): Float;
+begin
+  Result := sValue1 - sValue2;
+end;
+ 
+begin
+  sDiff := MyDiff(CLOSE,OPEN);
+  MyPaintBar(sDiff);
+  Plot(sDiff);
+end;
+
+{
+  This code demonstrates how to use multiple assets and intervals within NTSL.
+  It shows how to declare an additional asset (with a different time interval)
+  and apply indicators such as SMA and EMA to that asset for plotting purposes.
+}
+
+const
+{
+  For using the same asset as the main strategy but with another interval, it can be
+  called like this. An example with all parameters can be seen below.
+}
+  CurrentAsset10Secs = Asset(GetAsset, itSecond, 10);
+
+input
+{
+  Parameters necessary for an Asset:
+  Asset(Ticker : String, Exchange : Const, Interval : Interval, Offset : Integer, Factor : Integer)
+
+  Ticker: String – Asset ticker symbol.
+  Exchange: Const – Exchange where the asset is listed.
+  Interval: Interval [Optional] – Defines the Interval type (e.g., itMinute, itDaily).
+  Offset: Integer [Optional] – Defines the numeric value of the Interval.
+  Factor: Integer [Optional] – Applicable only for point-and-figure type charts.
+}
+  WDOFUT("WDOFUT", feedBMF, itMinute, 1);
+
+begin
+  { Example with Close: }
+  Plot(WDOFUT.Close);
+
+  { Example for other time period of current asset }
+  Plot2(CurrentAsset10Secs.Open);
+
+  { Example with SMA and EMA }
+  Plot3(WDOFUT.SMA(20));
+  Plot4(WDOFUT.EMA(20));
+
+  {
+    Available book values:
+
+    GetFeed, GetAsset, AskPrice, AskSize, BidPrice, BidSize, BookSpread, Lote,
+    MinPriceIncrement, Strike, Close, Volume, Quantity, Open, High, Low
+  }
+
+  {
+    Available indicators:
+
+    ADX, AccuDistr, AccuDistrW, AgressionVolBalance, AgressionVolBuy,
+    AgressionVolSell, ArmsEaseOfMov, AroonLin, AroonOsc, AvgSeparation,
+    AvgTrueRange, BalanceOfPower, BollingerBandW, BollingerBands, CCI,
+    ChaikinMoneyFlow, ContadorDeCandle, DiDiIndex, DiPDiM, DonchianCh,
+    Envelope, FastStochastic, FastWMA, ForceIndex, FrassonATR,
+    FullStochastic, FuraChao, FuraTeto, HILOActivator, HistVolatility,
+    IchimokuCloud, KVO, KeltnerCh, MACD, MFI, MIMA, MIMAROC, Momentum,
+    MomentumStochastic, MoneyFlow, MoneyFlowIndex, OBV, OBVAvg, ParabolicSAR,
+    Phibo, Pivot, PriceVolumeTrend, PriorCote, Ravi, RenkoVTwo, ROC, RSI,
+    RSIStochastic, SafeZoneDownTrend, SafeZoneUpTrend, Santo, SlowStochastic,
+    StopATR, Tilson, TopBottomDetector, TRIX, TRIXM, VWAP, VWAPDate,
+    VWAPMonthly, VWAPWeekly, VWMA, Williams
+  }
+end;
