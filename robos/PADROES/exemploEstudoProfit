@@ -89,3 +89,372 @@ begin
     PriceVariation
   );
 end;
+//----------------
+// This script calculates the size of price gaps
+// and plots vertical lines when gaps exceed a minimum threshold
+
+input
+  nMinDiff(0); // Minimum difference to consider a valid gap
+
+var
+  nGap : integer; // Gap size between current open and previous close
+
+begin
+  // Calculate the gap between current open and previous close
+  nGap := Open - Close[1];
+
+  // If the gap is positive and greater than threshold, plot green vertical line
+  if nGap > nMinDiff then
+    VerticalLineCustom(
+      clGreen,  // Line color
+      3,        // Line width
+      0,        // Style (solid)
+      nGap,     // Value (gap size)
+      12,       // Font size (label)
+      1,        // Label position
+      Open,     // Line start price
+      Close[1]  // Line end price
+    );
+
+  // If the gap is negative and lower than threshold, plot red vertical line
+  if nGap < -nMinDiff then
+    VerticalLineCustom(
+      clRed,    // Line color
+      3,        // Line width
+      0,        // Style (solid)
+      nGap,     // Value (gap size)
+      12,       // Font size (label)
+      2,        // Label position
+      Close[1], // Line start price
+      Open      // Line end price
+    );
+end;
+
+// This script plots candles based on daily stats
+// In result,shows slices of the daily candle. 
+begin
+  PlotCandle(OpenD(0), HighD(0), LowD(0), CloseD(0));
+end;
+{
+  What does: Draws LineSegments between:
+      - High  of last week and High  of this week
+      - Low   of last week and Low   of this week
+      - Close of last week and Close of this week
+  How:
+      - Iterates through the bars, colecting information
+        - High, including it's date, and time
+        - Low, including it's date, and time
+        - First Bar Index
+      - Draws the lines using the information
+}
+var
+    // Highs and Lows
+    sHigh_LastWeek:         Float;
+    sLow_LastWeek:          Float;
+    sHigh_ThisWeek:         Float;
+    sLow_ThisWeek:          Float;
+
+    // Dates
+    nDateHigh_LastWeek:     Integer;
+    nDateLow_LastWeek:      Integer;
+    nDateHigh_ThisWeek:     Integer;
+    nDateLow_ThisWeek:      Integer;
+
+    // Times
+    nTimeHigh_LastWeek:     Integer;
+    nTimeLow_LastWeek:      Integer;
+    nTimeHigh_ThisWeek:     Integer;
+    nTimeLow_ThisWeek:      Integer;
+
+    // Sundays
+    nSunday_ThisWeek:       Integer;
+    nSunday_LastWeek:       Integer;
+
+    // First bar information
+    bColectedFirstBarInfo:  Boolean;
+    nFirstBar:              Integer;
+    nDateFirstBar:          Integer;
+    nTimeFirstBar:          Integer;
+begin
+    // Calculate sundays's dates, to divide the weeks
+    nSunday_ThisWeek := CalcDate(CurrentDate, -DayOfWeek(CurrentDate));
+    nSunday_LastWeek := CalcDate(nSunday_ThisWeek, -7);
+
+    // If this bar is from last week
+    if ((Date >= nSunday_LastWeek) and (Date < nSunday_ThisWeek)) then
+      begin
+
+        // If it equals last week's High/Low and update
+        if (High >= HighW(0)) then
+          begin
+            nDateHigh_LastWeek  := Date;
+            nTimeHigh_LastWeek  := Time;
+            sHigh_LastWeek      := HighW(0);
+          end;
+        if (Low <= LowW(0)) then
+          begin
+            nDateLow_LastWeek   := Date;
+            nTimeLow_LastWeek   := Time;
+            sLow_LastWeek       := LowW(0);
+          end;
+
+        // If first bar info was not colected yet, colect it.
+        if (not bColectedFirstBarInfo) then
+          begin
+            nDateFirstBar           := Date;
+            nTimeFirstBar           := Time;
+            bColectedFirstBarInfo   := True;
+          end;
+      end;
+
+    // If this bar is from this week
+    if (Date >= nSunday_ThisWeek) then
+      begin
+
+        // If it equals this week's High/Low and update
+        if (High >= HighW(0)) then
+          begin
+            nDateHigh_ThisWeek  := Date;
+            nTimeHigh_ThisWeek  := Time;
+            sHigh_ThisWeek      := HighW(0);
+          end;
+        if (Low <= LowW(0)) then
+          begin
+            nDateLow_ThisWeek   := Date;
+            nTimeLow_ThisWeek   := Time;
+            sLow_ThisWeek       := LowW(0);
+          end;
+      end;
+
+    // High-to-High Line
+    LineSegment(
+        sHigh_LastWeek,             // Starting Price
+        sHigh_ThisWeek,             // Ending Price
+        nDateHigh_LastWeek,         // Start Date
+        nDateHigh_ThisWeek,         // End Date
+        False,                      // Extrapolate
+        "Gap Between Highs",        // Text
+        CLGREEN,                    // Color
+        2.8,                        // Line Width
+        psSolid,                    // Style
+        10,                         // Font Size
+        tpTopLeft,                  // Text Position
+        nTimeHigh_LastWeek,         // Start Time
+        nTimeHigh_ThisWeek          // End Time
+    );
+
+    // Low-to-Low Line
+    LineSegment(
+        sLow_LastWeek,              // Starting Price
+        sLow_ThisWeek,              // Ending Price
+        nDateLow_LastWeek,          // Start Date
+        nDateLow_ThisWeek,          // End Date
+        False,                      // Extrapolate
+        "Gap Between Lows",         // Text
+        CLRED,                      // Color
+        2.8,                        // Line Width
+        psSolid,                    // Style
+        10,                         // Font Size
+        tpTopLeft,                  // Text Position
+        nTimeLow_LastWeek,          // Start Time
+        nTimeLow_ThisWeek           // End Time
+    );
+    
+    // Line from last week's Open to this week's Close, for comparison
+    LineSegment(
+        OpenW(1),                   // Starting Price
+        Close,                      // Ending Price
+        nDateFirstBar,              // Start Date
+        Date,                       // End Date
+        False,                      // Extrapolate
+        "Last Week Open To Close",  // Text
+        CLYELLOW,                   // Color
+        2.8,                        // Line Width
+        psSolid,                    // Style
+        10,                         // Font Size
+        tpBottomLeft,               // Text Position
+        nTimeFirstBar,              // Start Time
+        Time                        // End Time
+    );
+end;
+
+{
+  What does:
+      Draws a line between the average point of last week and this
+      week, and extrapolates it forward.
+  How:
+      - Iterates through bars colecting information:
+          - Indexes of the extreme bars
+          - Sum of the closes
+      - Compute data:
+          - Total number of bars
+          - Average close
+          - Middle bar
+          - Date and time of middle bars
+      - Draws the line
+      - Draws the week's divisor bars
+}
+var
+    // Number of Bars
+    nBars_LastWeek:             Integer;
+    nBars_ThisWeek:             Integer;
+
+    // Close Sums
+    sSum_Closes_LastWeek:       Float;
+    sSum_Closes_ThisWeek:       Float;
+
+    // Averages
+    sAverageClose_LastWeek:     Float;
+    sAverageClose_ThisWeek:     Float;
+
+    // Extremes
+    nFirstBar_LastWeek:         Integer;
+    nFirstBar_ThisWeek:         Integer;
+    nLastBar_LastWeek:          Integer;
+    nLastBar_ThisWeek:          Integer;
+
+    // Control
+    bIsSet_FirstBar_LastWeek:   Boolean;
+    bIsSet_FirstBar_ThisWeek:   Boolean;
+    bIsSet_LastBar_LastWeek:    Boolean;
+    bIsSet_LastBar_ThisWeek:    Boolean;
+
+    // Middles
+    nMidBar_LastWeek:           Integer;
+    nMidBar_ThisWeek:           Integer;
+    nMidDate_LastWeek:          Integer;
+    nMidDate_ThisWeek:          Integer;
+    nMidTime_LastWeek:          Integer;
+    nMidTime_ThisWeek:          Integer;
+
+    // Sundays
+    nSunday_ThisWeek:           Integer;
+    nSunday_LastWeek:           Integer;
+
+    // Control to Draw the VerticalLines
+    bBarIsFromLastWeek:         Boolean;
+    bBarIsFromThisWeek:         Boolean;
+begin
+    // Calculate this sunday
+    // by subtracting the current DayOfWeek
+    nSunday_ThisWeek := CalcDate(CurrentDate, -DayOfWeek(CurrentDate));
+    
+    // Calculate last sunday
+    // by subtracting 7 days from this sunday
+    nSunday_LastWeek := CalcDate(nSunday_ThisWeek, -7);
+
+    // Detect if the date of the current bar belongs to last week
+    if ((Date >= nSunday_LastWeek) and (Date < nSunday_ThisWeek)) then
+      begin
+        sSum_Closes_LastWeek  := sSum_Closes_LastWeek   + Close;
+
+        // Initialize or calculate the first
+        // Computes the max bar index of the week, to find the first bar
+        if not bIsSet_FirstBar_LastWeek then
+          begin
+            // Initialize
+            nFirstBar_LastWeek := MaxBarsForward;
+            bIsSet_FirstBar_LastWeek := True;
+          end
+        else if (MaxBarsForward > nFirstBar_LastWeek) then
+          begin
+            // Update
+            nFirstBar_LastWeek  := MaxBarsForward;
+          end;
+
+        // Initialize or calculate the last
+        // Computes the min bar index of the week, to find the last bar
+        if not bIsSet_LastBar_LastWeek then
+          begin
+            // Initialize
+            nLastBar_LastWeek := MaxBarsForward;
+            bIsSet_LastBar_LastWeek := True;
+          end
+        else if (MaxBarsForward < nLastBar_LastWeek) then
+          begin
+            // Update
+            nLastBar_LastWeek   := MaxBarsForward;
+          end;
+
+        // Detect week transition to draw vertical line
+        if (not bBarIsFromLastWeek) then
+          begin
+            VerticalLineCustom(CLWHITE, 2.8, psDASH, "");
+          end;
+        bBarIsFromLastWeek := True;
+      end;
+
+    // Detect if the date of the current bar belongs to this week
+    if (Date >= nSunday_ThisWeek) then
+      begin
+        sSum_Closes_ThisWeek  := sSum_Closes_ThisWeek   + Close;
+
+        // Initialize or calculate the first
+        // Computes the max bar index of the week, to find the first bar
+        if not bIsSet_FirstBar_ThisWeek then
+          begin
+            // Initialize
+            nFirstBar_ThisWeek := MaxBarsForward;
+            bIsSet_FirstBar_ThisWeek := True;
+          end
+        else if (MaxBarsForward > nFirstBar_ThisWeek) then
+          begin
+            // Update
+            nFirstBar_ThisWeek  := MaxBarsForward;
+          end;
+
+        // Initialize or calculate the last
+        // Computes the min bar index of the week, to find the last bar
+        if not bIsSet_LastBar_ThisWeek then
+          begin
+            // Initialize
+            nLastBar_ThisWeek := MaxBarsForward;
+            bIsSet_LastBar_ThisWeek := True;
+          end
+        else if (MaxBarsForward < nLastBar_ThisWeek) then
+          begin
+            // Update
+            nLastBar_ThisWeek   := MaxBarsForward;
+          end;
+
+        // Detect week transition to draw vertical line
+        if (not bBarIsFromThisWeek) then
+          begin
+            VerticalLineCustom(CLWHITE, 2.8, psDASH, "");
+          end;
+        bBarIsFromThisWeek := True;
+      end;
+
+    // Calculate the number of bars
+    nBars_LastWeek := nFirstBar_LastWeek - nLastBar_LastWeek + 1;
+    nBars_ThisWeek := nFirstBar_ThisWeek - nLastBar_ThisWeek + 1;
+
+    // Calculate averages
+    sAverageClose_LastWeek := sSum_Closes_LastWeek / nBars_LastWeek;
+    sAverageClose_ThisWeek := sSum_Closes_ThisWeek / nBars_ThisWeek;
+
+    // Calculate middles
+    nMidBar_LastWeek    := IntPortion((nFirstBar_LastWeek + nLastBar_LastWeek) / 2);
+    nMidBar_ThisWeek    := IntPortion((nFirstBar_ThisWeek + nLastBar_ThisWeek) / 2);
+    nMidDate_LastWeek   := Date[nMidBar_LastWeek];
+    nMidDate_ThisWeek   := Date[nMidBar_ThisWeek];
+    nMidTime_LastWeek   := Time[nMidBar_LastWeek];
+    nMidTime_ThisWeek   := Time[nMidBar_ThisWeek];
+
+    // Line from average to average
+    LineSegment(
+        sAverageClose_LastWeek,         // Initial Price
+        sAverageClose_ThisWeek,         // Final Price
+        nMidDate_LastWeek,              // Initial Date
+        nMidDate_ThisWeek,              // Final Date
+        True,                           // Extrapolate
+        "Tendence between averages",    // Text
+        CLYELLOW,                       // Color
+        2.8,                            // Line Width
+        psSolid,                        // Style
+        10,                             // Font Size
+        tpTopLeft,                      // Text Position
+        nMidTime_LastWeek,              // Initial Time
+        nMidTime_ThisWeek               // Final Time
+    );
+end;
