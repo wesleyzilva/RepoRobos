@@ -35,6 +35,7 @@ input
   MaxBarrasEmPosicao(8);
   HoraInicioH(9);
   HoraInicioM(15);
+  ModoBacktestInicial(true);   // relaxa filtros para gerar operacoes no backtest inicial
 
 var
   // OBV
@@ -193,7 +194,8 @@ begin
   if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
     // COMPRA: divergência de alta confirmada + volume
-    if bConfirmCompra and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+     if ((ModoBacktestInicial and bDivAltaAtiva and (fForca > 0))
+       or (bConfirmCompra and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador)))) then
     begin
       fEntrada    := Close;
       fStopLoss   := Low - BufferStop;  // Minima() invalida — usar Low do candle gatilho
@@ -207,7 +209,8 @@ begin
     end;
 
     // VENDA: divergência de baixa confirmada + volume
-    if bConfirmVenda and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+     if ((ModoBacktestInicial and bDivBaixaAtiva and (fForca < 0))
+       or (bConfirmVenda and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador)))) then
     begin
       fEntrada    := Close;
       fStopLoss   := High + BufferStop;  // Maxima() invalida — usar High do candle gatilho

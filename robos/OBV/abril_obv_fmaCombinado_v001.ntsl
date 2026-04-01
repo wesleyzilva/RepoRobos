@@ -31,6 +31,7 @@ input
   MaxBarrasEmPosicao(8);
   HoraInicioH(9);
   HoraInicioM(15);
+  ModoBacktestInicial(true);   // relaxa filtros para gerar operacoes no backtest inicial
 
 var
   // F = M × A
@@ -166,9 +167,10 @@ begin
   if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
     // COMPRA: candle de força + OBV confirmando acumulação + volume
-    if ((fForca >= ForcaMinimaEntrada)
-       and bOBVConfirmaCompra and bContextoAlta  // noqa:W01
-       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
+     if (((ModoBacktestInicial and (fForca >= 10) and (fOBVDeltaDir > 0) and bContextoAlta)
+       or ((fForca >= ForcaMinimaEntrada)
+       and bOBVConfirmaCompra and bContextoAlta))  // noqa:W01
+       and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador))) then
     begin
       fEntrada    := Close;
       fStopLoss   := Low - BufferStop;
@@ -182,9 +184,10 @@ begin
     end;
 
     // VENDA: candle de força vendedora + OBV confirmando distribuição + volume
-    if ((fForca <= -ForcaMinimaEntrada)
-       and (bOBVConfirmaVenda and bContextoBaixa)
-       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
+     if (((ModoBacktestInicial and (fForca <= -10) and (fOBVDeltaDir < 0) and bContextoBaixa)
+       or ((fForca <= -ForcaMinimaEntrada)
+       and (bOBVConfirmaVenda and bContextoBaixa)))
+       and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador))) then
     begin
       fEntrada    := Close;
       fStopLoss   := High + BufferStop;

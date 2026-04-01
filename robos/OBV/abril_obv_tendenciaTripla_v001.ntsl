@@ -31,6 +31,7 @@ input
   MaxBarrasEmPosicao(8);
   HoraInicioH(9);
   HoraInicioM(15);
+  ModoBacktestInicial(true);   // relaxa filtros para gerar operacoes no backtest inicial
 
 var
   fOBV              : float;   // OBV acumulado (persiste entre barras)
@@ -158,8 +159,9 @@ begin
   if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
     // COMPRA: OBV crescente nos 3 TFs + volume confirmando
-    if (bOBVAltaContexto and bOBVAltaDirecao and bOBVAltaGatilho
-       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
+     if ((((ModoBacktestInicial and bOBVAltaDirecao and bOBVAltaGatilho)
+       or (bOBVAltaContexto and bOBVAltaDirecao and bOBVAltaGatilho))
+       and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador)))) then
     begin
       fEntrada    := Close;
       fStopLoss   := Low - BufferStop;
@@ -173,8 +175,9 @@ begin
     end;
 
     // VENDA: OBV decrescente nos 3 TFs + volume confirmando
-    if (bOBVBaixaContexto and bOBVBaixaDirecao and bOBVBaixaGatilho
-       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
+     if ((((ModoBacktestInicial and bOBVBaixaDirecao and bOBVBaixaGatilho)
+       or (bOBVBaixaContexto and bOBVBaixaDirecao and bOBVBaixaGatilho))
+       and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador)))) then
     begin
       fEntrada    := Close;
       fStopLoss   := High + BufferStop;

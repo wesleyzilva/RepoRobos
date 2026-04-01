@@ -39,6 +39,7 @@ input
   MaxBarrasEmPosicao(8);
   HoraInicioH(9);
   HoraInicioM(15);
+  ModoBacktestInicial(true);   // relaxa filtros para gerar operacoes no backtest inicial
 
 var
   // OBV
@@ -184,8 +185,9 @@ begin
   if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
     // COMPRA: OBV acelerando para cima + candle de força + volume
-    if (bAcelerandoAlta and (fForca >= ForcaMinimaCandle)
-       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
+     if (bAcelerandoAlta
+       and ((ModoBacktestInicial and (fForca > 0)) or (fForca >= ForcaMinimaCandle))
+       and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador))) then
     begin
       fEntrada    := Close;
       fStopLoss   := Low - BufferStop;  // Minima() invalida — usar Low do candle gatilho
@@ -199,8 +201,9 @@ begin
     end;
 
     // VENDA: OBV acelerando para baixo + candle de força + volume
-    if ((bAcelerandoBaixa and (fForca <= -ForcaMinimaCandle))
-       and (Volume >= fVolumeMedio * VolumeMultiplicador)) then
+     if (bAcelerandoBaixa
+       and ((ModoBacktestInicial and (fForca < 0)) or (fForca <= -ForcaMinimaCandle))
+       and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador))) then
     begin
       fEntrada    := Close;
       fStopLoss   := High + BufferStop;  // Maxima() invalida — usar High do candle gatilho

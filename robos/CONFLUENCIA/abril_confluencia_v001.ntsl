@@ -24,6 +24,7 @@ input
   MaxBarrasEmPosicao(8);
   CapitalConta(10000.0);
   RiscoPorcentagem(2.0);
+  ModoBacktestInicial(true);      // relaxa filtros para gerar operacoes no backtest inicial
 
 var
   fCorpoCandle      : float;
@@ -172,15 +173,15 @@ begin
        (Open[3]  >= fZonaVendaMin - ToleranciaZona) then
       iConfluenciasVenda := iConfluenciasVenda + 1;
 
-  bNaZonaCompra := (iConfluenciasCompra >= 2) and
+  bNaZonaCompra := (((ModoBacktestInicial and (iConfluenciasCompra >= 1)) or (iConfluenciasCompra >= 2))) and
                    (Close >= fZonaCompraMin - ToleranciaZona) and
                    (Close <= fZonaCompraMax + ToleranciaZona);
 
-  bNaZonaVenda  := (iConfluenciasVenda >= 2) and
+  bNaZonaVenda  := (((ModoBacktestInicial and (iConfluenciasVenda >= 1)) or (iConfluenciasVenda >= 2))) and
                    (Close >= fZonaVendaMin  - ToleranciaZona) and
                    (Close <= fZonaVendaMax  + ToleranciaZona);
 
-  bVolConfirmado := (Volume >= fVolumeMedio * VolumeMultiplicador);
+  bVolConfirmado := ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador);
 
   bSinalCompra := bNaZonaCompra and
                   (fForca >= ForcaMinimaEntrada) and

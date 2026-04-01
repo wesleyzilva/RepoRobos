@@ -29,6 +29,7 @@ input
   MaxBarrasEmPosicao(8);
   HoraInicioOperacao_H(9);
   HoraInicioOperacao_M(15);
+  ModoBacktestInicial(true);      // relaxa filtros para gerar operacoes no backtest inicial
 
 var
   fCorpoCandle         : float;
@@ -130,13 +131,13 @@ begin
 
   PaintBar(RGB(iCorR, iCorG, iCorB));
 
-  bSemVerdeCompra := (fForca >= ForcaMinimaEntrada) and
-                     bContextoAlta and bDirecaoAlta and
-                     (Volume >= fVolumeMedio * VolumeMultiplicador);
+  bSemVerdeCompra := (((ModoBacktestInicial and (fForca >= 10) and (bContextoAlta or bDirecaoAlta))
+                     or ((fForca >= ForcaMinimaEntrada) and bContextoAlta and bDirecaoAlta))
+                     and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador)));
 
-  bSemVerdeVenda  := (fForca <= -ForcaMinimaEntrada) and
-                     bContextoBaixa and bDirecaoBaixa and
-                     (Volume >= fVolumeMedio * VolumeMultiplicador);
+  bSemVerdeVenda  := (((ModoBacktestInicial and (fForca <= -10) and (bContextoBaixa or bDirecaoBaixa))
+                     or ((fForca <= -ForcaMinimaEntrada) and bContextoBaixa and bDirecaoBaixa))
+                     and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador)));
 
   if bSemVerdeCompra then
     iContadorCompra := iContadorCompra + 1
@@ -148,7 +149,8 @@ begin
   else
     iContadorVenda := 0;
 
-  bEntradaConfirmada := (iContadorCompra >= 2) or (iContadorVenda >= 2);
+  bEntradaConfirmada := ((ModoBacktestInicial and ((iContadorCompra >= 1) or (iContadorVenda >= 1)))
+                      or (iContadorCompra >= 2) or (iContadorVenda >= 2));
 
   if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
   begin

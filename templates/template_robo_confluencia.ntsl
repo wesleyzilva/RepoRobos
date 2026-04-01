@@ -26,6 +26,7 @@ input
   MaxBarrasEmPosicao(8);          // máximo de candles em posição aberta
   CapitalConta(10000.0);          // capital total para dimensionamento
   RiscoPorcentagem(2.0);          // % do capital por trade
+  ModoBacktestInicial(true);      // relaxa filtros para gerar operacoes no backtest inicial
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // VARIÁVEIS
@@ -206,16 +207,16 @@ begin
       iConfluenciasVenda := iConfluenciasVenda + 1;
 
   // Verificar se o preço atual está dentro das zonas
-  bNaZonaCompra := (iConfluenciasCompra >= 2) and
+  bNaZonaCompra := (((ModoBacktestInicial and (iConfluenciasCompra >= 1)) or (iConfluenciasCompra >= 2))) and
                    (Close >= fZonaCompraMin - ToleranciaZona) and
                    (Close <= fZonaCompraMax + ToleranciaZona);
 
-  bNaZonaVenda  := (iConfluenciasVenda >= 2) and
+  bNaZonaVenda  := (((ModoBacktestInicial and (iConfluenciasVenda >= 1)) or (iConfluenciasVenda >= 2))) and
                    (Close >= fZonaVendaMin  - ToleranciaZona) and
                    (Close <= fZonaVendaMax  + ToleranciaZona);
 
   // ─── SEÇÃO 4: CONFIRMAÇÃO DE VOLUME ───────────────────────────────────────
-  bVolConfirmado := (Volume >= fVolumeMedio * VolumeMultiplicador);
+  bVolConfirmado := ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador);
 
   // ─── SEÇÃO 5: SINAIS DE ENTRADA ───────────────────────────────────────────
   bSinalCompra := bNaZonaCompra and

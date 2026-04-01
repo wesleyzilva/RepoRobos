@@ -38,6 +38,7 @@ input
   MaxBarrasEmPosicao(8);
   HoraInicioOperacao_H(9);
   HoraInicioOperacao_M(15);
+  ModoBacktestInicial(true);      // relaxa filtros para gerar operacoes no backtest inicial
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // VARIÁVEIS
@@ -158,13 +159,13 @@ begin
 
   // ─── SEÇÃO 4: SEMÁFORO — CONFIRMAÇÃO DE 2 CANDLES ────────────────────────
   // REGRA CARDINAL: Contexto(TF1) E Direção(TF2) AMBOS alinhados + força no gatilho
-  bSemVerdeCompra := (fForca >= ForcaMinimaEntrada) and
-                     bContextoAlta and bDirecaoAlta and
-                     (Volume >= fVolumeMedio * VolumeMultiplicador);
+  bSemVerdeCompra := (((ModoBacktestInicial and (fForca >= 10) and (bContextoAlta or bDirecaoAlta))
+                     or ((fForca >= ForcaMinimaEntrada) and bContextoAlta and bDirecaoAlta))
+                     and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador)));
 
-  bSemVerdeVenda  := (fForca <= -ForcaMinimaEntrada) and
-                     bContextoBaixa and bDirecaoBaixa and
-                     (Volume >= fVolumeMedio * VolumeMultiplicador);
+  bSemVerdeVenda  := (((ModoBacktestInicial and (fForca <= -10) and (bContextoBaixa or bDirecaoBaixa))
+                     or ((fForca <= -ForcaMinimaEntrada) and bContextoBaixa and bDirecaoBaixa))
+                     and (ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador)));
 
   // Contadores de persistência (2 candles consecutivos no mesmo lado)
   if bSemVerdeCompra then
@@ -178,7 +179,8 @@ begin
     iContadorVenda := 0;
 
   // Entrada confirmada apenas após 2 candles consecutivos (evita sinais rápidos)
-  bEntradaConfirmada := (iContadorCompra >= 2) or (iContadorVenda >= 2);
+  bEntradaConfirmada := ((ModoBacktestInicial and ((iContadorCompra >= 1) or (iContadorVenda >= 1)))
+                      or (iContadorCompra >= 2) or (iContadorVenda >= 2));
 
   // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
   // Time() retorna HHMMSS como numero — comparar diretamente (div/mod nao existem)
