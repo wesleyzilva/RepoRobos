@@ -386,3 +386,84 @@ begin
         SellShortAtMarket;  // Otherwise, open a short position at market
     end;
 end
+//
+{
+  This code demonstrates a basic automated trading strategy in NTSL using the WDOFUT asset.
+  It calculates a 20-period Simple Moving Average (SMA) and uses it as a reference to generate
+  buy and sell signals. Limit orders are placed slightly away from the current price based on
+  the configured entry ticks. The strategy also defines gain and loss targets (in ticks) and
+  automatically sends corresponding stop and limit exit orders depending on the position side.
+}
+
+const
+  A1 = Asset("WDOFUT", feedBMF, itMinute, 1);
+
+input
+  dTicksGain(10.0);
+  dTicksLoss(10.0);
+  dTicksEntry(1.0);
+
+var
+  bBuySignal     : Boolean;
+  bSellSignal    : Boolean;
+  dGain          : Float;
+  dLoss          : Float;
+  dLossStopLimit : Float;
+  dPriceEntry    : Float;
+  dEntryPrice    : Float;
+  dSimpleAverage : Float;
+
+begin
+  { Gets the 20-period Simple Moving Average for WDOFUT }
+  dSimpleAverage := A1.SMA(20);
+
+  Plot(dSimpleAverage);
+  Plot2(A1.Close);
+  SetPlotColor(2, ClRed);
+
+  { Defines buy/sell signals based on the latest close price }
+  bBuySignal := A1.Close < dSimpleAverage;
+  bSellSignal := A1.Close > dSimpleAverage;
+
+  {
+    Entry logic: places buy/sell limit orders based on dTicksEntry.
+    MinPriceIncrement represents the minimum price increment allowed for the asset.
+    It ensures that all price calculations respect the instrument's tick size.
+  }
+  if not HasPosition then
+    begin
+      dPriceEntry := dTicksEntry * MinPriceIncrement;
+      if bBuySignal then
+        BuyLimit(Close - dPriceEntry)
+      else if bSellSignal then
+        SellShortLimit(Close + dPriceEntry);
+    end;
+
+  { Exit logic for long positions }
+  if IsBought then
+    begin
+      { Calculate prices }
+      dEntryPrice := BuyPrice;
+      dGain := dEntryPrice + (dTicksGain * MinPriceIncrement);
+      dLoss := dEntryPrice - (dTicksLoss * MinPriceIncrement);
+      dLossStopLimit := dLoss - (30 * MinPriceIncrement);
+
+      { Send cover orders }
+      SellToCoverLimit(dGain, BuyPosition);
+      SellToCoverStop(dLoss, dLossStopLimit, BuyPosition);
+    end
+
+  { Exit logic for short positions }
+  else if IsSold then
+    begin
+      { Calculate prices }
+      dEntryPrice := SellPrice;
+      dGain := dEntryPrice - (dTicksGain * MinPriceIncrement);
+      dLoss := dEntryPrice + (dTicksLoss * MinPriceIncrement);
+      dLossStopLimit := dLoss + (30 * MinPriceIncrement);
+
+      { Send cover orders }
+      BuyToCoverLimit(dGain, SellPosition);
+      BuyToCoverStop(dLoss, dLossStopLimit, SellPosition);
+    end;
+end;
