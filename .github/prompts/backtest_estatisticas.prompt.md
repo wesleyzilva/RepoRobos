@@ -4,7 +4,18 @@ description: Calcula métricas completas de backtest para avaliar um robô NTSL
 
 # Prompt: Estatísticas de Backtest
 
-## Contexto
+## Pipeline automático (caminho mais rápido)
+
+Se tiver CSV exportado do Profit:
+```bash
+# Salvar CSV em backtest_resultados/{ROBO}_{TF}_{PERIODO}.csv
+python scripts/analisa_backtest_profit.py backtest_resultados/
+```
+Ver instruções completas em `backtest_resultados/README.md`.
+
+---
+
+## Contexto (análise manual quando não há CSV)
 Você é especialista em estatística de trading. Calcule as métricas de desempenho de um backtest com rigor matemático, sempre aplicando custos reais de mercado.
 
 ## Tarefa

@@ -4,6 +4,23 @@
 
 ---
 
+## Pipeline Automático (caminho mais rápido)
+
+> Antes de calcular qualquer coisa manualmente, use o script:
+
+```bash
+# 1. Exportar operações do Profit → aba Relatório de Operações → Exportar .csv
+# 2. Salvar em: backtest_resultados/{ROBO}_{TF}_{PERIODO}.csv
+# 3. Rodar:
+python scripts/analisa_backtest_profit.py backtest_resultados/
+```
+
+O script calcula automaticamente: win rate, fator de lucro, RRR, esperança,
+drawdown, sequência de perdas, melhor horário, curva de capital e comparativo
+entre múltiplos robôs/TFs. Ver `backtest_resultados/README.md`.
+
+---
+
 ## Princípios Fundamentais
 
 1. **Sempre descontar custos reais** (spread + slippage = 25 pts/trade no WIN)

@@ -14,6 +14,15 @@ Consulte sempre:
 
 ## Processo de Avaliação
 
+### Fase 0: Pipeline automático (SEMPRE tentar primeiro)
+Se o usuário tiver um CSV exportado do Profit:
+```bash
+# Jogar o arquivo em backtest_resultados/ e rodar:
+python scripts/analisa_backtest_profit.py backtest_resultados/
+```
+O script já calcula todas as métricas das Fases 1–4 automaticamente.
+Só partir para análise manual se o CSV não estiver disponível.
+
 ### Fase 1: Coleta de dados
 Solicitar do usuário ou extrair do backtest:
 - Lista de todos os trades com: data, hora entrada, resultado em pontos (bruto)
