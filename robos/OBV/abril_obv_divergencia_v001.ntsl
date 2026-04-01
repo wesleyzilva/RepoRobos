@@ -61,6 +61,10 @@ var
   fTakeProfit       : float;
   fRisco            : float;
   iBarrasEmPosicao  : integer;
+  // Controle de horário (Time() = HHMMSS — Hour/Minute/Exit não existem em NTSL)
+  iHoraAtual        : integer;
+  iMinutoAtual      : integer;
+  bDeveOperar       : boolean;
 
 begin
 
@@ -149,27 +153,36 @@ begin
   PaintBar(RGB(iCorR, iCorG, iCorB));
 
   // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
-  if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  iHoraAtual   := Time() div 10000;
+  iMinutoAtual := (Time() mod 10000) div 100;
+
+  if (iHoraAtual > StopHorario_H) or
+     ((iHoraAtual = StopHorario_H) and (iMinutoAtual >= StopHorario_M)) then
   begin
     if IsBought or IsSold then ClosePosition;
-    Exit;
-  end;
-  if (Hour < HoraInicioH) or ((Hour = HoraInicioH) and (Minute < HoraInicioM)) then Exit;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := (iHoraAtual > HoraInicioH) or
+                   ((iHoraAtual = HoraInicioH) and (iMinutoAtual >= HoraInicioM));
 
   // ─── SEÇÃO 6: CONTROLE DE BARRAS ─────────────────────────────────────────
-  if IsBought or IsSold then
-    iBarrasEmPosicao := iBarrasEmPosicao + 1
-  else
-    iBarrasEmPosicao := 0;
-  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  if bDeveOperar then
   begin
-    ClosePosition;
-    iBarrasEmPosicao := 0;
-    Exit;
+    if IsBought or IsSold then
+      iBarrasEmPosicao := iBarrasEmPosicao + 1
+    else
+      iBarrasEmPosicao := 0;
+    if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+    begin
+      ClosePosition;
+      iBarrasEmPosicao := 0;
+      bDeveOperar := false;
+    end;
   end;
 
   // ─── SEÇÃO 7: ENTRADAS — DIVERGÊNCIA + CONFIRMAÇÃO ───────────────────────
-  if (not IsBought) and (not IsSold) then
+  if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
     // COMPRA: divergência de alta confirmada + volume
     if bConfirmCompra and (Volume >= fVolumeMedio * VolumeMultiplicador) then

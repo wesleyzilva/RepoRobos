@@ -55,8 +55,8 @@ var
   fAceleracao       : float;
   fForca            : float;
   // Sinais
-  bAcelerando Alta  : boolean;
-  bAcelerandoBaixa  : boolean;
+  bAcelerandoAlta   : boolean;  // OBV subindo mais rápido que antes
+  bAcelerandoBaixa  : boolean;  // OBV caindo mais rápido que antes
   // Cores
   iCorR, iCorG, iCorB : integer;
   // Gestão
@@ -65,6 +65,10 @@ var
   fTakeProfit       : float;
   fRisco            : float;
   iBarrasEmPosicao  : integer;
+  // Controle de horário (Time() = HHMMSS — Hour/Minute/Exit não existem em NTSL)
+  iHoraAtual        : integer;
+  iMinutoAtual      : integer;
+  bDeveOperar       : boolean;
 
 begin
 
@@ -197,7 +201,7 @@ begin
     end;
 
     // VENDA: OBV acelerando para baixo + candle de força + volume
-    if bAcelerandoBaixa and (fForca <= -ForcaMinimaCandle)
+    if (bAcelerandoBaixa and (fForca <= -ForcaMinimaCandle))
        and (Volume >= fVolumeMedio * VolumeMultiplicador) then
     begin
       fEntrada    := Close;

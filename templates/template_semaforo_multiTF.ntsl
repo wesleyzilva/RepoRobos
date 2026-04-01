@@ -75,6 +75,10 @@ var
   fRiscoEmPontos       : float;
   iBarrasEmPosicao     : integer;
   bRRROk               : boolean;
+  // Controle de horário (Time() = HHMMSS — Hour/Minute/Exit não existem em NTSL)
+  iHoraAtual           : integer;
+  iMinutoAtual         : integer;
+  bDeveOperar          : boolean;
 
 begin
 

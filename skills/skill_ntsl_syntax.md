@@ -158,7 +158,43 @@ High, Low, Open, Close         // OHLC do candle atual
 High[1], Low[1]                // OHLC do candle anterior (offset)
 IsBought                       // true se em posição comprada
 IsSold                         // true se em posição vendida
-Hour, Minute, Second           // hora atual
+Time()                         // hora atual em formato HHMMSS (ex: 091500 = 09:15:00)
+```
+
+### Extrair hora e minuto de Time()
+```pascal
+iHoraAtual   := Time() div 10000;           // ex: 091500 div 10000 = 9
+iMinutoAtual := (Time() mod 10000) div 100; // ex: 091500 mod 10000 = 1500 → div 100 = 15
+```
+
+### Padrão correto para stop horário (SEM Exit, SEM Hour/Minute)
+```pascal
+// ✅ PADRÃO CONFIRMADO — declarar no var:
+// iHoraAtual : integer;  iMinutoAtual : integer;  bDeveOperar : boolean;
+
+iHoraAtual   := Time() div 10000;
+iMinutoAtual := (Time() mod 10000) div 100;
+
+if (iHoraAtual > StopHorario_H) or
+   ((iHoraAtual = StopHorario_H) and (iMinutoAtual >= StopHorario_M)) then
+begin
+  if IsBought or IsSold then ClosePosition;
+  bDeveOperar := false;
+end
+else
+  bDeveOperar := (iHoraAtual > HoraInicioH) or
+                 ((iHoraAtual = HoraInicioH) and (iMinutoAtual >= HoraInicioM));
+
+// Proteger barras + entradas com flag:
+if bDeveOperar then
+begin
+  // controle de barras e entradas aqui
+end;
+
+// Alternativa compacta com input único (HHMMSS):
+// input iTimeStop(174500);  iTimeInicio(091500);
+// if Time() >= iTimeStop then begin ClosePosition; end;
+// bDeveOperar := (Time() >= iTimeInicio) and (Time() < iTimeStop);
 ```
 
 ---
@@ -173,6 +209,42 @@ BuyLimit(preco, quantidade);         // compra limitada
 SellShortLimit(preco, quantidade);   // venda limitada
 BuyStop(preco, quantidade);          // compra stop
 SellShortStop(preco, quantidade);    // venda stop
+```
+
+---
+
+## ❌ Erros críticos de sintaxe — confirmados em compilação
+
+```pascal
+// ❌ ERRO 1: Hour e Minute não existem em NTSL
+if (Hour >= 17) and (Minute >= 45) then ...   // Parser: "Função ou variável inválida: Hour"
+// ✅ CORRETO:
+iHoraAtual := Time() div 10000;               // Time() retorna HHMMSS
+
+// ❌ ERRO 2: Exit não existe em NTSL
+Exit;                                          // Parser: "Exit não é um identificador válido"
+// ✅ CORRETO: usar bDeveOperar := false e envolver lógica com if bDeveOperar then
+
+// ❌ ERRO 3: strings com aspas simples
+PlotText('COMPRA', RGB(0,255,0), 8, 0, Low);  // Parser: "Uma String necessita ser delimitada por aspas duplas"
+// ✅ CORRETO: aspas duplas obrigatórias
+PlotText("COMPRA", RGB(0,255,0), 8, 0, Low);
+
+// ❌ ERRO 4: espaço no nome de variável
+bAcelerando Alta : boolean;                    // Parser: "Token inválido: Alta"
+// ✅ CORRETO: sem espaços, camelCase
+bAcelerandoAlta : boolean;
+
+// ❌ ERRO 5: Format() estilo Delphi não existe
+PlotText(Format('%.0f', [fForca]), ...);       // não compila
+// ✅ CORRETO: usar IntToStr(Round(fForca))
+PlotText(IntToStr(Round(fForca)), ...);
+
+// ❌ ERRO 6: Floor() pode não existir
+fQuantidade := Floor(fRisco / 0.20);
+// ✅ CORRETO: truncar manualmente
+fQuantidade := fRisco / 0.20;
+if fQuantidade < 1 then fQuantidade := 1;
 ```
 
 ---
@@ -194,9 +266,16 @@ iCorG := 128 + round(forca * 1.3); // pode exceder 255
 if iCorG > 255 then iCorG := 255;
 if iCorG < 0   then iCorG := 0;
 
-// ❌ ERRO: usar PlotText em robô
-PlotText("COMPRA", RGB(0,255,0), 10, 0, Low);  // não compila
+// ❌ ERRO: usar PlotText em robô (.ntsl)
+PlotText("COMPRA", RGB(0,255,0), 10, 0, Low);  // não compila em robô
 
 // ✅ CORRETO: só PaintBar em robô
 PaintBar(RGB(0, 255, 0));
+
+// ❌ ERRO: condição multi-linha sem parênteses — pode causar "Depois de um statement deve vir ;"
+if bCondicao1 and bCondicao2
+   and bCondicao3 then ...    // pode falhar
+
+// ✅ CORRETO: envolver em parênteses ou manter em linha única
+if (bCondicao1 and bCondicao2 and bCondicao3) then ...
 ```

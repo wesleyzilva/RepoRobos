@@ -69,6 +69,10 @@ var
 
   // Controle
   iBarrasEmPosicao  : integer;
+  // Controle de horário (Time() = HHMMSS — Hour/Minute/Exit não existem em NTSL)
+  iHoraAtual        : integer;
+  iMinutoAtual      : integer;
+  bDeveOperar       : boolean;
 
 begin
 
@@ -267,7 +271,8 @@ begin
       begin
         // Dimensionar quantidade pelo risco
         fRiscoEmReais := CapitalConta * (RiscoPorcentagem / 100);
-        fQuantidade   := Floor(fRiscoEmReais / (fRiscoEmPontos * 0.20));
+        // Floor() não existe em NTSL — usar divisão inteira + guarda mínimo
+        fQuantidade   := fRiscoEmReais / (fRiscoEmPontos * 0.20);
         if fQuantidade < 1 then fQuantidade := 1;
 
         BuyAtMarket;
@@ -289,7 +294,8 @@ begin
       if bRRROk and (fRiscoEmPontos > 0) then
       begin
         fRiscoEmReais := CapitalConta * (RiscoPorcentagem / 100);
-        fQuantidade   := Floor(fRiscoEmReais / (fRiscoEmPontos * 0.20));
+        // Floor() não existe em NTSL — usar divisão inteira + guarda mínimo
+        fQuantidade   := fRiscoEmReais / (fRiscoEmPontos * 0.20);
         if fQuantidade < 1 then fQuantidade := 1;
 
         SellShortAtMarket;

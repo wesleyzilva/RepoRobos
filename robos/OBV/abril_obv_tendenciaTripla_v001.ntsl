@@ -51,6 +51,10 @@ var
   fTakeProfit       : float;
   fRisco            : float;
   iBarrasEmPosicao  : integer;
+  // Controle de horário (Time() = HHMMSS — Hour/Minute/Exit não existem em NTSL)
+  iHoraAtual        : integer;
+  iMinutoAtual      : integer;
+  bDeveOperar       : boolean;
 
 begin
 
@@ -165,7 +169,7 @@ begin
     end;
 
     // VENDA: OBV decrescente nos 3 TFs + volume confirmando
-    if bOBVBaixaContexto and bOBVBaixaDirecao and bOBVBaixaGatilho
+    if (bOBVBaixaContexto and bOBVBaixaDirecao and bOBVBaixaGatilho)
        and (Volume >= fVolumeMedio * VolumeMultiplicador) then
     begin
       fEntrada    := Close;

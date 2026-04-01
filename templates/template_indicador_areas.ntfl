@@ -107,10 +107,11 @@ begin
   // ─── SEÇÃO 4: TEXTO DE FORÇA (apenas indicador) ───────────────────────────
   if MostrarTextoForca and (abs(fForca) >= ForcaMinimaEntrada) then
   begin
+    // Format() não existe em NTSL — usar IntToStr(Round(x))
     if fForca >= ForcaMinimaEntrada then
-      PlotText(Format('%.0f', [fForca]), RGB(0, 200, 0), 8, 0, Low * 0.998)
+      PlotText(IntToStr(Round(fForca)), RGB(0, 200, 0), 8, 0, Low * 0.998)
     else
-      PlotText(Format('%.0f', [fForca]), RGB(200, 0, 0), 8, 0, High * 1.002);
+      PlotText(IntToStr(Round(fForca)), RGB(200, 0, 0), 8, 0, High * 1.002);
   end;
 
   // ─── SEÇÃO 5: SETAS DE CONFLUÊNCIA ───────────────────────────────────────
@@ -131,16 +132,18 @@ begin
 
   if bSinalCompra then
   begin
-    DrawArrow(1, RGB(0, 255, 0), 2, Low * 0.995);  // seta para cima = compra
+    // DrawArrow não é identificador válido em NTSL — usar PlotText + PaintBar
+    PaintBar(RGB(0, 255, 100));  // verde intenso = sinal de compra
     if MostrarAlertas then Alert(RGB(0, 255, 0));
-    PlotText('CONFLUÊNCIA COMPRA', RGB(0, 200, 0), 9, 1, Low * 0.993);
+    PlotText("COMPRA", RGB(0, 200, 0), 9, 1, Low * 0.993);
   end;
 
   if bSinalVenda then
   begin
-    DrawArrow(0, RGB(255, 0, 0), 2, High * 1.005);  // seta para baixo = venda
+    // DrawArrow não é identificador válido em NTSL — usar PlotText + PaintBar
+    PaintBar(RGB(255, 50, 0));   // vermelho intenso = sinal de venda
     if MostrarAlertas then Alert(RGB(255, 0, 0));
-    PlotText('CONFLUÊNCIA VENDA', RGB(200, 0, 0), 9, 1, High * 1.007);
+    PlotText("VENDA", RGB(200, 0, 0), 9, 1, High * 1.007);
   end;
 
 end;

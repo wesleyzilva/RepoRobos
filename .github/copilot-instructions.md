@@ -278,6 +278,55 @@ Exemplo (WIN):
 
 ## 💻 Regras NTSL/NTFL
 
+### ⚠️ ERROS CRÍTICOS DE COMPILAÇÃO — confirmados em produção
+
+| ❌ ERRADO | ✅ CORRETO | Motivo |
+|---|---|---|
+| `Hour`, `Minute`, `Second` | `Time() div 10000` / `(Time() mod 10000) div 100` | Não existem em NTSL |
+| `Exit;` | `bDeveOperar := false` + wrapper `if bDeveOperar then` | Não existe em NTSL |
+| `'texto single quotes'` | `"texto double quotes"` | NTSL exige aspas duplas |
+| `bAcelerando Alta` (espaço) | `bAcelerandoAlta` (camelCase) | Espaço invalida identificador |
+| `Format('%.0f', [x])` | `IntToStr(Round(x))` | Format() não existe em NTSL |
+| `Floor(x)` | `x := x; if x < 1 then x := 1;` | Floor() não existe em NTSL |
+| `DrawArrow(...)` em `.ntfl` | `PaintBar(RGB(...))` + `PlotText(...)` | DrawArrow inválido |
+| Multi-line `and` sem `()` | Envolver condição inteira em `(...)` | "Deve vir ;" parse error |
+
+**`Time()` retorna HHMMSS como inteiro** — ex: `091500` = 09:15:00:
+```pascal
+iHoraAtual   := Time() div 10000;            // extrai HH
+iMinutoAtual := (Time() mod 10000) div 100;  // extrai MM
+```
+
+**Padrão OBRIGATÓRIO para stop de horário** (NUNCA usar Hour/Exit):
+```pascal
+// Na seção var: adicionar estas 3 variáveis
+iHoraAtual   : integer;
+iMinutoAtual : integer;
+bDeveOperar  : boolean;
+
+// No begin:
+iHoraAtual   := Time() div 10000;
+iMinutoAtual := (Time() mod 10000) div 100;
+
+if (iHoraAtual > StopHorario_H) or
+   ((iHoraAtual = StopHorario_H) and (iMinutoAtual >= StopHorario_M)) then
+begin
+  if IsBought or IsSold then ClosePosition;
+  bDeveOperar := false;
+end
+else
+  bDeveOperar := (iHoraAtual > HoraInicioH) or
+                 ((iHoraAtual = HoraInicioH) and (iMinutoAtual >= HoraInicioM));
+
+// Toda a lógica de barras + entradas DENTRO do if bDeveOperar:
+if bDeveOperar then
+begin
+  // controle de barras e entradas aqui
+end;
+```
+
+---
+
 ### Em ROBÔS (`.ntsl`) — permitido:
 ```pascal
 PaintBar(RGB(r, g, b));      // colorir candle
@@ -290,9 +339,9 @@ SellLimit(preco, quantidade); // venda limitada
 
 ### Em INDICADORES (`.ntfl`) — permitido adicionalmente:
 ```pascal
-PlotText("texto", cor, tamanho, estilo, preco);
+PlotText("texto", cor, tamanho, estilo, preco);  // aspas DUPLAS obrigatório
 Alert(cor);
-DrawArrow(direcao, cor, tamanho, preco);
+// DrawArrow — NÃO usar, identificador inválido
 DrawLine(preco1, preco2, cor, espessura);
 ```
 
