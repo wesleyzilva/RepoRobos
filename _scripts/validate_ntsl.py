@@ -117,6 +117,20 @@ RULES = [
         None,  # filtrada por extensao abaixo
     ),
     (
+        "E14",
+        "Minima() nao existe em NTSL — usar Low do candle gatilho",
+        r"\bMinima\s*\(",
+        "ERROR",
+        None,
+    ),
+    (
+        "E15",
+        "Maxima() nao existe em NTSL — usar High do candle gatilho",
+        r"\bMaxima\s*\(",
+        "ERROR",
+        None,
+    ),
+    (
         "W01",
         "Condicao multi-linha: 'and' inicio de linha pode ser parser risk — verifique se ha paren externo no if",
         r"^\s{4,}and\s+(?!.*then\s*$)[^(]",
@@ -191,8 +205,9 @@ def validate_file(filepath, fix=False):
             # Suprimir regra se linha tem comentario // noqa:RuleId
             if f"// noqa:{rule_id}" in stripped:
                 continue
-
-            if re.search(pattern, stripped):
+            # Verificar apenas a parte de codigo (antes do comentario inline)
+            code_part = stripped.split("//")[0]
+            if re.search(pattern, code_part):
                 issues.append({
                     "line": i,
                     "rule": rule_id,

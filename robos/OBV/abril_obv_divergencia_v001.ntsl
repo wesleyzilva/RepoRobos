@@ -182,7 +182,7 @@ begin
     if bConfirmCompra and (Volume >= fVolumeMedio * VolumeMultiplicador) then
     begin
       fEntrada    := Close;
-      fStopLoss   := Minima(iJanelaDir) - BufferStop; // mínima do swing da divergência
+      fStopLoss   := Low - BufferStop;  // Minima() invalida — usar Low do candle gatilho
       fRisco      := fEntrada - fStopLoss;
       fTakeProfit := fEntrada + fRisco * RRR_Minimo;
       if (fRisco > 0) and ((fTakeProfit - fEntrada) >= fRisco * RRR_Minimo) then
@@ -196,7 +196,7 @@ begin
     if bConfirmVenda and (Volume >= fVolumeMedio * VolumeMultiplicador) then
     begin
       fEntrada    := Close;
-      fStopLoss   := Maxima(iJanelaDir) + BufferStop; // máxima do swing da divergência
+      fStopLoss   := High + BufferStop;  // Maxima() invalida — usar High do candle gatilho
       fRisco      := fStopLoss - fEntrada;
       fTakeProfit := fEntrada - fRisco * RRR_Minimo;
       if (fRisco > 0) and ((fEntrada - fTakeProfit) >= fRisco * RRR_Minimo) then
