@@ -1,0 +1,132 @@
+{
+  Robo: FORCA_SAIDA_BREAKEVEN
+  Descricao: Entrada por F=MA. Saida com Breakeven + Alvo fixo.
+             Apos N pontos a favor, move o stop para o preco de entrada (risco zero).
+             Mantem alvo fixo. 3 contratos.
+  Versao: 1.0
+  Estrategia_saida: Breakeven (stop move para entrada apos gatilho) + Alvo OCO
+}
+
+input
+  // Entrada
+  ForcaMinimaEntrada(55);
+  VolumeMinimo(2000);
+  PeriodoMediaVolume(20);
+  UsarFiltroVolume(true);
+  Contratos(3);
+  // Breakeven
+  BreakevenGatilho(50.0);    // pontos a favor para ativar breakeven
+  StopInicial(100.0);        // stop antes de ativar breakeven
+  AlvoPontos(200.0);         // alvo fixo em pontos (mantido apos breakeven)
+  StopLimitOffset(5.0);      // slippage do stop limit
+  // Horario
+  StopHorario_H(17);
+  StopHorario_M(45);
+
+var
+  fCorpo, fRange, fVolMedia, fMassa, fAceleracao, fForca : float;
+  fForcaAbs, fEscalaCor : float;
+  r, g, b : integer;
+  bDeveOperar   : boolean;
+  bBreakevenOn  : boolean;   // true = breakeven ja ativado nesta operacao
+  fStopAtual    : float;
+  fAlvoAtual    : float;
+
+begin
+  // --- F = M x A ---
+  fCorpo := Close - Open;
+  fRange := High - Low;
+  if fRange <= 0 then fRange := 0.0001;
+  fVolMedia := Media(PeriodoMediaVolume, Volume);
+  if fVolMedia <= 0 then fVolMedia := 1;
+  fMassa      := fCorpo / fRange;
+  fAceleracao := Volume / fVolMedia;
+  fForca      := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+  fForcaAbs := abs(fForca);
+
+  // --- DEGRADÊ ---
+  r := 128; g := 128; b := 128;
+  fEscalaCor := (fForcaAbs - ForcaMinimaEntrada) / (100 - ForcaMinimaEntrada);
+  if fEscalaCor < 0 then fEscalaCor := 0;
+  if fEscalaCor > 1 then fEscalaCor := 1;
+  fEscalaCor := fEscalaCor * fEscalaCor;
+  if abs(fCorpo) < 0.1 * fRange then
+  begin
+    r := 255; g := 255; b := 255;
+  end
+  else if (fForca > 0) and (fForcaAbs >= ForcaMinimaEntrada) then
+  begin
+    g := 110 + Round(fEscalaCor * 145); r := 110 - Round(fEscalaCor * 110); b := 110 - Round(fEscalaCor * 110);
+    if g > 255 then g := 255; if r < 0 then r := 0; if b < 0 then b := 0;
+  end
+  else if (fForca < 0) and (fForcaAbs >= ForcaMinimaEntrada) then
+  begin
+    r := 110 + Round(fEscalaCor * 145); g := 110 - Round(fEscalaCor * 110); b := 110 - Round(fEscalaCor * 110);
+    if r > 255 then r := 255; if g < 0 then g := 0; if b < 0 then b := 0;
+  end;
+  PaintBar(RGB(r, g, b));
+
+  // --- STOP HORÁRIO ---
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := true;
+
+  // Resetar flag de breakeven quando nao ha posicao
+  if (not IsBought) and (not IsSold) then
+    bBreakevenOn := false;
+
+  // --- SAÍDA: COMPRADO ---
+  if IsBought then
+  begin
+    fAlvoAtual := BuyPrice + AlvoPontos * MinPriceIncrement;
+
+    // Ativar breakeven quando preco favoravel o suficiente
+    if (not bBreakevenOn) and (Close >= BuyPrice + BreakevenGatilho * MinPriceIncrement) then
+      bBreakevenOn := true;
+
+    // Stop: breakeven (entrada) ou stop inicial
+    if bBreakevenOn then
+      fStopAtual := BuyPrice                          // risco zero
+    else
+      fStopAtual := BuyPrice - StopInicial * MinPriceIncrement;
+
+    SellToCoverStop (fStopAtual,  fStopAtual  - StopLimitOffset * MinPriceIncrement, Contratos);
+    SellToCoverLimit(fAlvoAtual, Contratos);
+  end;
+
+  // --- SAÍDA: VENDIDO ---
+  if IsSold then
+  begin
+    fAlvoAtual := SellPrice - AlvoPontos * MinPriceIncrement;
+
+    // Ativar breakeven quando preco favoravel o suficiente
+    if (not bBreakevenOn) and (Close <= SellPrice - BreakevenGatilho * MinPriceIncrement) then
+      bBreakevenOn := true;
+
+    // Stop: breakeven (entrada) ou stop inicial
+    if bBreakevenOn then
+      fStopAtual := SellPrice                         // risco zero
+    else
+      fStopAtual := SellPrice + StopInicial * MinPriceIncrement;
+
+    BuyToCoverStop (fStopAtual,  fStopAtual  + StopLimitOffset * MinPriceIncrement, Contratos);
+    BuyToCoverLimit(fAlvoAtual, Contratos);
+  end;
+
+  // --- ENTRADA ---
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+    if (fForca >= ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+      BuyAtMarket(Contratos);
+
+    if (fForca <= -ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+      SellShortAtMarket(Contratos);
+  end;
+
+end;
