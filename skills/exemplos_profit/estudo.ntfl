@@ -1,3 +1,4 @@
+// noqa:E13 — arquivo multi-bloco: cada secao e um script independente do Profit
 // This script plots custom horizontal lines
 // At the high and low prices of the current
 // Month, week, and day

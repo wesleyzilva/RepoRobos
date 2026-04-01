@@ -13,12 +13,12 @@ import glob
 import argparse
 from pathlib import Path
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # REGRAS DE ERROS
 # Cada regra: (id, descricao, regex, tipo, auto_fix_fn ou None)
 #   tipo: ERROR | WARNING
 #   auto_fix_fn: funcao(linha_str) -> linha_corrigida  (None = nao corrigivel)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 def _fix_single_quotes(line):
     """Troca aspas simples por duplas em strings de codigo (nao em comentarios)."""
@@ -163,9 +163,9 @@ RULES = [
 # Regras que so se aplicam a .ntsl (nao a .ntfl)
 NTSL_ONLY_RULES = {"E11", "E12"}
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # VALIDADOR
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 def is_comment(line):
     return line.strip().startswith("//")
@@ -179,9 +179,11 @@ def validate_file(filepath, fix=False):
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
+    # Suprimir E13 se qualquer linha do cabecalho (primeiras 10) tiver // noqa:E13
+    file_noqa_e13 = any("// noqa:E13" in l for l in lines[:10])
     begin_count = sum(1 for l in lines if re.search(r'\bbegin\b', l) and not is_comment(l))
     end_count   = sum(1 for l in lines if re.search(r'\bend\b',   l) and not is_comment(l))
-    if begin_count != end_count:
+    if begin_count != end_count and not file_noqa_e13:
         issues.append({
             "line": 0,
             "rule": "E13",
@@ -227,9 +229,9 @@ def validate_file(filepath, fix=False):
 
     return issues, fixed_count
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # RELATORIO
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 COLORS = {
     "ERROR":   "\033[91m",  # vermelho
@@ -273,20 +275,20 @@ def print_report(results):
                     print(color(f"           → {issue['content'][:80]}", "DIM"))
 
         if fixed > 0:
-            print(color(f"    ✓ {fixed} correção(ões) aplicada(s)", "OK"))
+            print(color(f"    + {fixed} correção(ões) aplicada(s)", "OK"))
             total_fixed += fixed
 
         total_errors   += len(errors)
         total_warnings += len(warnings)
 
     print()
-    print(color("─" * 70, "DIM"))
+    print(color("-" * 70, "DIM"))
     print(f"  Arquivos: {len(results)}   "
           + color(f"Erros: {total_errors}", "ERROR" if total_errors else "OK")
           + "   "
           + color(f"Avisos: {total_warnings}", "WARNING" if total_warnings else "OK")
           + (color(f"   Corrigidos: {total_fixed}", "OK") if total_fixed else ""))
-    print(color("─" * 70, "DIM"))
+    print(color("-" * 70, "DIM"))
 
     if total_errors == 0 and total_warnings == 0:
         print(color("  TUDO LIMPO — pronto para compilar no Profit!", "OK"))
@@ -296,9 +298,9 @@ def print_report(results):
         print(color(f"  {total_warnings} AVISO(S) — revisar antes de compilar", "WARNING"))
     print()
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # MAIN
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Validador NTSL/NTFL")
