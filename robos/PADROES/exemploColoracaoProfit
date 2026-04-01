@@ -1,0 +1,26 @@
+begin
+  if (Close > Close[1]) then
+    PaintBar(clGreen)
+  else if (Close < Close[1]) then
+    PaintBar(clRed);
+end;
+
+const
+  A1 = Asset("WINFUT", feedBMF);
+
+input
+  A2("DOLFUT", feedBMF);
+
+var
+  sA1Media9 : Float;
+  sA2Media9 : Float;
+
+begin
+  sA1Media9  := Media(09, A1.Close);
+  sA2Media9  := Media(09, A2.Close);
+
+  if (sA1Media9 > A1.Close) and (sA2Media9 < A2.Close) then 
+    PaintBar(clGreen)
+  else 
+    PaintBar(clRed);
+end;
