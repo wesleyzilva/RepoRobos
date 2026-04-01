@@ -6,6 +6,11 @@
 
 ## Diferença crítica: Robô vs Indicador
 
+> **Regra de extensão padrão:**
+> - `.ntsl` → robô de **execução** — tem `BuyAtMarket` / `SellShortAtMarket` / `ClosePosition`
+> - `.ntfl` → indicador **puro** — sem ordens de mercado
+> - ⚠️ Um arquivo que pinta candles E executa ordens é **`.ntsl`**, nunca `.ntfl`
+
 | Recurso | Robô (`.ntsl`) | Indicador (`.ntfl`) |
 |---|---|---|
 | `PaintBar(RGB)` | ✅ | ✅ |

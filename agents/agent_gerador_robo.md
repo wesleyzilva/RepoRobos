@@ -63,6 +63,19 @@ O plano deve responder:
 - [ ] Stop horário implementado com padrão `bDeveOperar`
 - [ ] RRR verificado antes da entrada
 - [ ] Cabeçalho completo
+- [ ] **Extensão correta**: arquivo executa ordens → `.ntsl`; indicador puro → `.ntfl`
+
+### Passo 5: Validar antes do commit (OBRIGATÓRIO)
+```
+python _scripts/validate_ntsl.py --file <caminho/do/arquivo.ntsl>
+```
+> ✅ Só fazer `git add` + `git commit` + `git push` após saída **"TUDO LIMPO"**.
+> Se houver erros, corrigir e revalidar antes de commitar.
+- [ ] Divisão por zero prevenida (`if fRange < 0.01 then fRange := 0.01`)
+- [ ] RGB clampado entre 0 e 255
+- [ ] Stop horário implementado com padrão `bDeveOperar`
+- [ ] RRR verificado antes da entrada
+- [ ] Cabeçalho completo
 
 ## Convenção de Nome e Pasta
 

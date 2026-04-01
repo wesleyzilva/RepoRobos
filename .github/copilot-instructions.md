@@ -68,6 +68,8 @@ qualquer       → perguntas WIN/WDO/ATR (resposta já está nas skills locais)
 | 6. Documentar / atualizar README | **GPT-4o-mini** |
 | 7. 🔍 Revisar / corrigir sintaxe NTSL | **GPT-4o-mini** + anexar `skills/skill_ntsl_syntax.md` |
 
+> ⚠️ **Regra de extensão:** robô que executa ordens (BuyAtMarket etc.) = **`.ntsl`**, mesmo que tenha PaintBar/cores. `.ntfl` = indicador puro sem ordens.
+
 ---
 
 ## 🏦 Ativos Principais
@@ -403,8 +405,18 @@ Ao analisar resultados, sempre reportar:
 4. **Ao criar indicadores**: usar `.ntfl`, pode usar PlotText/Alert para visualização (DrawArrow inválido)
 5. **Ao falar de confluência**: citar quantas referências geométricas se sobrepõem e de que tipo
 6. **Ao otimizar**: advertir sobre overfitting se o período de teste < 90 dias ou < 100 trades
-7. **Idioma**: sempre responder em **português brasileiro**9. **Commits**: sempre incluir timestamp `[DD/MM HH:MM]` no final da mensagem usando `$(date +%d/%m\ %H:%M)` no bash
-10. **Push**: sempre usar workaround SSL `git -c http.sslVerify=false push origin <branch>` (proxy corporativo bloqueia certificado)
+7. **Idioma**: sempre responder em **português brasileiro**
+8. **Extensão padrão**: robôs de execução SEMPRE usam `.ntsl` — mesmo que usem recursos visuais (`PaintBar`, cores, degradê). `.ntfl` é reservado para indicadores **puros** (sem `BuyAtMarket`/`SellShortAtMarket`/`ClosePosition`). Um robô que colore candles E opera é `.ntsl`.
+9. **Commits**: sempre incluir timestamp `[DD/MM HH:MM]` no final da mensagem usando `$(date +%d/%m\ %H:%M)` no bash
+10. **Push — fluxo obrigatório**:
+    ```
+    1. Editar arquivo
+    2. Validar: python _scripts/validate_ntsl.py --file <arquivo>
+    3. Corrigir erros se houver
+    4. git add + git commit
+    5. git push (com workaround SSL abaixo)
+    ```
+    Workaround SSL (proxy corporativo): `git config --local http.sslVerify false` antes do push.
 ### 📋 Regra do Plano (OBRIGATÓRIO antes de criar qualquer robô)
 > Antes de gerar código NTSL, **sempre apresentar o plano** usando o template de `.github/prompts/plano_pre_robo.prompt.md` e **aguardar aprovação**.
 > O plano é uma tabela estruturada sem código que responde: hipótese, tripleta, SL, RRR, nome do arquivo.
