@@ -59,3 +59,330 @@ begin
       BuyToCoverStop(dLoss, dLossStopLimit, SellPosition);
     end;
 end;
+//multiplos ativos
+const
+  A1 = Asset("WINFUT", feedBMF);
+
+input
+  A2("DOLFUT", feedBMF);
+
+var
+  A3, A4 : Float;
+
+begin
+  A3 := A1.Close / Close;
+  A3 := A1.Close / 21;
+  A4 := A3 / A2.Close;
+
+  if (A4 < 0.9) and (not IsBought) then
+    BuyAtMarket;
+
+  if (A4 > 1) and (IsBought) then
+    SellShortAtMarket;
+end;
+
+//exemplo com raio x
+var
+  bBuyCondition1  : Boolean;
+  bBuyCondition2  : Boolean;
+  bBuyCondition3  : Boolean;
+  bSellCondition1 : Boolean;
+  bSellCondition2 : Boolean;
+  bSellCondition3 : Boolean;
+begin
+  // XRay Summary:
+  // This example code shows the XRay feature to provide visibility into the strategs conditions and variable states 
+  // within the Automation Strategy Details panel. The variables `bBuyConditionX` and `bSellConditionX` determine 
+  // whether specific buy or sell conditions are met based on market data (e.g., close prices) and position status. 
+  // XRay displays these conditions in real time, and this example categorizes them into "Buy" and "Sell" groups. Each variables 
+  // status, calculated value, and group are updated dynamically and color-coded (Yellow for Buy conditions, Green for Sell conditions).
+  // Define the conditions for executing a BuyAtMarket order.
+  // Each condition must evaluate to true for the buy action to proceed.
+  bBuyCondition1 := Close[1] > Close[0]; 
+  bBuyCondition2 := Close[2] > Close[1];
+  bBuyCondition3 := Close[3] > Close[2];
+
+  // Define the conditions for executing a SellAtMarket order.
+  // Similar logic applies to sell actions, but the checks are inverted for downward trends.
+  bSellCondition1 := Close[0] > Close[1];
+  bSellCondition2 := Close[1] > Close[2];
+  bSellCondition3 := Close[2] > Close[3];
+
+  // Execute orders based on the conditions defined above.
+  // Only proceed with the respective action if all conditions are met.
+  if bBuyCondition1 and bBuyCondition2 and bBuyCondition3 then
+    buyAtMarket
+  else if bSellCondition1 and bSellCondition2 and bSellCondition3 then
+    sellShortAtMarket;
+  // Manage positions post-execution.
+  if IsBought then
+    begin
+      SellToCoverLimit(buyPrice + 10*minPriceIncrement, BuyPositionQty);
+      SellToCoverStop(buyPrice - 10*minPriceIncrement, BuyPrice - 10*minPriceIncrement, BuyPositionQty);
+    end
+  else if IsSold then
+    begin
+      BuyToCoverLimit(SellPrice - 10*minPriceIncrement, SellPositionQty); 
+      BuyToCoverStop(SellPrice + 10*minPriceIncrement, SellPrice + 10*minPriceIncrement, SellPositionQty);
+    end;
+  // Configure XRay for the "Buy" group.
+  // Displays variable states, calculated values, and their respective color-coded statuses.
+  XRay("BuyCondition1", bBuyCondition1, "Buy", Close[1] - Close[0], clYellow);
+  XRay("BuyCondition2", bBuyCondition2, "Buy", Close[2] - Close[1], clYellow);
+  XRay("BuyCondition3", bBuyCondition3, "Buy", Close[3] - Close[2], clYellow);
+  // Configure XRay for the "Sell" group.
+  // Similar to the "Buy" group, with Green used for visual distinction.
+  XRay("SellCondition1", bSellCondition1, "Sell", Close[0] - Close[1], clGreen);
+  XRay("SellCondition2", bSellCondition2, "Sell", Close[1] - Close[2], clGreen);
+  XRay("SellCondition3", bSellCondition3, "Sell", Close[2] - Close[3], clGreen);
+end;
+
+//para medias moveis
+input
+  shortPeriod(18);     // Number of periods for the short-term moving average
+  longPeriod(68);      // Number of periods for the long-term moving average
+var
+  shortMA, longMA : Float;  // Variables to store short and long moving averages
+begin
+  // Calculate the moving averages using the closing price
+  shortMA := SMA(shortPeriod, tvClose);   // Short-term moving average
+  longMA := SMA(longPeriod, tvClose);     // Long-term moving average
+
+  // Plot the moving averages on the chart
+  plot(shortMA);      // Plot short-term MA
+  plot2(longMA);      // Plot long-term MA
+
+  // Entry strategy
+  // Buy if:
+  // - Not in a long position,
+  // - The short MA crosses below the long MA (bearish crossover)
+  if (Position <= 0) and (shortMA < longMA) and (shortMA[1] >= longMA[1]) then
+    begin
+      if (Position < 0) then
+        ReversePosition     // If currently short, reverse to long
+      else
+        BuyAtMarket;        // Otherwise, open a long position at market
+    end
+  // Sell if:
+  // - Not in a short position,
+  // - The short MA crosses above the long MA (bullish crossover)
+  else if (Position >= 0) and (shortMA > longMA) and (shortMA[1] <= longMA[1]) then
+    begin
+      if (Position > 0) then
+        ReversePosition     // If currently long, reverse to short
+      else
+        SellShortAtMarket;  // Otherwise, open a short position at market
+    end;
+end
+
+//multiplas saidas
+input
+  dTicksGain(10.0);
+  dTicksLoss(10.0);
+  dTicksEntry(1.0);
+var
+  bBuySignal     : Boolean;
+  bSellSignal    : Boolean;
+  dGain          : Float;
+  dLoss          : Float;
+  dLossStopLimit : Float;
+  dPriceEntry    : Float;
+  dEntryPrice    : Float;
+  dSimpleAverage : Float;
+begin
+  // Gets the Simple Moving Average of last 20 candles
+  dSimpleAverage := SMA(20);
+ 
+  // Define buy/sell signals based on last close
+  bBuySignal := Close < dSimpleAverage;
+  bSellSignal := Close > dSimpleAverage;
+
+  // Entry logic: place buy/sell limit orders based on dTicksEntry input
+  // MinPriceIncrement represents the minimum price increment allowed for the asset.
+  // It ensures all price calculations respect the instrument's tick size 
+  if not HasPosition then
+    begin
+      dPriceEntry := dTicksEntry * MinPriceIncrement;
+      if bBuySignal then
+        BuyLimit(Close - dPriceEntry)
+      else if bSellSignal then
+        SellShortLimit(Close + dPriceEntry);
+    end;
+
+  // Exit logic for long positions
+  if IsBought then
+    begin
+      //Calculate Prices
+      dEntryPrice := buyPrice;
+      dGain := dEntryPrice + (dTicksGain * MinPriceIncrement);
+      dLoss := dEntryPrice - (dTicksLoss * MinPriceIncrement);
+      dLossStopLimit := dLoss - (30 * MinPriceIncrement);
+
+      //Send Cover Orders
+      SellToCoverLimit(dGain, BuyPosition);
+      SellToCoverStop(dLoss, dLossStopLimit, BuyPosition);
+    end
+  
+  // Exit logic for short positions
+  else if IsSold then
+    begin       
+      //Calculate Prices
+      dEntryPrice := sellPrice;
+      dGain := dEntryPrice - (dTicksGain * MinPriceIncrement);
+      dLoss := dEntryPrice + (dTicksLoss * MinPriceIncrement);
+      dLossStopLimit := dLoss + (30 * MinPriceIncrement);
+
+      //Send Cover Orders
+      BuyToCoverLimit(dGain, SellPosition);
+      BuyToCoverStop(dLoss, dLossStopLimit, SellPosition);
+    end;
+end;
+// boiller band
+input
+  nPeriod(20);           // Number of periods for Bollinger Bands calculation
+  fStandardDeviation(2.0);  // Standard deviation factor for upper and lower bands
+var
+  upperBand, lowerBand : Float;  // Variables to store upper and lower Bollinger Bands
+begin
+  // Calculate the upper and lower Bollinger Bands
+  upperBand := BollingerBands(fStandardDeviation, nPeriod, 0)|0|;  // Upper band (index 0)
+  lowerBand := BollingerBands(fStandardDeviation, nPeriod, 0)|1|;  // Lower band (index 1)
+
+  // Plot the bands on the chart
+  plot(upperBand);     // Plot the upper band
+  plot2(lowerBand);    // Plot the lower band
+
+  // Entry strategy
+  // Buy if the closing price is below or equal to the lower band and not currently in a long position
+  if (Position <= 0) and (Close <= lowerBand) then
+    begin
+      if (Position < 0) then
+        ReversePosition  // If currently short, reverse to long
+      else
+        BuyAtMarket;     // Otherwise, open a long position at market
+    end
+  // Sell if the closing price is above or equal to the Upper band and not currently in a short position
+  else if (Position >= 0) and (Close >= upperBand) then
+    begin
+      if (Position > 0) then
+        ReversePosition  // If currently long, reverse to short
+      else
+        SellshortAtMarket;  // Otherwise, open a short position at market
+    end;
+end
+//MACD
+input
+  shortPeriod(12);     // Number of periods for the short-term EMA
+  longPeriod(26);      // Number of periods for the long-term EMA
+  signalPeriod(9);     // Number of periods for the signal line
+var
+  macdLine, macdSignal : Float;  // Variables to store MACD line and Signal line
+
+begin
+  // Calculate MACD line and Signal line
+  macdLine := MACD(longPeriod, shortPeriod, signalPeriod)|0|;   // MACD line (index 0)
+  macdSignal := MACD(longPeriod, shortPeriod, signalPeriod)|1|; // Signal line (index 1)
+
+  // Plot the MACD line and the signal line on the chart
+  plot(macdLine);       // Plot MACD line
+  plot2(macdSignal);    // Plot Signal line
+
+  // Entry strategy
+  // Buy if:
+  // - Not in a long position,
+  // - MACD line crosses below the signal line (bearish crossover)
+  if (Position <= 0) and (macdLine < macdSignal) and (macdLine[1] >= macdSignal[1]) then
+    begin
+      if (Position < 0) then
+        ReversePosition     // If currently short, reverse to long
+      else
+        BuyAtMarket;        // Otherwise, open a long position at market
+    end
+  // Sell if:
+  // - Not in a short position,
+  // - MACD line crosses above the signal line (bullish crossover)
+  else if (Position >= 0) and (macdLine > macdSignal) and (macdLine[1] <= macdSignal[1]) then
+    begin
+      if (Position > 0) then
+        ReversePosition     // If currently long, reverse to short
+      else
+        SellShortAtMarket;  // Otherwise, open a short position at market
+    end;
+end
+
+//RSI LSI
+input
+  dSellThreshold(40);  // RSI value below which to trigger a buy (oversold zone)
+  dBuyThreshold(60);   // RSI value above which to trigger a sell (overbought zone)
+var
+  rsiValue : Float;  // Variable to store the current RSI value
+begin
+  // Calculate RSI using 14 periods and apply it to the current bar
+  rsiValue := RSI(14, 0);
+
+  // Plot the RSI value on the chart
+  plot(rsiValue);
+
+  // Entry strategy
+  // Buy if:
+  // - Not in a long position,
+  // - RSI is below the sell threshold (interpreted as oversold)
+  if (Position <= 0) and (rsiValue < dSellThreshold) then
+    begin
+      if (Position < 0) then
+        ReversePosition     // If currently short, reverse to long
+      else
+        BuyAtMarket;        // Otherwise, open a long position at market
+    end
+  // Sell if:
+  // - Not in a short position,
+  // - RSI is above the buy threshold (interpreted as overbought)
+  else if (Position >= 0) and (rsiValue > dBuyThreshold) then
+    begin
+      if (Position > 0) then
+        ReversePosition     // If currently long, reverse to short
+      else
+        SellShortAtMarket;  // Otherwise, open a short position at market
+    end;
+end
+//SlowStochastic
+input
+  nPeriod(18);         // Lookback period for the stochastic calculation
+  nLimitBuy(30);       // Threshold below which to buy (typically oversold zone)
+  nLimitSell(60);      // Threshold above which to sell (typically overbought zone)
+
+// Variable declaration
+var
+  slowK, fastK : Float;   // Variables for the slow and fast stochastic values
+
+begin
+  // Calculate slow and fast stochastic values
+  slowK := SlowStochastic(nPeriod, 9, 0);   // Slow stochastic using %K with smoothing
+  fastK := FastStochastic(nPeriod, 3, 0);   // Fast stochastic using %K with shorter smoothing
+
+  // Plot stochastic values on the chart
+  plot(slowK);     // Plot slow stochastic
+  plot2(fastK);    // Plot fast stochastic
+
+  // Entry strategy
+  // Buy if:
+  // - Not in a long position,
+  // - Slow stochastic is below the buy threshold (potential oversold signal)
+  if (Position <= 0) and (slowK < nLimitBuy) then
+    begin
+      if (Position < 0) then
+        ReversePosition     // If currently short, reverse to long
+      else
+        BuyAtMarket;        // Otherwise, open a long position at market
+    end
+  // Sell if:
+  // - Not in a short position,
+  // - Fast stochastic is above the sell threshold (potential overbought signal)
+  else if (Position >= 0) and (fastK > nLimitSell) then
+    begin
+      if (Position > 0) then
+        ReversePosition     // If currently long, reverse to short
+      else
+        SellShortAtMarket;  // Otherwise, open a short position at market
+    end;
+end
