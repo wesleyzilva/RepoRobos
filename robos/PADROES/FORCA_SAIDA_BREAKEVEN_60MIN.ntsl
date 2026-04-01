@@ -1,11 +1,15 @@
 {
   Robo: FORCA_SAIDA_BREAKEVEN_60MIN
-  Descricao: Entrada por F=MA. Saida com Breakeven + Alvo ATR.
+  Descricao: Entrada por F=MA com confirmacao multi-timeframe (Contexto+Direcao+Gatilho).
+             Saida com Breakeven + Alvo ATR.
              Apos ATR*BreakevenMult a favor, move stop para entrada (risco zero).
-             Alvo = ATR * AlvoMult. 3 contratos. Configuracao padrao: 60min.
-  Versao: 1.0
+             Alvo = ATR * AlvoMult. 3 contratos. TF gatilho: 60min.
+  Versao: 2.0
   Estrategia_saida: Breakeven (stop move para entrada apos gatilho ATR) + Alvo ATR
   TF_alvo: 60min
+
+  Tripleta recomendada (robo roda em 60min = TF3 gatilho):
+    240/120/60 -> roda em 60min -> iJanelaDir=2 (120min), iJanelaCtx=4 (240min)
 
   Parametros 60min:
     ATR_StopMult = 1.0   -> stop inicial = ATR * 1.0
@@ -29,6 +33,9 @@ input
   // Horario
   StopHorario_H(17);
   StopHorario_M(45);
+  // Multi-TF: janela de contexto e direcao (em candles do TF atual)
+  iJanelaDir(2);             // direcao: 120min = 2x de 60min
+  iJanelaCtx(4);             // contexto: 240min = 4x de 60min
 
 var
   fCorpo, fRange, fVolMedia, fMassa, fAceleracao, fForca : float;
@@ -40,6 +47,9 @@ var
   fStopAtual    : float;
   fAlvoAtual    : float;
   fATR, fStopDist, fBEDist, fAlvoDist : float;
+  fMediaDir, fMediaCtx : float;
+  bContextoAlta, bContextoBaixa : boolean;
+  bDirecaoAlta, bDirecaoBaixa : boolean;
 
 begin
   // --- F = M x A ---
@@ -54,6 +64,14 @@ begin
   if fForca >  100 then fForca :=  100;
   if fForca < -100 then fForca := -100;
   fForcaAbs := abs(fForca);
+
+  // --- Multi-TF: Contexto e Direcao ---
+  fMediaDir := Media(iJanelaDir, Close);
+  fMediaCtx := Media(iJanelaCtx, Close);
+  bContextoAlta  := (Close > fMediaCtx) and (fMediaCtx > fMediaCtx[iJanelaCtx]);
+  bContextoBaixa := (Close < fMediaCtx) and (fMediaCtx < fMediaCtx[iJanelaCtx]);
+  bDirecaoAlta   := (Close > fMediaDir) and (fMediaDir > fMediaDir[iJanelaDir]);
+  bDirecaoBaixa  := (Close < fMediaDir) and (fMediaDir < fMediaDir[iJanelaDir]);
 
   // --- ATR dinamico ---
   fATR      := ATR(PeriodoATR);
@@ -136,13 +154,15 @@ begin
     BuyToCoverLimit(fAlvoAtual, Contratos);
   end;
 
-  // --- ENTRADA ---
+  // --- ENTRADA (requer alinhamento: Contexto TF1 + Direcao TF2 + Gatilho TF3) ---
   if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
-    if (fForca >= ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+    if (fForca >= ForcaMinimaEntrada) and bContextoAlta and bDirecaoAlta
+      and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
       BuyAtMarket(Contratos);
 
-    if (fForca <= -ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+    if (fForca <= -ForcaMinimaEntrada) and bContextoBaixa and bDirecaoBaixa
+      and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
       SellShortAtMarket(Contratos);
   end;
 

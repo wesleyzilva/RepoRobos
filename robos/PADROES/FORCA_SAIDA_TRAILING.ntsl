@@ -1,12 +1,17 @@
 {
   Robo: FORCA_SAIDA_TRAILING
-  Descricao: Entrada por F=MA. Saida com Trailing Stop dinamico via ATR.
+  Descricao: Entrada por F=MA com confirmacao multi-timeframe (Contexto+Direcao+Gatilho).
+             Saida com Trailing Stop dinamico via ATR.
              O stop segue o melhor preco a uma distancia de ATR * multiplicador.
              Sem alvo fixo: deixa o movimento correr. 3 contratos.
-  Versao: 2.0
+  Versao: 3.0
   Estrategia_saida: Trailing Stop ATR — stop dinamico que acompanha o preco
 
-  Configuracoes por TF:
+  Tripleta recomendada (robo roda no TF3 = gatilho):
+    60/30/15 -> roda em 15min -> iJanelaDir=2 (30min), iJanelaCtx=4 (60min)
+    30/15/5  -> roda em 5min  -> iJanelaDir=3 (15min), iJanelaCtx=6 (30min)
+
+  Configuracoes ATR por TF:
     15min: ATR_TrailMult=0.5
     30min: ATR_TrailMult=0.75
     60min: ATR_TrailMult=1.0
@@ -26,6 +31,9 @@ input
   // Horario
   StopHorario_H(17);
   StopHorario_M(45);
+  // Multi-TF: janela de contexto e direcao (em candles do TF atual)
+  iJanelaDir(2);             // direcao: 30min = 2x de 15min; 15min = 3x de 5min
+  iJanelaCtx(4);             // contexto: 60min = 4x de 15min; 30min = 6x de 5min
 
 var
   fCorpo, fRange, fVolMedia, fMassa, fAceleracao, fForca : float;
@@ -36,6 +44,9 @@ var
   fTrailStop    : float;
   fMelhorPreco  : float;
   fATR, fTrailDist : float;
+  fMediaDir, fMediaCtx : float;
+  bContextoAlta, bContextoBaixa : boolean;
+  bDirecaoAlta, bDirecaoBaixa : boolean;
 
 begin
   // --- F = M x A ---
@@ -50,6 +61,14 @@ begin
   if fForca >  100 then fForca :=  100;
   if fForca < -100 then fForca := -100;
   fForcaAbs := abs(fForca);
+
+  // --- Multi-TF: Contexto e Direcao ---
+  fMediaDir := Media(iJanelaDir, Close);
+  fMediaCtx := Media(iJanelaCtx, Close);
+  bContextoAlta  := (Close > fMediaCtx) and (fMediaCtx > fMediaCtx[iJanelaCtx]);
+  bContextoBaixa := (Close < fMediaCtx) and (fMediaCtx < fMediaCtx[iJanelaCtx]);
+  bDirecaoAlta   := (Close > fMediaDir) and (fMediaDir > fMediaDir[iJanelaDir]);
+  bDirecaoBaixa  := (Close < fMediaDir) and (fMediaDir < fMediaDir[iJanelaDir]);
 
   // --- ATR dinamico ---
   fATR       := ATR(PeriodoATR);
@@ -122,16 +141,18 @@ begin
     BuyToCoverStop(fTrailStop, fTrailStop + TrailOffset * MinPriceIncrement, Contratos);
   end;
 
-  // --- ENTRADA ---
+  // --- ENTRADA (requer alinhamento: Contexto TF1 + Direcao TF2 + Gatilho TF3) ---
   if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
-    if (fForca >= ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+    if (fForca >= ForcaMinimaEntrada) and bContextoAlta and bDirecaoAlta
+      and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
     begin
       BuyAtMarket(Contratos);
       fMelhorPreco := 0;
     end;
 
-    if (fForca <= -ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+    if (fForca <= -ForcaMinimaEntrada) and bContextoBaixa and bDirecaoBaixa
+      and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
     begin
       SellShortAtMarket(Contratos);
       fMelhorPreco := 0;
