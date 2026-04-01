@@ -56,7 +56,25 @@ chore: mover exemplos Profit para skills/exemplos_profit [31/03 09:45]
 
 ---
 
-## Fluxo completo antes do push (OBRIGATÓRIO)
+## Fluxo via script (RECOMENDADO — um único comando)
+
+```bash
+# Commita e sobe tudo de uma vez (valida automaticamente os .ntsl/.ntfl modificados)
+bash _scripts/git_push.sh "tipo(escopo): descricao"
+
+# Exemplo com arquivos específicos
+bash _scripts/git_push.sh "feat(SEMAFORO): nova logica" robos/PADROES/FORCA_SEMAFORO_CORES_SOM.ntfl
+```
+
+O script executa na ordem:
+1. `validate_ntsl.py` em todos os `.ntsl`/`.ntfl` modificados — aborta se houver erro
+2. `git add -A`
+3. `git commit` com timestamp automático `[DD/MM HH:MM]`
+4. `git config --local http.sslVerify false; git push origin <branch>`
+
+---
+
+## Fluxo manual completo antes do push (fallback)
 
 ```bash
 # 1. Validar sintaxe (ANTES do commit)
