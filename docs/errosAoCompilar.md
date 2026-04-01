@@ -1774,3 +1774,729 @@ Parser[143,14]: Uma String necessita ser delimitada por aspas duplas ""
 Parser[146,1]: O código deve começar com begin
 Erro de Sintaxe
 
+{
+  Indicador: IND_AREAS_CONFLUENCIA_V1
+  Descricao: Indicador visual de áreas de confluência geométrica — corpos sobrepostos
+  Ativo: WIN B3
+  Timeframe: qualquer
+  Versao: 1.0
+  Tipo: Indicador (.ntfl) — para validação visual antes de implementar robô
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════════════════════════
+input
+  ForcaMinimaEntrada(60.0);     // força mínima para marcar candle como relevante
+  VolumeMultiplicador(1.5);     // volume mínimo vs média 20
+  ToleranciaZona(50.0);         // buffer de sobreposição em pts
+  MostrarTextoForca(true);      // exibir valor da força no candle
+  MostrarAlertas(true);         // emitir alerta quando zona de confluência detectada
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VARIÁVEIS
+// ═══════════════════════════════════════════════════════════════════════════════
+var
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fMassa            : float;
+  fAceleracao       : float;
+  fForca            : float;
+  fVolumeMedio      : float;
+  iCorR, iCorG, iCorB : integer;
+  bSinalCompra      : boolean;
+  bSinalVenda       : boolean;
+  bRejeicaoForte    : boolean;
+  bAnomaliaVolume   : boolean;
+  fPavioSup         : float;
+  fPavioInf         : float;
+
+  // Zonas para visualização
+  iConfluenciasCompra : integer;
+  iConfluenciasVenda  : integer;
+
+begin
+
+  // ─── SEÇÃO 1: FORÇA F = M × A ──────────────────────────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+
+  fMassa       := fCorpoCandle / fRangeCandle;
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio > 0 then fAceleracao := Volume / fVolumeMedio
+  else fAceleracao := 1;
+
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─── SEÇÃO 2: PADRÕES ESPECIAIS ───────────────────────────────────────────
+  fPavioSup := High - Max(Open, Close);
+  fPavioInf := Min(Open, Close) - Low;
+
+  // Rejeição forte: pavios totalizam > 60% do range
+  bRejeicaoForte := ((fPavioSup + fPavioInf) / fRangeCandle) >= 0.60;
+
+  // Anomalia de volume: volume > 3× média
+  bAnomaliaVolume := (Volume >= fVolumeMedio * 3.0);
+
+  // ─── SEÇÃO 3: GRADIENTE DE CORES + CORES ESPECIAIS ───────────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;  // cinza = padrão
+
+  if bRejeicaoForte then
+  begin
+    // Laranja = rejeição forte
+    iCorR := 255; iCorG := 165; iCorB := 0;
+  end
+  else if bAnomaliaVolume then
+  begin
+    // Amarelo = anomalia de volume
+    iCorR := 255; iCorG := 215; iCorB := 0;
+  end
+  else if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    // Branco = indecisão
+    iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if fForca >= ForcaMinimaEntrada then
+  begin
+    iCorG := 128 + Round((fForca / 100) * 127);
+    iCorR := 128 - Round((fForca / 100) * 128);
+    iCorB := 128 - Round((fForca / 100) * 128);
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if fForca <= -ForcaMinimaEntrada then
+  begin
+    iCorR := 128 + Round((-fForca / 100) * 127);
+    iCorG := 128 - Round((-fForca / 100) * 128);
+    iCorB := 128 - Round((-fForca / 100) * 128);
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─── SEÇÃO 4: TEXTO DE FORÇA (apenas indicador) ───────────────────────────
+  if MostrarTextoForca and (abs(fForca) >= ForcaMinimaEntrada) then
+  begin
+    // Format() não existe em NTSL — usar IntToStr(Round(x))
+    if fForca >= ForcaMinimaEntrada then
+      PlotText(IntToStr(Round(fForca)), RGB(0, 200, 0), 8, 0, Low * 0.998)
+    else
+      PlotText(IntToStr(Round(fForca)), RGB(200, 0, 0), 8, 0, High * 1.002);
+  end;
+
+  // ─── SEÇÃO 5: SETAS DE CONFLUÊNCIA ───────────────────────────────────────
+  // Detectar confluência simplificada: 2 candles de força na mesma direção
+  // dentro de uma janela de ToleranciaZona pts
+
+  bSinalCompra := (fForca >= ForcaMinimaEntrada) and
+                  (Volume >= fVolumeMedio * VolumeMultiplicador) and
+                  (Close[1] > Open[1]) and
+                  (abs(Close[1] - Open[1]) >= 0.40 * (High[1] - Low[1])) and
+                  (abs(Close - Open[1]) <= ToleranciaZona);
+
+  bSinalVenda := (fForca <= -ForcaMinimaEntrada) and
+                 (Volume >= fVolumeMedio * VolumeMultiplicador) and
+                 (Close[1] < Open[1]) and
+                 (abs(Close[1] - Open[1]) >= 0.40 * (High[1] - Low[1])) and
+                 (abs(Close - Open[1]) <= ToleranciaZona);
+
+  if bSinalCompra then
+  begin
+    // DrawArrow não é identificador válido em NTSL — usar PlotText + PaintBar
+    PaintBar(RGB(0, 255, 100));  // verde intenso = sinal de compra
+    if MostrarAlertas then Alert(RGB(0, 255, 0));
+    PlotText("COMPRA", RGB(0, 200, 0), 9, 1, Low * 0.993);
+  end;
+
+  if bSinalVenda then
+  begin
+    // DrawArrow não é identificador válido em NTSL — usar PlotText + PaintBar
+    PaintBar(RGB(255, 50, 0));   // vermelho intenso = sinal de venda
+    if MostrarAlertas then Alert(RGB(255, 0, 0));
+    PlotText("VENDA", RGB(200, 0, 0), 9, 1, High * 1.007);
+  end;
+
+end;
+Compilando ...
+Parser[112,16]: Uma String necessita ser delimitada por aspas duplas ""
+Parser[149,1]: O código deve começar com begin
+Erro de Sintaxe
+
+{
+  Robo: ROB_SEMAFORO_MULTI_TF_V1
+  Descricao: Semáforo de tripleta — Contexto > Direção > Gatilho. Opera somente com TF1+TF2 alinhados.
+  Ativo: WIN B3 / WDO B3
+  Timeframe: TF3 (Gatilho) — configurar via iJanelaDir e iJanelaCtx
+  Versao: 2.0
+  RRR_minimo: 2.0
+  SL_referencia: extremo do candle gatilho ± BufferStop
+
+  TRIPLETAS RECOMENDADAS (configurar iJanelaDir e iJanelaCtx):
+    60/30/15 → rob. roda em 15min → iJanelaDir=2, iJanelaCtx=4   | WIN SL=250pts | WDO SL=10pts
+    30/15/5  → rob. roda em 5min  → iJanelaDir=3, iJanelaCtx=6   | WIN SL=150pts | WDO SL=6pts  ← PADRÃO
+    15/5/1   → rob. roda em 1min  → iJanelaDir=5, iJanelaCtx=15  | WIN SL=80pts  | WDO SL=3pts
+    30/10/5  → rob. roda em 5min  → iJanelaDir=2, iJanelaCtx=6
+    60/20/5  → rob. roda em 5min  → iJanelaDir=4, iJanelaCtx=12
+
+  REGRA CARDINAL: Opera SOMENTE quando Contexto(TF1) E Direção(TF2) estão alinhados.
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════════════════════════
+input
+  // ── Tripleta (configurar conforme a tabela de tripletas) ──────────────────
+  // Padrão: 30/15/5 rodando em 5min → iJanelaDir=3, iJanelaCtx=6
+  // 60/30/15 em 15min → iJanelaDir=2, iJanelaCtx=4
+  // 15/5/1  em 1min  → iJanelaDir=5, iJanelaCtx=15
+  iJanelaDir(3);                  // barras do TF2 (Direção) em TF3 (Gatilho)
+  iJanelaCtx(6);                  // barras do TF1 (Contexto) em TF3 (Gatilho)
+
+  ForcaMinimaEntrada(60.0);       // força mínima no TF3 para acionar gatilho
+  ForcaMinimaContexto(20.0);      // força mínima nos proxies de TF1/TF2
+  VolumeMultiplicador(1.5);
+  RRR_Minimo(2.0);
+  BufferStop(5.0);
+  StopHorario_H(17);
+  StopHorario_M(45);
+  MaxBarrasEmPosicao(8);
+  HoraInicioOperacao_H(9);
+  HoraInicioOperacao_M(15);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VARIÁVEIS
+// ═══════════════════════════════════════════════════════════════════════════════
+var
+  fCorpoCandle         : float;
+  fRangeCandle         : float;
+  fMassa               : float;
+  fAceleracao          : float;
+  fForca               : float;
+  fVolumeMedio         : float;
+  iCorR, iCorG, iCorB  : integer;
+
+  // Proxies da Tripleta (iJanelaDir → TF2 Direção, iJanelaCtx → TF1 Contexto)
+  fMediaDir            : float;   // proxy TF2 — Media(iJanelaDir, Close)
+  fMediaCtx            : float;   // proxy TF1 — Media(iJanelaCtx, Close)
+  bContextoAlta        : boolean; // TF1 inclinando para cima
+  bContextoBaixa       : boolean; // TF1 inclinando para baixo
+  bDirecaoAlta         : boolean; // TF2 inclinando para cima
+  bDirecaoBaixa        : boolean; // TF2 inclinando para baixo
+
+  // Sinais combinados
+  bSemVerdeCompra      : boolean;  // TF maior + gatilho = compra
+  bSemVerdeVenda       : boolean;  // TF maior + gatilho = venda
+
+  // Semáforo (confirmação de 2 candles consecutivos)
+  iContadorCompra      : integer;
+  iContadorVenda       : integer;
+  bEntradaConfirmada   : boolean;
+
+  // Gestão
+  fEntrada             : float;
+  fStopLoss            : float;
+  fTakeProfit          : float;
+  fRiscoEmPontos       : float;
+  iBarrasEmPosicao     : integer;
+  bRRROk               : boolean;
+  // Controle de horário (Time() = HHMMSS — Hour/Minute/Exit não existem em NTSL)
+  iHoraAtual           : integer;
+  iMinutoAtual         : integer;
+  bDeveOperar          : boolean;
+
+begin
+
+  // ─── SEÇÃO 1: FORÇA DO CANDLE ATUAL (TF gatilho) ──────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+
+  fMassa       := fCorpoCandle / fRangeCandle;
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio > 0 then fAceleracao := Volume / fVolumeMedio
+  else fAceleracao := 1;
+
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─── SEÇÃO 2: PROXY DA TRIPLETA (Contexto TF1 + Direção TF2) ────────────────
+  // Cada proxy compara o Close atual vs média de iJanela barras.
+  // iJanelaDir barras → representa TF2 (Direção)
+  // iJanelaCtx barras → representa TF1 (Contexto)
+  //
+  // Tabela de configuração (ver cabeçalho):
+  //   Tripleta 30/15/5  em 5min  → iJanelaDir=3, iJanelaCtx=6
+  //   Tripleta 60/30/15 em 15min → iJanelaDir=2, iJanelaCtx=4
+  //   Tripleta 15/5/1   em 1min  → iJanelaDir=5, iJanelaCtx=15
+  fMediaDir := Media(iJanelaDir, Close);
+  fMediaCtx := Media(iJanelaCtx, Close);
+
+  // Direção (TF2): preço acima/abaixo da média de TF2 E média inclinando
+  bContextoAlta  := (Close > fMediaCtx) and (fMediaCtx > fMediaCtx[iJanelaCtx]);
+  bContextoBaixa := (Close < fMediaCtx) and (fMediaCtx < fMediaCtx[iJanelaCtx]);
+  bDirecaoAlta   := (Close > fMediaDir) and (fMediaDir > fMediaDir[iJanelaDir]);
+  bDirecaoBaixa  := (Close < fMediaDir) and (fMediaDir < fMediaDir[iJanelaDir]);
+
+  // ─── SEÇÃO 3: GRADIENTE (TF atual + contexto) ─────────────────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;
+
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if fForca >= ForcaMinimaEntrada then
+  begin
+    if bContextoAlta then
+    begin
+      // Azul = confirmação multi-TF de compra
+      iCorR := 0; iCorG := 128; iCorB := 255;
+    end
+    else
+    begin
+      iCorG := 128 + Round((fForca / 100) * 127);
+      iCorR := 128 - Round((fForca / 100) * 128);
+      iCorB := 128 - Round((fForca / 100) * 128);
+      if iCorG > 255 then iCorG := 255;
+      if iCorR < 0   then iCorR := 0;
+      if iCorB < 0   then iCorB := 0;
+    end;
+  end
+  else if fForca <= -ForcaMinimaEntrada then
+  begin
+    if bContextoBaixa then
+    begin
+      // Azul escuro = confirmação multi-TF de venda
+      iCorR := 80; iCorG := 0; iCorB := 200;
+    end
+    else
+    begin
+      iCorR := 128 + Round((-fForca / 100) * 127);
+      iCorG := 128 - Round((-fForca / 100) * 128);
+      iCorB := 128 - Round((-fForca / 100) * 128);
+      if iCorR > 255 then iCorR := 255;
+      if iCorG < 0   then iCorG := 0;
+      if iCorB < 0   then iCorB := 0;
+    end;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─── SEÇÃO 4: SEMÁFORO — CONFIRMAÇÃO DE 2 CANDLES ────────────────────────
+  // REGRA CARDINAL: Contexto(TF1) E Direção(TF2) AMBOS alinhados + força no gatilho
+  bSemVerdeCompra := (fForca >= ForcaMinimaEntrada) and
+                     bContextoAlta and bDirecaoAlta and
+                     (Volume >= fVolumeMedio * VolumeMultiplicador);
+
+  bSemVerdeVenda  := (fForca <= -ForcaMinimaEntrada) and
+                     bContextoBaixa and bDirecaoBaixa and
+                     (Volume >= fVolumeMedio * VolumeMultiplicador);
+
+  // Contadores de persistência (2 candles consecutivos no mesmo lado)
+  if bSemVerdeCompra then
+    iContadorCompra := iContadorCompra + 1
+  else
+    iContadorCompra := 0;
+
+  if bSemVerdeVenda then
+    iContadorVenda := iContadorVenda + 1
+  else
+    iContadorVenda := 0;
+
+  // Entrada confirmada apenas após 2 candles consecutivos (evita sinais rápidos)
+  bEntradaConfirmada := (iContadorCompra >= 2) or (iContadorVenda >= 2);
+
+  // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
+  if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    Exit;
+  end;
+
+  // Aguardar após abertura
+  if (Hour = HoraInicioOperacao_H) and (Minute < HoraInicioOperacao_M) then Exit;
+  if Hour < HoraInicioOperacao_H then Exit;
+
+  // ─── SEÇÃO 6: CONTROLE DE BARRAS ──────────────────────────────────────────
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
+    ClosePosition;
+    iBarrasEmPosicao := 0;
+    Exit;
+  end;
+
+  // ─── SEÇÃO 7: ENTRADAS ────────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) and bEntradaConfirmada then
+  begin
+
+    if iContadorCompra >= 2 then
+    begin
+      fEntrada       := Close;
+      fStopLoss      := Low - BufferStop;
+      fRiscoEmPontos := fEntrada - fStopLoss;
+      fTakeProfit    := fEntrada + fRiscoEmPontos * RRR_Minimo;
+      bRRROk         := (fTakeProfit - fEntrada) >= (fRiscoEmPontos * RRR_Minimo);
+
+      if bRRROk and (fRiscoEmPontos > 0) then
+      begin
+        BuyAtMarket;
+        iBarrasEmPosicao := 0;
+        iContadorCompra  := 0;
+      end;
+    end;
+
+    if iContadorVenda >= 2 then
+    begin
+      fEntrada       := Close;
+      fStopLoss      := High + BufferStop;
+      fRiscoEmPontos := fStopLoss - fEntrada;
+      fTakeProfit    := fEntrada - fRiscoEmPontos * RRR_Minimo;
+      bRRROk         := (fEntrada - fTakeProfit) >= (fRiscoEmPontos * RRR_Minimo);
+
+      if bRRROk and (fRiscoEmPontos > 0) then
+      begin
+        SellShortAtMarket;
+        iBarrasEmPosicao := 0;
+        iContadorVenda   := 0;
+      end;
+    end;
+
+  end;
+
+end;
+
+Compilando ...
+Parser[186,7]: Função ou variável inválida: Hour
+Parser[189,5]: Exit não é um identificador válido
+Parser[193,7]: Função ou variável inválida: Hour
+Parser[194,6]: Função ou variável inválida: Hour
+Parser[206,5]: Exit não é um identificador válido
+Parser[247,1]: O código deve começar com begin
+Erro de Sintaxe
+{
+  Robo: ROB_CONFLUENCIA_V1
+  Descricao: Robô de confluência geométrica — entradas em zonas com ≥2 referências sobrepostas
+  Ativo: WIN B3
+  Timeframe: 5min
+  Versao: 1.0
+  RRR_minimo: 2.0
+  SL_referencia: minima/maxima da zona de confluencia detectada
+  Spread_descontado: 10 pts (comentado — desconto no backtest)
+  Slippage_descontado: 15 pts (comentado — desconto no backtest)
+  Periodo_minimo_backtest: 90 dias / 100 trades
+  Aprovado_em: pendente backtest
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════════════════════════
+input
+  ForcaMinimaEntrada(60.0);       // força mínima para considerar candle direcional
+  RRR_Minimo(2.0);                // razão risco/recompensa mínima para entrar
+  VolumeMultiplicador(1.5);       // volume deve ser X vezes a média de 20 períodos
+  ToleranciaZona(50.0);           // buffer em pts para considerar sobreposição de áreas
+  FatorTamanhoArea(1.0);          // multiplicador do corpo para tamanho da área
+  StopHorario_H(17);              // hora de encerrar posições
+  StopHorario_M(45);              // minuto de encerrar posições
+  MaxBarrasEmPosicao(8);          // máximo de candles em posição aberta
+  CapitalConta(10000.0);          // capital total para dimensionamento
+  RiscoPorcentagem(2.0);          // % do capital por trade
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VARIÁVEIS
+// ═══════════════════════════════════════════════════════════════════════════════
+var
+  // Força F = M × A
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fMassa            : float;
+  fAceleracao       : float;
+  fForca            : float;
+  fVolumeMedio      : float;
+
+  // Cores
+  iCorR, iCorG, iCorB : integer;
+
+  // Zonas de confluência (corpo dos últimos N candles relevantes)
+  // Armazenamos os extremos dos últimos 5 candles de força
+  fZonaCompraMin    : float;
+  fZonaCompraMax    : float;
+  fZonaVendaMin     : float;
+  fZonaVendaMax     : float;
+  iConfluenciasCompra : integer;
+  iConfluenciasVenda  : integer;
+
+  // Gestão de risco
+  fEntrada          : float;
+  fStopLoss         : float;
+  fTakeProfit       : float;
+  fRiscoEmPontos    : float;
+  fRiscoEmReais     : float;
+  fQuantidade       : float;
+
+  // Sinais
+  bSinalCompra      : boolean;
+  bSinalVenda       : boolean;
+  bNaZonaCompra     : boolean;
+  bNaZonaVenda      : boolean;
+  bVolConfirmado    : boolean;
+  bRRROk            : boolean;
+
+  // Controle
+  iBarrasEmPosicao  : integer;
+  // Controle de horário (Time() = HHMMSS — Hour/Minute/Exit não existem em NTSL)
+  iHoraAtual        : integer;
+  iMinutoAtual      : integer;
+  bDeveOperar       : boolean;
+
+begin
+
+  // ─── SEÇÃO 1: FORÇA F = M × A ──────────────────────────────────────────────
+  // Mede a intensidade direcional do candle atual ponderada pelo volume relativo
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;  // guard divisão por zero
+
+  fMassa       := fCorpoCandle / fRangeCandle;        // -1.0 a +1.0
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio > 0 then
+    fAceleracao := Volume / fVolumeMedio
+  else
+    fAceleracao := 1;
+
+  fForca := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─── SEÇÃO 2: GRADIENTE DE CORES ──────────────────────────────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;  // cinza = padrão
+
+  if abs(fCorpoCandle) < 0.10 * fRangeCandle then
+  begin
+    // Branco = indecisão (corpo < 10% do range)
+    iCorR := 255; iCorG := 255; iCorB := 255;
+  end
+  else if fForca >= ForcaMinimaEntrada then
+  begin
+    // Verde degradê — quanto maior a força, mais saturado o verde
+    iCorG := 128 + Round((fForca / 100) * 127);
+    iCorR := 128 - Round((fForca / 100) * 128);
+    iCorB := 128 - Round((fForca / 100) * 128);
+    if iCorG > 255 then iCorG := 255;
+    if iCorR < 0   then iCorR := 0;
+    if iCorB < 0   then iCorB := 0;
+  end
+  else if fForca <= -ForcaMinimaEntrada then
+  begin
+    // Vermelho degradê — quanto menor a força, mais saturado o vermelho
+    iCorR := 128 + Round((-fForca / 100) * 127);
+    iCorG := 128 - Round((-fForca / 100) * 128);
+    iCorB := 128 - Round((-fForca / 100) * 128);
+    if iCorR > 255 then iCorR := 255;
+    if iCorG < 0   then iCorG := 0;
+    if iCorB < 0   then iCorB := 0;
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─── SEÇÃO 3: ZONAS DE CONFLUÊNCIA ────────────────────────────────────────
+  // Verifica se o preço atual está dentro de uma zona de sobreposição de corpos
+  // de candles de força anteriores.
+  //
+  // Estratégia simplificada: usar os últimos 5 candles de força como referência.
+  // Zona de compra = região onde corpos de compra se sobrepõem (baixo dos corpos)
+  // Zona de venda  = região onde corpos de venda se sobrepõem  (alto dos corpos)
+
+  iConfluenciasCompra := 0;
+  iConfluenciasVenda  := 0;
+  fZonaCompraMin := 999999; fZonaCompraMax := 0;
+  fZonaVendaMin  := 999999; fZonaVendaMax  := 0;
+
+  // --- Candle -1
+  if (Close[1] > Open[1]) and (abs(Close[1]-Open[1]) >= 0.40 * (High[1]-Low[1])) then
+  begin
+    fZonaCompraMin := Open[1];
+    fZonaCompraMax := Close[1];
+    iConfluenciasCompra := iConfluenciasCompra + 1;
+  end;
+  if (Close[1] < Open[1]) and (abs(Close[1]-Open[1]) >= 0.40 * (High[1]-Low[1])) then
+  begin
+    fZonaVendaMin := Close[1];
+    fZonaVendaMax := Open[1];
+    iConfluenciasVenda := iConfluenciasVenda + 1;
+  end;
+
+  // --- Candle -2
+  if (Close[2] > Open[2]) and (abs(Close[2]-Open[2]) >= 0.40 * (High[2]-Low[2])) then
+  begin
+    // Verificar sobreposição com zona existente
+    if (fZonaCompraMin < 999999) then
+    begin
+      if (Open[2] <= fZonaCompraMax + ToleranciaZona) and
+         (Close[2] >= fZonaCompraMin - ToleranciaZona) then
+      begin
+        // Atualizar zona para intersecção
+        if Open[2]  > fZonaCompraMin then fZonaCompraMin := Open[2];
+        if Close[2] < fZonaCompraMax then fZonaCompraMax := Close[2];
+        iConfluenciasCompra := iConfluenciasCompra + 1;
+      end;
+    end
+    else
+    begin
+      fZonaCompraMin := Open[2];
+      fZonaCompraMax := Close[2];
+      iConfluenciasCompra := 1;
+    end;
+  end;
+
+  if (Close[2] < Open[2]) and (abs(Close[2]-Open[2]) >= 0.40 * (High[2]-Low[2])) then
+  begin
+    if (fZonaVendaMin < 999999) then
+    begin
+      if (Close[2] <= fZonaVendaMax + ToleranciaZona) and
+         (Open[2]  >= fZonaVendaMin - ToleranciaZona) then
+      begin
+        if Close[2] > fZonaVendaMin then fZonaVendaMin := Close[2];
+        if Open[2]  < fZonaVendaMax then fZonaVendaMax := Open[2];
+        iConfluenciasVenda := iConfluenciasVenda + 1;
+      end;
+    end
+    else
+    begin
+      fZonaVendaMin := Close[2];
+      fZonaVendaMax := Open[2];
+      iConfluenciasVenda := 1;
+    end;
+  end;
+
+  // --- Candle -3 (mesma lógica)
+  if (Close[3] > Open[3]) and (abs(Close[3]-Open[3]) >= 0.40 * (High[3]-Low[3])) then
+    if (fZonaCompraMin < 999999) and
+       (Open[3] <= fZonaCompraMax + ToleranciaZona) and
+       (Close[3] >= fZonaCompraMin - ToleranciaZona) then
+      iConfluenciasCompra := iConfluenciasCompra + 1;
+
+  if (Close[3] < Open[3]) and (abs(Close[3]-Open[3]) >= 0.40 * (High[3]-Low[3])) then
+    if (fZonaVendaMin < 999999) and
+       (Close[3] <= fZonaVendaMax + ToleranciaZona) and
+       (Open[3]  >= fZonaVendaMin - ToleranciaZona) then
+      iConfluenciasVenda := iConfluenciasVenda + 1;
+
+  // Verificar se o preço atual está dentro das zonas
+  bNaZonaCompra := (iConfluenciasCompra >= 2) and
+                   (Close >= fZonaCompraMin - ToleranciaZona) and
+                   (Close <= fZonaCompraMax + ToleranciaZona);
+
+  bNaZonaVenda  := (iConfluenciasVenda >= 2) and
+                   (Close >= fZonaVendaMin  - ToleranciaZona) and
+                   (Close <= fZonaVendaMax  + ToleranciaZona);
+
+  // ─── SEÇÃO 4: CONFIRMAÇÃO DE VOLUME ───────────────────────────────────────
+  bVolConfirmado := (Volume >= fVolumeMedio * VolumeMultiplicador);
+
+  // ─── SEÇÃO 5: SINAIS DE ENTRADA ───────────────────────────────────────────
+  bSinalCompra := bNaZonaCompra and
+                  (fForca >= ForcaMinimaEntrada) and
+                  bVolConfirmado;
+
+  bSinalVenda  := bNaZonaVenda and
+                  (fForca <= -ForcaMinimaEntrada) and
+                  bVolConfirmado;
+
+  // ─── SEÇÃO 6: STOP HORÁRIO ────────────────────────────────────────────────
+  if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    Exit;  // não abrir novas posições após horário limite
+  end;
+
+  // Evitar abertura antes de 09:15 (volatilidade da abertura)
+  if (Hour = 9) and (Minute < 15) then Exit;
+
+  // ─── SEÇÃO 7: CONTROLE DE BARRAS EM POSIÇÃO ───────────────────────────────
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
+    ClosePosition;
+    iBarrasEmPosicao := 0;
+    Exit;
+  end;
+
+  // ─── SEÇÃO 8: ENTRADAS ────────────────────────────────────────────────────
+  if (not IsBought) and (not IsSold) then
+  begin
+
+    // COMPRA: zona de confluência de alta + candle de força + volume
+    if bSinalCompra then
+    begin
+      fEntrada       := Close;
+      // SL = mínimo da zona de confluência de compra com buffer
+      fStopLoss      := fZonaCompraMin - 5;
+      fRiscoEmPontos := fEntrada - fStopLoss;
+      fTakeProfit    := fEntrada + fRiscoEmPontos * RRR_Minimo;
+
+      // Verificar RRR antes de entrar
+      bRRROk := (fTakeProfit - fEntrada) >= (fRiscoEmPontos * RRR_Minimo);
+
+      if bRRROk and (fRiscoEmPontos > 0) then
+      begin
+        // Dimensionar quantidade pelo risco
+        fRiscoEmReais := CapitalConta * (RiscoPorcentagem / 100);
+        // Floor() não existe em NTSL — usar divisão inteira + guarda mínimo
+        fQuantidade   := fRiscoEmReais / (fRiscoEmPontos * 0.20);
+        if fQuantidade < 1 then fQuantidade := 1;
+
+        BuyAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+    // VENDA: zona de confluência de baixa + candle de força + volume
+    if bSinalVenda then
+    begin
+      fEntrada       := Close;
+      // SL = máximo da zona de confluência de venda com buffer
+      fStopLoss      := fZonaVendaMax + 5;
+      fRiscoEmPontos := fStopLoss - fEntrada;
+      fTakeProfit    := fEntrada - fRiscoEmPontos * RRR_Minimo;
+
+      bRRROk := (fEntrada - fTakeProfit) >= (fRiscoEmPontos * RRR_Minimo);
+
+      if bRRROk and (fRiscoEmPontos > 0) then
+      begin
+        fRiscoEmReais := CapitalConta * (RiscoPorcentagem / 100);
+        // Floor() não existe em NTSL — usar divisão inteira + guarda mínimo
+        fQuantidade   := fRiscoEmReais / (fRiscoEmPontos * 0.20);
+        if fQuantidade < 1 then fQuantidade := 1;
+
+        SellShortAtMarket;
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+  end;
+
+end;
+
+Compilando ...
+Parser[232,7]: Função ou variável inválida: Hour
+Parser[235,5]: Exit não é um identificador válido
+Parser[239,7]: Função ou variável inválida: Hour
+Parser[251,5]: Exit não é um identificador válido
+Parser[308,1]: O código deve começar com begin
+Erro de Sintaxe
