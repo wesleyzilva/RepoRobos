@@ -1,7 +1,12 @@
 { 
   Robo: FORCA_SEMAFORO_CORES_SOM
-  Descricao: Coloração por força F=MA com degradê visível e regras de operação parametrizáveis
-  Versao: 5.0
+  Descricao: Coloracao por forca F=MA com degradê visivel e confirmacao multi-timeframe (Contexto+Direcao+Gatilho).
+             Entradas somente quando os 3 TFs estao alinhados.
+  Versao: 6.0
+
+  Tripleta recomendada (indicador roda no TF3 = gatilho):
+    60/30/15 -> roda em 15min -> iJanelaDir=2 (30min), iJanelaCtx=4 (60min)
+    30/15/5  -> roda em 5min  -> iJanelaDir=3 (15min), iJanelaCtx=6 (30min)
 }
 
 input
@@ -15,6 +20,9 @@ input
   MostrarAlertas(true);              // habilita alertas sonoros
   UsarSegundoCheckpointAlerta(true); // se true, alerta só dispara acima do limiar abaixo
   ForcaMinimaAlerta(70);             // segundo checkpoint para alertar compra/venda
+  // --- Multi-TF ---
+  iJanelaDir(2);             // direcao: 30min = 2x de 15min; 15min = 3x de 5min
+  iJanelaCtx(4);             // contexto: 60min = 4x de 15min; 30min = 6x de 5min
   // --- Saídas ---
   StopHorario_H(17);                 // hora do stop horário (fechamento forçado)
   StopHorario_M(45);                 // minuto do stop horário
@@ -29,6 +37,9 @@ var
   r, g, b : integer;
   iBarrasEmPosicao : integer;
   bDeveOperar : boolean;
+  fMediaDir, fMediaCtx : float;
+  bContextoAlta, bContextoBaixa : boolean;
+  bDirecaoAlta, bDirecaoBaixa : boolean;
 
 begin
   // --- Cálculos de Base ---
@@ -47,6 +58,14 @@ begin
   // Limites de segurança
   if fForca > 100 then fForca := 100;
   if fForca < -100 then fForca := -100;
+
+  // --- Multi-TF: Contexto e Direcao ---
+  fMediaDir := Media(iJanelaDir, Close);
+  fMediaCtx := Media(iJanelaCtx, Close);
+  bContextoAlta  := (Close > fMediaCtx) and (fMediaCtx > fMediaCtx[iJanelaCtx]);
+  bContextoBaixa := (Close < fMediaCtx) and (fMediaCtx < fMediaCtx[iJanelaCtx]);
+  bDirecaoAlta   := (Close > fMediaDir) and (fMediaDir > fMediaDir[iJanelaDir]);
+  bDirecaoBaixa  := (Close < fMediaDir) and (fMediaDir < fMediaDir[iJanelaDir]);
 
   // --- LÓGICA DE CORES (DEGRADE RGB) ---
   // Branco = sem sinal (visível sobre qualquer fundo)
@@ -143,8 +162,9 @@ begin
   // --- ENTRADAS ---
   if HabilitarOperacoes and bDeveOperar then
   begin
-    // COMPRA
-    if (fForca >= ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+    // COMPRA (requer: Contexto TF1 + Direcao TF2 + Gatilho TF3)
+    if (fForca >= ForcaMinimaEntrada) and bContextoAlta and bDirecaoAlta
+      and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
     begin
       if PermitirReversao and IsSold then ClosePosition;
       if (not IsBought) and (not IsSold) then
@@ -156,8 +176,9 @@ begin
       end;
     end;
 
-    // VENDA
-    if (fForca <= -ForcaMinimaEntrada) and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
+    // VENDA (requer: Contexto TF1 + Direcao TF2 + Gatilho TF3)
+    if (fForca <= -ForcaMinimaEntrada) and bContextoBaixa and bDirecaoBaixa
+      and ((not UsarFiltroVolume) or (Volume >= VolumeMinimo)) then
     begin
       if PermitirReversao and IsBought then ClosePosition;
       if (not IsBought) and (not IsSold) then
