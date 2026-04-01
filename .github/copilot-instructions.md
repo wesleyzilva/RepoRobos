@@ -208,12 +208,17 @@ iCorB := 128 - Round((-fForca / 100) * 128);  // 128..0
 // Cinza  = RGB(128, 128, 128) — padrão
 ```
 
-**Cores especiais:**
-| Cor | Condição |
-|---|---|
-| Laranja `RGB(255,165,0)` | Rejeição forte (pavio > 60% do range) |
-| Amarelo `RGB(255,215,0)` | Anomalia de volume (> 3× média) |
-| Azul `RGB(0,128,255)` | Confirmação multi-timeframe |
+**Cores especiais (esquema vigente):**
+| Cor | Condição | RGB |
+|---|---|---|
+| ⬜ Branco | Sem sinal — força abaixo do threshold (padrão) | `RGB(255,255,255)` |
+| ⬛ Cinza | Indecisão / doji — corpo < 10% do range | `RGB(128,128,128)` |
+| 🟠 Laranja | Reversão — força forte contrária ao candle anterior | `RGB(255,165,0)` |
+| 🟢 Verde (degradê) | Sinal de compra confirmado | `RGB(0..110, 110..255, 0..110)` |
+| 🔴 Vermelho (degradê) | Sinal de venda confirmado | `RGB(110..255, 0..110, 0..110)` |
+
+> **Lógica laranja:** `(fForcaAbs >= ForcaMinimaEntrada) and (fForca * fCorpoAnterior < 0)`
+> onde `fCorpoAnterior := Close[1] - Open[1]`
 
 ---
 
@@ -398,8 +403,8 @@ Ao analisar resultados, sempre reportar:
 4. **Ao criar indicadores**: usar `.ntfl`, pode usar PlotText/Alert para visualização (DrawArrow inválido)
 5. **Ao falar de confluência**: citar quantas referências geométricas se sobrepõem e de que tipo
 6. **Ao otimizar**: advertir sobre overfitting se o período de teste < 90 dias ou < 100 trades
-7. **Idioma**: sempre responder em **português brasileiro**
-
+7. **Idioma**: sempre responder em **português brasileiro**9. **Commits**: sempre incluir timestamp `[DD/MM HH:MM]` no final da mensagem usando `$(date +%d/%m\ %H:%M)` no bash
+10. **Push**: sempre usar workaround SSL `git -c http.sslVerify=false push origin <branch>` (proxy corporativo bloqueia certificado)
 ### 📋 Regra do Plano (OBRIGATÓRIO antes de criar qualquer robô)
 > Antes de gerar código NTSL, **sempre apresentar o plano** usando o template de `.github/prompts/plano_pre_robo.prompt.md` e **aguardar aprovação**.
 > O plano é uma tabela estruturada sem código que responde: hipótese, tripleta, SL, RRR, nome do arquivo.
