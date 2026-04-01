@@ -31,6 +31,38 @@ Cada operação usa sempre **3 timeframes em cadeia decrescente**:
 
 ---
 
+## Grau de Confiança por Combinação — Hierarquia de Peso
+
+> **Princípio:** TF maior = maior peso. O TF1 (60min) representa o fluxo institucional.
+> Sem ele alinhado, o sinal pode ser apenas ruído ou correção dentro de um movimento oposto maior.
+
+| Combinação | TF1 (60min) | TF2 (30min) | TF3 (15min) | Confiança | Ação recomendada |
+|---|:---:|:---:|:---:|---|---|
+| 3/3 alinhados | ✅ | ✅ | ✅ | **Alta** | Entra com tamanho cheio |
+| 60+30 sem 15 | ✅ | ✅ | ❌ | **Média-Alta** | Contexto e direção ok — aguarda gatilho |
+| 60+15 sem 30 | ✅ | ❌ | ✅ | **Média** | Contexto ok, direção intermediária ausente |
+| 30+15 sem 60 | ❌ | ✅ | ✅ | **Baixa** | **Bloqueado** — sem contexto institucional |
+
+### Por que 30+15 sem 60 é o pior cenário
+
+O 60min representa o fluxo institucional. Sem ele, o sinal pode ser apenas uma correção
+dentro de um movimento oposto maior — você entra "a favor do ruído", não da tendência.
+
+---
+
+## Sistema de Score com Veto do TF1
+
+```
+60min ❌  → BLOQUEIA a entrada independente dos outros dois (veto absoluto)
+60min ✅ + 30min ✅          → Entra com tamanho reduzido (1 contrato) aguardando TF3
+60min ✅ + 30min ✅ + 15min ✅ → Entra com tamanho cheio (3 contratos)
+```
+
+> **Implementação NTSL:** usar `Contratos` variável — `ContratosBase(1)` e `ContratosMaximo(3)`,
+> passando `ContratosBase` quando TF3 ainda não confirmou e `ContratosMaximo` com 3/3 alinhados.
+
+---
+
 ## Tripletas Disponíveis — ATR Real (WINFUT, 2024_26)
 
 | Tripleta | Perfil | ATR Gatilho | SL recomendado | SG (RRR 2.0) | Trades/dia est. |
