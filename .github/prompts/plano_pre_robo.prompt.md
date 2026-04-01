@@ -95,7 +95,8 @@ Parâmetros proxy: `iJanelaDir = ${input:janelaDir:3}`, `iJanelaCtx = ${input:ja
 ---
 
 #### 7. Checklist de Compilação (auto-revisão antes de entregar)
-- [ ] **`Hour`/`Minute`/`Exit` NÃO usados** → `Time() div 10000` + `bDeveOperar`
+- [ ] **`Hour`/`Minute`/`Exit` NÃO usados** → `Time() >= (H * 10000 + M * 100)` + `bDeveOperar`
+- [ ] **`div`/`mod` NÃO usados** → comparar `Time()` diretamente com HHMMSS calculado
 - [ ] **Aspas duplas** `"texto"` em todas as strings
 - [ ] **Nomes de variáveis sem espaço** (camelCase)
 - [ ] **`Format()`/`Floor()` NÃO usados** → `IntToStr(Round())` / truncamento manual

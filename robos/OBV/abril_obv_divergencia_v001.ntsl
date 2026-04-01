@@ -61,9 +61,7 @@ var
   fTakeProfit       : float;
   fRisco            : float;
   iBarrasEmPosicao  : integer;
-  // Controle de horário (Time() = HHMMSS — Hour/Minute/Exit não existem em NTSL)
-  iHoraAtual        : integer;
-  iMinutoAtual      : integer;
+  // Time() retorna HHMMSS — comparar com H*10000+M*100 (div/mod nao existem)
   bDeveOperar       : boolean;
 
 begin
@@ -153,18 +151,14 @@ begin
   PaintBar(RGB(iCorR, iCorG, iCorB));
 
   // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
-  iHoraAtual   := Time() div 10000;
-  iMinutoAtual := (Time() mod 10000) div 100;
-
-  if (iHoraAtual > StopHorario_H) or
-     ((iHoraAtual = StopHorario_H) and (iMinutoAtual >= StopHorario_M)) then
+  // Time() retorna HHMMSS como numero — comparar diretamente (div/mod nao existem)
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
   begin
     if IsBought or IsSold then ClosePosition;
     bDeveOperar := false;
   end
   else
-    bDeveOperar := (iHoraAtual > HoraInicioH) or
-                   ((iHoraAtual = HoraInicioH) and (iMinutoAtual >= HoraInicioM));
+    bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
 
   // ─── SEÇÃO 6: CONTROLE DE BARRAS ─────────────────────────────────────────
   if bDeveOperar then

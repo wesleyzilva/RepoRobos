@@ -283,7 +283,8 @@ Exemplo (WIN):
 
 | ❌ ERRADO | ✅ CORRETO | Motivo |
 |---|---|---|
-| `Hour`, `Minute`, `Second` | `Time() div 10000` / `(Time() mod 10000) div 100` | Não existem em NTSL |
+| `Hour`, `Minute`, `Second` | `Time() >= (H * 10000 + M * 100)` | Não existem em NTSL |
+| `Time() div 10000` | `Time() >= (H * 10000 + M * 100)` | `div`/`mod` não existem em NTSL |
 | `Exit;` | `bDeveOperar := false` + wrapper `if bDeveOperar then` | Não existe em NTSL |
 | `'texto single quotes'` | `"texto double quotes"` | NTSL exige aspas duplas |
 | `bAcelerando Alta` (espaço) | `bAcelerandoAlta` (camelCase) | Espaço invalida identificador |
@@ -292,32 +293,23 @@ Exemplo (WIN):
 | `DrawArrow(...)` em `.ntfl` | `PaintBar(RGB(...))` + `PlotText(...)` | DrawArrow inválido |
 | Multi-line `and` sem `()` | Envolver condição inteira em `(...)` | "Deve vir ;" parse error |
 
-**`Time()` retorna HHMMSS como inteiro** — ex: `091500` = 09:15:00:
-```pascal
-iHoraAtual   := Time() div 10000;            // extrai HH
-iMinutoAtual := (Time() mod 10000) div 100;  // extrai MM
-```
+**`Time()` retorna HHMMSS como inteiro** — ex: `091500` = 09:15:00.
+**`div` e `mod` NÃO existem em NTSL** (confirmado em compilação).
+Comparar diretamente: `Time() >= H * 10000 + M * 100`
 
-**Padrão OBRIGATÓRIO para stop de horário** (NUNCA usar Hour/Exit):
+**Padrão OBRIGATÓRIO para stop de horário** (NUNCA usar Hour/Exit/div/mod):
 ```pascal
-// Na seção var: adicionar estas 3 variáveis
-iHoraAtual   : integer;
-iMinutoAtual : integer;
+// Na seção var: apenas uma variável
 bDeveOperar  : boolean;
 
 // No begin:
-iHoraAtual   := Time() div 10000;
-iMinutoAtual := (Time() mod 10000) div 100;
-
-if (iHoraAtual > StopHorario_H) or
-   ((iHoraAtual = StopHorario_H) and (iMinutoAtual >= StopHorario_M)) then
+if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
 begin
   if IsBought or IsSold then ClosePosition;
   bDeveOperar := false;
 end
 else
-  bDeveOperar := (iHoraAtual > HoraInicioH) or
-                 ((iHoraAtual = HoraInicioH) and (iMinutoAtual >= HoraInicioM));
+  bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
 
 // Toda a lógica de barras + entradas DENTRO do if bDeveOperar:
 if bDeveOperar then

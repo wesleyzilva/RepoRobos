@@ -161,40 +161,33 @@ IsSold                         // true se em posição vendida
 Time()                         // hora atual em formato HHMMSS (ex: 091500 = 09:15:00)
 ```
 
-### Extrair hora e minuto de Time()
+### Controle de horário com Time() — padrão confirmado
+
+> ⚠️ `div` e `mod` **não existem em NTSL** (confirmado em compilação).
+> `Time()` retorna HHMMSS como número — comparar diretamente com `H * 10000 + M * 100`.
+
 ```pascal
-iHoraAtual   := Time() div 10000;           // ex: 091500 div 10000 = 9
-iMinutoAtual := (Time() mod 10000) div 100; // ex: 091500 mod 10000 = 1500 → div 100 = 15
-```
+// ✅ PADRÃO Único CORRETO — declarar no var apenas:
+// bDeveOperar : boolean;
 
-### Padrão correto para stop horário (SEM Exit, SEM Hour/Minute)
-```pascal
-// ✅ PADRÃO CONFIRMADO — declarar no var:
-// iHoraAtual : integer;  iMinutoAtual : integer;  bDeveOperar : boolean;
-
-iHoraAtual   := Time() div 10000;
-iMinutoAtual := (Time() mod 10000) div 100;
-
-if (iHoraAtual > StopHorario_H) or
-   ((iHoraAtual = StopHorario_H) and (iMinutoAtual >= StopHorario_M)) then
+// No begin:
+if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
 begin
   if IsBought or IsSold then ClosePosition;
   bDeveOperar := false;
 end
 else
-  bDeveOperar := (iHoraAtual > HoraInicioH) or
-                 ((iHoraAtual = HoraInicioH) and (iMinutoAtual >= HoraInicioM));
+  bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
 
-// Proteger barras + entradas com flag:
+// Toda a lógica de barras + entradas DENTRO do if bDeveOperar:
 if bDeveOperar then
 begin
   // controle de barras e entradas aqui
 end;
 
-// Alternativa compacta com input único (HHMMSS):
-// input iTimeStop(174500);  iTimeInicio(091500);
-// if Time() >= iTimeStop then begin ClosePosition; end;
-// bDeveOperar := (Time() >= iTimeInicio) and (Time() < iTimeStop);
+// ❌ ERRADO: div e mod nao existem em NTSL
+// iHoraAtual   := Time() div 10000;           // Parser: "Depois de um statement deve vir ;"
+// iMinutoAtual := (Time() mod 10000) div 100; // Parser: "Faltou um )"
 ```
 
 ---
@@ -245,6 +238,18 @@ fQuantidade := Floor(fRisco / 0.20);
 // ✅ CORRETO: truncar manualmente
 fQuantidade := fRisco / 0.20;
 if fQuantidade < 1 then fQuantidade := 1;
+
+// ❌ ERRO 7: div e mod nao existem em NTSL
+iHoraAtual := Time() div 10000;               // Parser: "Depois de um statement deve vir ;"
+iMinutoAtual := (Time() mod 10000) div 100;   // Parser: "Faltou um )"
+// ✅ CORRETO: comparar Time() diretamente com HHMMSS calculado
+bDeveOperar := Time() >= (StopHorario_H * 10000 + StopHorario_M * 100);
+// Regra: 09:15 = 91500 | 17:45 = 174500 | H*10000 + M*100 + S
+
+// ❌ ERRO 8: DrawArrow nao existe em NTSL (nem em .ntsl nem em .ntfl confirmado)
+DrawArrow(1, RGB(0,255,0), 2, Low);           // Parser: "DrawArrow não é um identificador válido"
+// ✅ CORRETO: usar PlotText + PaintBar (apenas em .ntfl)
+PlotText("COMPRA", RGB(0,200,0), 9, 1, Low * 0.993);
 ```
 
 ---

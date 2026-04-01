@@ -52,7 +52,8 @@ O plano deve responder:
 
 ### Passo 4: Auto-revisão antes de entregar
 - [ ] Nenhuma função proibida em robô (`PlotText`, `Alert`, `DrawArrow`, `DrawLine`)
-- [ ] **`Hour`/`Minute`/`Exit` NÃO usados** → `Time() div 10000` + `bDeveOperar`
+- [ ] **`Hour`/`Minute`/`Exit` NÃO usados** → `Time() >= (H * 10000 + M * 100)` + `bDeveOperar`
+- [ ] **`div`/`mod` NÃO usados com `Time()`** → `Time() div 10000` FALHA em compilação
 - [ ] **Aspas duplas** `"texto"` em todas as strings (nunca `'aspas simples'`)
 - [ ] **Nomes de variáveis sem espaço** (camelCase, ex: `bAcelerandoAlta` não `bAcelerando Alta`)
 - [ ] **`Format()`/`Floor()` NÃO usados** → `IntToStr(Round())` / truncamento manual
