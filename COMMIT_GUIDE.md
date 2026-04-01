@@ -56,11 +56,37 @@ chore: mover exemplos Profit para skills/exemplos_profit [31/03 09:45]
 
 ---
 
-## Subir para o remoto (workaround SSL proxy corporativo)
+## Fluxo completo antes do push (OBRIGATÓRIO)
 
 ```bash
-git -c http.sslVerify=false push origin abril_teoria
+# 1. Validar sintaxe (ANTES do commit)
+python _scripts/validate_ntsl.py --file <arquivo.ntsl>
+
+# 2. Commitar apenas após "TUDO LIMPO"
+git add <arquivo>
+git commit -m "tipo(escopo): descrição [$(date +%d/%m\ %H:%M)]"
+
+# 3. Push com workaround SSL
+git config --local http.sslVerify false; git push origin <branch>
 ```
 
-> Não altera configuração global — apenas para o comando atual.
-> Documentação completa: `devThings/git_ssl_proxy_workaround.md`
+---
+
+## Workaround SSL proxy corporativo — comando correto
+
+```bash
+git config --local http.sslVerify false; git push origin abril_teoria
+```
+
+> ⚠️ **Evidência de terminal (01/04/2026):**
+>
+> | Comando | Resultado |
+> |---|---|
+> | `git -c http.sslVerify=false push` | ❌ `remote helper 'https' aborted session` (EXIT:130) |
+> | `git config http.sslVerify false && git push` | ❌ `remote helper 'https' aborted session` (EXIT:130) |
+> | `git -C /path push` (sem ssl config) | ❌ sem output, EXIT:130 |
+> | `git config --local http.sslVerify false; git push` | ✅ **funciona sempre** |
+>
+> **Motivo:** o `;` executa os dois comandos no mesmo processo de shell.
+> O `&&` em alguns contextos interrompe a sessão antes do push ser iniciado.
+> O `-c` inline não persiste corretamente com o backend `schannel`.
