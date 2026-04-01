@@ -11,6 +11,18 @@
 | WIN (minicontrato índice) | R$ 0,20 | 5 pts | ~R$ 1.500 |
 | WDO (minicontrato dólar) | R$ 10,00 | 0,5 pts | ~R$ 800 |
 
+### Conversão Ticks ↔ Pontos (WIN)
+
+| Ticks | Pontos | Valor financeiro |
+|-------|--------|-----------------|
+| 1 | 5 pts | R$ 1,00 |
+| 16 | 80 pts | R$ 16,00 |
+| 20 | 100 pts | R$ 20,00 |
+| 24 | 120 pts | R$ 24,00 |
+| 30 | 150 pts | R$ 30,00 |
+| 40 | 200 pts | R$ 40,00 |
+| 60 | 300 pts | R$ 60,00 |
+
 ---
 
 ## Regra Principal: RRR ≥ 2.0
