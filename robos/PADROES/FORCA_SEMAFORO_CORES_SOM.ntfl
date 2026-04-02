@@ -2,7 +2,7 @@
   Robo: FORCA_SEMAFORO_CORES_SOM
   Descricao: Coloracao por forca F=MA com degradê visivel e confirmacao multi-timeframe (Contexto+Direcao+Gatilho).
              Entradas somente quando os 3 TFs estao alinhados.
-  Versao: 8.0
+  Versao: 9.0
 
   Esquema de cores (simplificado):
     Branco           = sem sinal (forca abaixo do threshold ou doji)
@@ -10,9 +10,16 @@
     Vermelho(degrade)= forca negativa >= ForcaMinimaEntrada  (inclui reversoes de baixa)
     Intensidade do degrade proporcional a magnitude da forca (55..100)
 
-  Tripleta recomendada (indicador roda no TF3 = gatilho):
-    60/30/15 -> roda em 15min -> iJanelaDir=2 (30min), iJanelaCtx=4 (60min)
-    30/15/5  -> roda em 5min  -> iJanelaDir=3 (15min), iJanelaCtx=6 (30min)
+  Tripletas validas (somente multiplos inteiros exatos — regra matematica):
+
+    TF Gatilho | Tripleta  | iJanelaDir        | iJanelaCtx        | Backtest (01/01-01/04/2026)
+    -----------|-----------|-------------------|-------------------|----------------------------
+    15min      | 60/30/15  | 2 (2x15=30min)    | 4 (4x15=60min)    | +R$8.058  FL=1.25  OK
+    5min       | 30/15/5   | 3 (3x5 =15min)    | 6 (6x5 =30min)    | +R$6.336  FL=1.11  OK
+    5min       | 15/10/5   | 2 (2x5 =10min)    | 3 (3x5 =15min)    | falta backtest
+
+  Tripletas invalidas (multiplicador nao-inteiro — EVITAR):
+    30/15/10 -> 15/10 = 1.5x (nao e inteiro) -> substituir por 30/20/10 ou usar 30/15/5
 }
 
 input
@@ -26,9 +33,12 @@ input
   MostrarAlertas(true);              // habilita alertas sonoros
   UsarSegundoCheckpointAlerta(true); // se true, alerta só dispara acima do limiar abaixo
   ForcaMinimaAlerta(70);             // segundo checkpoint para alertar compra/venda
-  // --- Multi-TF ---
-  iJanelaDir(2);             // direcao: 30min = 2x de 15min; 15min = 3x de 5min
-  iJanelaCtx(4);             // contexto: 60min = 4x de 15min; 30min = 6x de 5min
+  // --- Multi-TF (somente multiplos inteiros) ---
+  // Tripleta 60/30/15 (15min): iJanelaDir=2, iJanelaCtx=4
+  // Tripleta 30/15/5  (5min) : iJanelaDir=3, iJanelaCtx=6
+  // Tripleta 15/10/5  (5min) : iJanelaDir=2, iJanelaCtx=3
+  iJanelaDir(2);             // multiplicador para TF de direcao
+  iJanelaCtx(4);             // multiplicador para TF de contexto
   // --- Saídas ---
   StopHorario_H(17);                 // hora do stop horário (fechamento forçado)
   StopHorario_M(45);                 // minuto do stop horário

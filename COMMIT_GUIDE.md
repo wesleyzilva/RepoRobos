@@ -1,5 +1,16 @@
 # Guia de Commits — RepoRobos
 
+## Sincronizar com o remoto (antes de qualquer alteração)
+
+Antes de iniciar qualquer alteração, garanta que seu repositório local está atualizado com o remoto:
+
+```bash
+git fetch --all   # Busca todas as atualizações do remoto
+git pull          # Atualiza sua branch local com as mudanças do remoto
+```
+
+> Sempre execute esses comandos antes de editar, commitar ou criar novos arquivos, para evitar conflitos e garantir que está trabalhando na versão mais recente.
+
 ## Formato Padrão
 
 ```
