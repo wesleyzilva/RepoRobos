@@ -63,15 +63,33 @@ dentro de um movimento oposto maior — você entra "a favor do ruído", não da
 
 ---
 
+## Regra matemática das Tripletas
+
+> `iJanelaDir = TF2 ÷ TF3` e `iJanelaCtx = TF1 ÷ TF3` devem ser **inteiros exatos**.
+> Tripletas com divisão não-inteira são **inválidas** (ex: 30/15/10 → 15÷10=1,5 ❌ PROIBIDO).
+
+| Tripleta | TF3 | iJanelaDir | iJanelaCtx | Válida? |
+|---|---|---|---|---|
+| 60/30/15 | 15min | 30÷15=**2** | 60÷15=**4** | ✅ |
+| 30/15/5  | 5min  | 15÷5=**3**  | 30÷5=**6**  | ✅ |
+| 15/10/5  | 5min  | 10÷5=**2**  | 15÷5=**3**  | ✅ |
+| 30/10/5  | 5min  | 10÷5=**2**  | 30÷5=**6**  | ✅ |
+| 60/20/5  | 5min  | 20÷5=**4**  | 60÷5=**12** | ✅ |
+| 15/5/1   | 1min  | 5÷1=**5**   | 15÷1=**15** | ✅ |
+| 30/15/10 | 10min | 15÷10=**1,5** | 30÷10=**3** | ❌ INVÁLIDA |
+
+---
+
 ## Tripletas Disponíveis — ATR Real (WINFUT, 2024_26)
 
 | Tripleta | Perfil | ATR Gatilho | SL recomendado | SG (RRR 2.0) | Trades/dia est. |
 |---|---|---|---|---|---|
 | **60 / 30 / 15** | Estrutural / Swing intraday | 249 pts | 250 pts | 500 pts | 1–3 |
 | **30 / 15 / 5** | Day trade clássico ⭐ | 146 pts | 150 pts | 300 pts | 3–6 |
-| **15 / 5 / 1** | Scalping | 67 pts | 80 pts | 160 pts | 8–15 |
+| **15 / 10 / 5** | Day trade alternativo | 146 pts | 150 pts | 300 pts | 3–6 |
 | **30 / 10 / 5** | Day trade alternativo | 146 pts | 150 pts | 300 pts | 3–6 |
 | **60 / 20 / 5** | Híbrido (longo contexto) | 146 pts | 150 pts | 300 pts | 2–5 |
+| **15 / 5 / 1** | Scalping | 67 pts | 80 pts | 160 pts | 8–15 |
 
 ---
 
@@ -122,11 +140,29 @@ Desvantagem: alto ruído, exige execução muito rápida, spread pesa mais
 Ideal para: traders experientes com execução automatizada robusta
 ```
 
+### 15 / 10 / 5 — Day Trade Alternativo
+```
+Contexto (15min): identifica micro-tendência
+Direção (10min): confirma que o preço respeita a micro-tendência
+Gatilho (5min): candle de força no momento correto
+
+iJanelaDir = 10÷5 = 2  (inteiro ✅)
+iJanelaCtx = 15÷5 = 3  (inteiro ✅)
+
+Vantagem:  janelas mais curtas = reage mais rápido ao mercado
+Desvantagem: mais sensível a ruído intraday, necessita stop disciplinado
+Ideal para: traders que preferem TFs curtos mas querem multi-TF confirmado
+Backtest: FALTA (próximo passo: 5min com iJanelaDir=2, iJanelaCtx=3)
+```
+
 ### 30 / 10 / 5 — Alternativa
 ```
 Contexto (30min): viés do meio período
 Direção (10min): confirmação intermediária
 Gatilho (5min): mesmo gatilho da tripleta 30/15/5
+
+iJanelaDir = 10÷5 = 2  (inteiro ✅)
+iJanelaCtx = 30÷5 = 6  (inteiro ✅)
 
 Vantagem:  10min filtra mais ruído que o 5min direto
 Desvantagem: 10min menos popular — menos confluências identificáveis
@@ -138,13 +174,16 @@ Ideal para: testes comparativos com 30/15/5
 ## Implementação NTSL — Semáforo de Tripletas
 
 ```pascal
-// Para simular multi-TF dentro de um único robô no Profit,
-// usa-se janelas de média como proxy dos TFs maiores.
-// TF maior real requer dois robôs/indicadores ou parâmetros externos.
-
-// Proxy do TF2 (Direção) dentro do robô de TF3 (Gatilho):
-// Se robô roda em 5min e o TF2 é 15min → janela = 3 barras (15/5)
-// Se robô roda em 5min e o TF1 é 30min → janela = 6 barras (30/5)
+// REGRA: iJanelaDir = TF2 ÷ TF3 e iJanelaCtx = TF1 ÷ TF3 — ambos devem ser inteiros!
+// Tripleta inválida: 30/15/10 → 15÷10=1,5 (não-inteiro) → NUNCA usar.
+//
+// Tabela de janelas por tripleta:
+//   60/30/15 rodando em 15min: iJanelaDir=2, iJanelaCtx=4
+//   30/15/5  rodando em 5min : iJanelaDir=3, iJanelaCtx=6
+//   15/10/5  rodando em 5min : iJanelaDir=2, iJanelaCtx=3
+//   30/10/5  rodando em 5min : iJanelaDir=2, iJanelaCtx=6
+//   60/20/5  rodando em 5min : iJanelaDir=4, iJanelaCtx=12
+//   15/5/1   rodando em 1min : iJanelaDir=5, iJanelaCtx=15
 
 var
   iJanelaDir    : integer;  // barras do TF2 expressas em TF3

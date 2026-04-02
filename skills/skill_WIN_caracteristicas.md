@@ -65,15 +65,21 @@ Cada operação usa 3 TFs em cadeia: **Contexto → Direção → Gatilho**.
 Opera SOMENTE quando TF1 (Contexto) **e** TF2 (Direção) estão alinhados.
 TF3 (Gatilho) define o momento de entrar, o SL e o SG.
 
+### Regra matemática obrigatória
+
+> `iJanelaDir = TF2 ÷ TF3` e `iJanelaCtx = TF1 ÷ TF3` devem ser **inteiros exatos**.
+> `30/15/10` é **inválida** (15÷10=1,5). Use `30/15/5` ou `30/20/10` no lugar.
+
 ### Tripletas disponíveis para WIN
 
-| Tripleta | Perfil | SL do Gatilho | SG (RRR 2.0) | SL em R$/ctto |
-|---|---|---|---|---|
-| **60 / 30 / 15** | Estrutural | 250 pts | 500 pts | R$ 50 |
-| **30 / 15 / 5** ⭐ | Day trade (padrão) | 150 pts | 300 pts | R$ 30 |
-| **30 / 10 / 5** | Day trade alternativo | 150 pts | 300 pts | R$ 30 |
-| **60 / 20 / 5** | Híbrido | 150 pts | 300 pts | R$ 30 |
-| **15 / 5 / 1** | Scalping | 80 pts | 160 pts | R$ 16 |
+| Tripleta | TF3 | iJanelaDir | iJanelaCtx | Perfil | SL | SG | R$/ctto |
+|---|---|---|---|---|---|---|---|
+| **60 / 30 / 15** | 15min | 2 | 4 | Estrutural | 250 pts | 500 pts | R$ 50 |
+| **30 / 15 / 5** ⭐ | 5min | 3 | 6 | Day trade (padrão) | 150 pts | 300 pts | R$ 30 |
+| **15 / 10 / 5** | 5min | 2 | 3 | Day trade alternativo | 150 pts | 300 pts | R$ 30 |
+| **30 / 10 / 5** | 5min | 2 | 6 | Day trade alternativo | 150 pts | 300 pts | R$ 30 |
+| **60 / 20 / 5** | 5min | 4 | 12 | Híbrido | 150 pts | 300 pts | R$ 30 |
+| **15 / 5 / 1** | 1min | 5 | 15 | Scalping | 80 pts | 160 pts | R$ 16 |
 
 ### Proxy multi-TF em NTSL (janelas para tripleta 30/15/5 rodando em 5min)
 ```pascal
@@ -92,11 +98,12 @@ bDirecaoAlta  := (Close > fMediaDir) and (fMediaDir > fMediaDir[iJanelaDir]);
 
 | Tripleta | TF3 robô | Janela TF2 | Janela TF1 |
 |---|---|---|---|
-| 60/30/15 | 15min | 2 barras | 4 barras |
-| 30/15/5 | 5min | 3 barras | 6 barras |
-| 30/10/5 | 5min | 2 barras | 6 barras |
-| 60/20/5 | 5min | 4 barras | 12 barras |
-| 15/5/1 | 1min | 5 barras | 15 barras |
+| 60/30/15 | 15min | 2 barras (30÷15) | 4 barras (60÷15) |
+| 30/15/5  | 5min  | 3 barras (15÷5)  | 6 barras (30÷5)  |
+| 15/10/5  | 5min  | 2 barras (10÷5)  | 3 barras (15÷5)  |
+| 30/10/5  | 5min  | 2 barras (10÷5)  | 6 barras (30÷5)  |
+| 60/20/5  | 5min  | 4 barras (20÷5)  | 12 barras (60÷5) |
+| 15/5/1   | 1min  | 5 barras (5÷1)   | 15 barras (15÷1) |
 
 ---
 

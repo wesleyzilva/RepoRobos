@@ -65,13 +65,19 @@ if (Hour >= 17) and (Minute >= 50) then begin ClosePosition; Exit; end;
 
 > Referência completa: `docs/tabela_verdade_timeframes.md`
 
+### Regra matemática obrigatória
+
+> `iJanelaDir = TF2 ÷ TF3` e `iJanelaCtx = TF1 ÷ TF3` devem ser **inteiros exatos**.
+> `30/15/10` é **inválida** (15÷10=1,5). Use `30/15/5` ou `30/20/10` no lugar.
+
 ### Tripletas disponíveis para WDO
 
-| Tripleta | Perfil | SL do Gatilho | SG (RRR 2.0) | SL em R$/ctto |
-|---|---|---|---|---|
-| **60 / 30 / 15** | Estrutural | 10 pts | 20 pts | R$ 100 |
-| **30 / 15 / 5** ⭐ | Day trade (padrão) | 6 pts | 12 pts | R$ 60 |
-| **15 / 5 / 1** | Scalping | 3 pts | 6 pts | R$ 30 |
+| Tripleta | TF3 | iJanelaDir | iJanelaCtx | Perfil | SL | SG | R$/ctto |
+|---|---|---|---|---|---|---|---|
+| **60 / 30 / 15** | 15min | 2 | 4 | Estrutural | 10 pts | 20 pts | R$ 100 |
+| **30 / 15 / 5** ⭐ | 5min | 3 | 6 | Day trade (padrão) | 6 pts | 12 pts | R$ 60 |
+| **15 / 10 / 5** | 5min | 2 | 3 | Day trade alternativo | 6 pts | 12 pts | R$ 60 |
+| **15 / 5 / 1** | 1min | 5 | 15 | Scalping | 3 pts | 6 pts | R$ 30 |
 
 ### Atenção: Horários PTAX afetam todas as tripletas
 
