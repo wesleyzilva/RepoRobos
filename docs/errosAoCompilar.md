@@ -56,6 +56,7 @@ var
   fForca            : float;
   // Sinais
   bAcelerando Alta  : boolean;
+  bAcelerandoAlta   : boolean;
   bAcelerandoBaixa  : boolean;
   // Cores
   iCorR, iCorG, iCorB : integer;
@@ -65,6 +66,8 @@ var
   fTakeProfit       : float;
   fRisco            : float;
   iBarrasEmPosicao  : integer;
+  // Controle de Horário
+  bDeveOperar       : boolean;
 
 begin
 
@@ -160,11 +163,15 @@ begin
 
   // ─── SEÇÃO 5: STOP HORÁRIO ────────────────────────────────────────────────
   if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
   begin
     if IsBought or IsSold then ClosePosition;
     Exit;
+    bDeveOperar := false;
   end;
   if (Hour < HoraInicioH) or ((Hour = HoraInicioH) and (Minute < HoraInicioM)) then Exit;
+  else
+    bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
 
   // ─── SEÇÃO 6: CONTROLE DE BARRAS ─────────────────────────────────────────
   if IsBought or IsSold then
@@ -176,10 +183,12 @@ begin
     ClosePosition;
     iBarrasEmPosicao := 0;
     Exit;
+    bDeveOperar := false;
   end;
 
   // ─── SEÇÃO 7: ENTRADAS — ACELERAÇÃO + CANDLE CONFIRMADOR ─────────────────
   if (not IsBought) and (not IsSold) then
+  if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
     // COMPRA: OBV acelerando para cima + candle de força + volume
     if bAcelerandoAlta and (fForca >= ForcaMinimaCandle)
@@ -187,6 +196,7 @@ begin
     begin
       fEntrada    := Close;
       fStopLoss   := Minima(iJanelaDir) - BufferStop;
+      fStopLoss   := Low[1] - BufferStop; // Usar Low do candle anterior ou gatilho
       fRisco      := fEntrada - fStopLoss;
       fTakeProfit := fEntrada + fRisco * RRR_Minimo;
       if (fRisco > 0) and ((fTakeProfit - fEntrada) >= fRisco * RRR_Minimo) then
@@ -202,6 +212,7 @@ begin
     begin
       fEntrada    := Close;
       fStopLoss   := Maxima(iJanelaDir) + BufferStop;
+      fStopLoss   := High[1] + BufferStop; // Usar High do candle anterior ou gatilho
       fRisco      := fStopLoss - fEntrada;
       fTakeProfit := fEntrada - fRisco * RRR_Minimo;
       if (fRisco > 0) and ((fEntrada - fTakeProfit) >= fRisco * RRR_Minimo) then
