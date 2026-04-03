@@ -8,95 +8,99 @@
 
 ---
 
-## 🗂️ Estrutura do Workspace
+## 🗂️ Estrutura do Repositório
 
 ```
 RepoRobos/
 ├── .github/
-│   ├── copilot-instructions.md       ← instruções do projeto para IA (roteamento, workflow)
-│   ├── prompts/                      ← 7 prompts reutilizáveis no Copilot Chat
-│   │   ├── plano_pre_robo.prompt.md         ← plano obrigatório antes de gerar código
+│   ├── copilot-instructions.md          ← instruções de projeto para a IA (workflow, roteamento)
+│   ├── prompts/                         ← 7 prompts reutilizáveis no Copilot Chat
+│   │   ├── plano_pre_robo.prompt.md
 │   │   ├── gerar_robo_ntsl.prompt.md
 │   │   ├── analise_confluencia.prompt.md
 │   │   ├── analise_estatistica.prompt.md
 │   │   ├── backtest_estatisticas.prompt.md
 │   │   ├── analise_padroes_python.prompt.md
 │   │   └── calibrar_gestao_risco.prompt.md
-│   └── ISSUE_TEMPLATE/
+│   ├── ISSUE_TEMPLATE/
+│   └── pull_request_template.md
 │
-├── skills/                           ← base de conhecimento (custo zero — ler antes de gerar)
-│   ├── skill_ntsl_syntax.md          ← sintaxe NTSL/NTFL completa + funções válidas + erros críticos
+├── skills/                              ← base de conhecimento (ler antes de gerar código)
+│   ├── skill_ntsl_syntax.md             ← sintaxe NTSL/NTFL + funções válidas + erros críticos
 │   ├── skill_confluencia_geometrica.md  ← zonas, sobreposição, snippets NTSL prontos
-│   ├── skill_padroes_geometricos.md  ← Order Block, FVG, Inside Bar, Pin Bar, Flag, Duplo Fundo
-│   ├── skill_contexto_longo_prazo.md ← viés do dia + swing trade (top-down Mensal→Semanal→Diário)
-│   ├── skill_gestao_risco.md         ← SL mínimo (4 métodos), RRR, dimensionamento
-│   ├── skill_probabilidade_operacional.md  ← Kelly, Monte Carlo, IC, teste t
+│   ├── skill_padroes_geometricos.md     ← Order Block, FVG, Inside Bar, Pin Bar, Flag, Duplo Fundo
+│   ├── skill_contexto_longo_prazo.md    ← viés do dia + swing trade (top-down Mensal→Diário)
+│   ├── skill_gestao_risco.md            ← SL mínimo (4 métodos), RRR, dimensionamento
+│   ├── skill_probabilidade_operacional.md ← Kelly, Monte Carlo, IC, teste t
 │   ├── skill_estatisticas_backtest.md
 │   ├── skill_price_action.md
-│   ├── skill_WIN_caracteristicas.md  ← ATR, horários, tripletas, custos reais
+│   ├── skill_WIN_caracteristicas.md     ← ATR, horários, tripletas, custos reais
 │   └── skill_WDO_caracteristicas.md
 │
-├── agents/                           ← agentes IA especializados
-│   ├── agent_orquestrador.md         ← roteamento de tarefas
+├── agents/                              ← agentes IA especializados
+│   ├── agent_orquestrador.md
 │   ├── agent_gerador_robo.md
 │   ├── agent_analisador_candles.md
 │   ├── agent_backtest_stats.md
 │   ├── agent_WIN_especialista.md
 │   └── agent_WDO_especialista.md
 │
-├── templates/                        ← templates NTSL prontos para copiar e ajustar
-│   ├── template_robo_padrao.ntsl         ← robô base com stop horário correto
-│   ├── template_robo_confluencia.ntsl    ← robô de confluência multi-TF
+├── templates/                           ← templates prontos para copiar e ajustar
+│   ├── template_robo_padrao.ntsl        ← robô base com stop horário correto
+│   ├── template_robo_confluencia.ntsl   ← robô de confluência multi-TF
 │   ├── template_indicador_areas.ntfl    ← indicador visual de zonas
-│   └── template_semaforo_multiTF.ntsl   ← semáforo tripleta (v2.0)
+│   └── template_semaforo_multiTF.ntsl   ← semáforo tripleta
 │
-├── robos/                            ← robôs e indicadores (organizados por indicador)
-│   ├── PADROES/                      ← padrões de candle e F=MA
-│   │   ├── FORCA_SEMAFORO_CORES_SOM.ntfl       ← semáforo F=MA multi-TF (v9.0) ✅ testado
-│   │   ├── FORCA_SAIDA_TRAILING_60MIN.ntsl      ← trailing ATR no 60min ✅
-│   │   ├── abril_padroes_orderblock_v001.ntfl   ← ★ Order Block detector
-│   │   ├── abril_padroes_fvg_v001.ntfl          ← ★ Fair Value Gap
-│   │   ├── abril_padroes_insidebar_v001.ntfl    ← ★ Inside Bar + breakout
-│   │   ├── abril_padroes_pinbar_v001.ntfl       ← ★ Pin Bar / Rejeição
-│   │   └── abril_padroes_pivots_v001.ntfl       ← ★ Estrutura HH/HL/LH/LL
+├── robos/                               ← robôs e indicadores organizados por tipo
+│   ├── PADROES/
+│   │   ├── FORCA_SEMAFORO_CORES_SOM.ntfl        ← semáforo F=MA multi-TF ✅
+│   │   ├── FORCA_SAIDA_TRAILING_60MIN.ntsl       ← trailing ATR no 60min ✅
+│   │   ├── abril_padroes_orderblock_v001.ntfl    ← ★ Order Block detector
+│   │   ├── abril_padroes_fvg_v001.ntfl           ← ★ Fair Value Gap
+│   │   ├── abril_padroes_insidebar_v001.ntfl     ← ★ Inside Bar + breakout
+│   │   ├── abril_padroes_pinbar_v001.ntfl        ← ★ Pin Bar + score de qualidade
+│   │   └── abril_padroes_pivots_v001.ntfl        ← ★ Estrutura HH/HL/LH/LL + CHoCH/BOS
 │   ├── CONFLUENCIA/
-│   │   ├── zonas_retangulares_60m_v001.ntfl     ← zonas F=MA em tempo real (60min)
+│   │   ├── zonas_retangulares_60m_v001.ntfl      ← zonas F=MA em tempo real (60min)
+│   │   ├── abril_confluencia_v001.ntsl
 │   │   └── abril_confluencia_ZonasMultiTF_v001.ntfl
-│   ├── IFR/ | MACD/ | MEDIA20200/ | ATR/ | ADX/ | VWAP/ | OBV/ | VOLUME/ | FORCA/
+│   └── IFR/ · MACD/ · MEDIA20200/ · ATR/ · ADX/ · VWAP/ · OBV/ · VOLUME/ · FORCA/
 │
-│   Convenção: `{mes}_{indicador}_{descricao}_v{NNN}.ntfl|ntsl`
-│   ★ = novos indicadores visuais de padrões geométricos (abril/2026)
+│   Convenção de nomes: `{mes}_{indicador}_{descricao}_v{NNN}.ntfl|ntsl`
+│   ★ = indicadores visuais criados em Abril 2026
 │
-├── _scripts/                         ← scripts Python de manutenção
-│   ├── validate_ntsl.py              ← valida sintaxe NTSL/NTFL (15 regras)
-│   ├── contexto_diario.py            ← relatório matinal: viés do dia + swing
-│   ├── manutencao.py                 ← auditoria completa do repositório
-│   ├── sync_session.py               ← log de sessão e push
-│   └── git_push.sh                   ← fluxo completo: validate → commit → push
+├── _scripts/                            ← automação e manutenção
+│   ├── validate_ntsl.py                 ← valida sintaxe NTSL/NTFL (15 regras)
+│   ├── contexto_diario.py               ← relatório matinal: viés do dia + estrutura
+│   ├── manutencao.py                    ← auditoria completa do repositório
+│   ├── sync_session.py                  ← log de sessão
+│   └── git_push.sh                      ← validate → commit → push
 │
-├── scripts/                          ← scripts Python de análise de dados
-│   ├── analisa_backtest_profit.py    ← métricas completas de CSV de backtest
-│   └── analise_triplets.py           ← simula tripletas nos dados históricos
+├── scripts/                             ← análise de dados e backtest
+│   ├── analisa_backtest_profit.py       ← métricas completas de CSV exportado do Profit
+│   └── analise_triplets.py              ← simula tripletas nos dados históricos
 │
-├── DadosCandlesBacktest/             ← dados históricos OHLCV (1min desde 2012)
-│   ├── 2012_14/ 2014_16/ ... 2024_26/
+├── DadosCandlesBacktest/                ← OHLCV histórico (1min desde 2012)
+│   ├── 2012_14/ · 2014_16/ · ... · 2024_26/
 │   └── analiseCandles.md
 │
-├── backtest_resultados/              ← CSVs exportados do Profit para análise
-├── docs/                             ← documentação de referência
-├── requirements.txt                  ← dependências Python do projeto
-└── .vscode/settings.json             ← auto-approve, NTSL=pascal, CSV com ;
+├── backtest_resultados/                 ← CSVs exportados do Profit
+├── anotacoes/                           ← anotações de aulas e sessões
+├── docs/                                ← documentação de referência
+├── requirements.txt                     ← dependências Python
+└── .vscode/settings.json                ← auto-approve, NTSL=pascal, CSV com ;
 ```
 
 ---
 
 ## 🎯 Objetivo Principal
 
-Desenvolver robôs que:
-1. **Identificam padrões geométricos** (Order Block, FVG, Inside Bar, Pin Bar, Pivôs) como zonas de gatilho
-2. **Usam o menor SL possível** — posicionado fora da estrutura do padrão
-3. **Exigem confluência multi-TF** — Contexto (TF1) + Direção (TF2) + Gatilho (TF3)
-4. **Aprovação estatística obrigatória** — Kelly > 0%, PF IC > 1.0, teste t > 1.645
+Identificar **padrões geométricos e zonas de confluência** onde múltiplas referências de preço se sobrepõem, usando-as como gatilhos de entrada com:
+
+- **RRR ≥ 2.0** obrigatório antes de qualquer entrada
+- **SL** posicionado fora da estrutura do padrão (Order Block, FVG, IB, Pin Bar)
+- **Confluência multi-TF** — Contexto (TF1) + Direção (TF2) + Gatilho (TF3)
+- **Aprovação estatística rigorosa** — Kelly > 0%, PF IC₉₅ > 1.0, t > 1.645, WF ≥ 60%
 
 ---
 
@@ -119,11 +123,15 @@ Quando **3+ padrões confluem no mesmo nível de preço** → zona premium de ga
 
 ## ⚡ Sistema F = M × A
 
+Métrica objetiva de força direcional calculada em cada candle:
+
 ```pascal
-fMassa      := (Close - Open) / (High - Low);     // -1.0 a +1.0
-fAceleracao := Volume / Media(20, Volume);         // ratio vs média
-fForca      := fMassa * fAceleracao * 100;         // -100 a +100
-// F ≥ +60 → compra forte | F ≤ -60 → venda forte
+fRange := High - Low;
+fCorpo := Abs(Close - Open) / fRange * 100;   // 0–100% do range
+fVol   := Volume / Media(21, Volume);          // ratio vs média móvel
+fForca := fCorpo * fVol;                       // 0–100 (cap em 100)
+
+// F ≥ 70 → força forte  |  F ≥ 40 → força moderada  |  F < 40 → fraco
 ```
 
 ---
