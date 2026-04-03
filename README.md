@@ -1,8 +1,8 @@
 # RepoRobos — Trading Algorítmico em Minicontratos B3
 
-> Repositório de desenvolvimento de robôs NTSL/NTFL para Neologica Profit, focado em **identificar padrões geométricos e áreas de confluência** como zonas de gatilho de alta probabilidade, com RRR ≥ 2.0 e aprovação estatística rigorosa.
+> Desenvolvimento de robôs **NTSL/NTFL** para Neologica Profit focado em **padrões geométricos e confluência multi-TF** como zonas de gatilho de alta probabilidade — RRR ≥ 2.0 com aprovação estatística obrigatória.
 
-**Autor:** Wesley Zilva — Trader + Mestre em Matemática + Desenvolvedor Python  
+**Autor:** Wesley Zilva — Trader · Mestre em Matemática · Desenvolvedor Python  
 **Ativos:** WIN (Mini Índice) e WDO (Mini Dólar) — B3  
 **Branch ativo:** `abril_teoria`
 
@@ -130,40 +130,42 @@ fForca      := fMassa * fAceleracao * 100;         // -100 a +100
 
 ## 🚦 Tripletas de Timeframes
 
-Opera SOMENTE quando TF1 (Contexto) **e** TF2 (Direção) alinham → TF3 executa.
+Opera **somente** quando TF1 (Contexto) **e** TF2 (Direção) alinham → TF3 (Gatilho) executa.
 
-| Tripleta ⭐ | TF3 | iJanelaDir | iJanelaCtx | SL WIN |
+| Tripleta | TF1 | TF2 | TF3 | SL típico WIN |
 |---|---|---|---|---|
-| **60/30/15** | 15min | 2 | 4 | 250 pts |
-| **30/15/5** | 5min | 3 | 6 | 150 pts |
-| **15/10/5** | 5min | 2 | 3 | 150 pts |
+| **60/30/15** ⭐ | 60min | 30min | 15min | ~250 pts |
+| **30/15/5** | 30min | 15min | 5min | ~150 pts |
+| **15/10/5** | 15min | 10min | 5min | ~150 pts |
 
-> Regra: `TF2 ÷ TF3` e `TF1 ÷ TF3` devem ser inteiros exatos.
+> Regra: `TF2 ÷ TF3` e `TF1 ÷ TF3` devem ser inteiros exatos.  
+> Em NTSL: `iJanelaDir := TF2 div TF3` · `iJanelaCtx := TF1 div TF3`
 
 ---
 
 ## 🔄 Workflow de Desenvolvimento (9 etapas)
 
 ```
-1. CONTEXTO    → python _scripts/contexto_diario.py  (viés do dia antes de qualquer trade)
-               ↓
-2. HIPÓTESE    → formular padrão/confluência — usar skill_padroes_geometricos.md
-               ↓
-3. INDICADOR   → criar .ntfl para ver os padrões no gráfico (templates/)
-               ↓
-4. VALIDAÇÃO   → python _scripts/validate_ntsl.py --file <arquivo>
-               ↓
-5. ROBÔ        → criar .ntsl a partir do template_robo_padrao.ntsl
-               ↓
-6. BACKTEST    → Profit → Tick a Tick → descontar 25 pts/trade
-               ↓
-7. ESTATÍSTICAS→ python scripts/analisa_backtest_profit.py backtest_resultados/
-                 Colar SOMENTE o sumário (~10 linhas) no chat
-               ↓
-8. SIGNIFICÂNCIA→ skill_probabilidade_operacional.md:
-                  ✅ E > 0  ✅ PF IC > 1.0  ✅ t > 1.645  ✅ Kelly > 0%  ✅ WF ≥ 60%
-               ↓
-9. COMMIT      → bash _scripts/git_push.sh "feat(PADROES): descricao"
+1. CONTEXTO      py _scripts/contexto_diario.py --ativo WINFUT
+                 → viés do dia (COMPRA / VENDA / NEUTRO) antes de qualquer coisa
+                 ↓
+2. HIPÓTESE      Formular padrão/confluência — skill_padroes_geometricos.md
+                 ↓
+3. INDICADOR     Criar .ntfl a partir de template_indicador_areas.ntfl e ver no gráfico
+                 ↓
+4. VALIDAÇÃO     py _scripts/validate_ntsl.py --file robos/PADROES/meu_indicador.ntfl
+                 ↓
+5. ROBÔ          Criar .ntsl a partir de template_robo_padrao.ntsl
+                 ↓
+6. BACKTEST      Profit → Tick a Tick → descontar 25 pts/trade (WIN)
+                 ↓
+7. ESTATÍSTICAS  py scripts/analisa_backtest_profit.py backtest_resultados/arquivo.csv
+                 → colar apenas o sumário (~10 linhas) no chat
+                 ↓
+8. APROVAÇÃO     skill_probabilidade_operacional.md:
+                 ✅ E > 0  ✅ PF IC₉₅ > 1.0  ✅ t > 1.645  ✅ Kelly > 0%  ✅ WF ≥ 60%
+                 ↓
+9. COMMIT        bash _scripts/git_push.sh "feat(PADROES): descricao curta"
 ```
 
 ---
@@ -175,8 +177,8 @@ Opera SOMENTE quando TF1 (Contexto) **e** TF2 (Direção) alinham → TF3 execut
 | Total de trades | ≥ 100 | ≥ 200 |
 | Taxa de acerto | ≥ 40% | ≥ 50% |
 | RRR médio | ≥ 2.0 | ≥ 2.5 |
-| Fator de lucro | ≥ 1.3 | ≥ 1.5 |
-| IC 95% inferior PF | > 1.0 | > 1.2 |
+| Fator de Lucro | ≥ 1.3 | ≥ 1.5 |
+| IC 95% inferior do PF | > 1.0 | > 1.2 |
 | Teste t | > 1.645 | > 2.0 |
 | Kelly | > 0% | > 5% |
 | Walk-Forward | ≥ 60% do treino | ≥ 75% |
@@ -187,45 +189,48 @@ Opera SOMENTE quando TF1 (Contexto) **e** TF2 (Direção) alinham → TF3 execut
 ## 🖥️ Scripts de Manutenção
 
 ```bash
-# Auditoria completa (rodar a cada sessão)
+# Dependências (uma vez)
+py -m pip install -r requirements.txt
+
+# Auditoria completa do repositório
 py _scripts/manutencao.py
 
 # Contexto macro + viés do dia
-py _scripts/contexto_diario.py
+py _scripts/contexto_diario.py --ativo WINFUT --ano 2026
 
-# Validar NTSL antes de commitar
-py _scripts/validate_ntsl.py
-py _scripts/validate_ntsl.py --fix   # corrige erros automáticos
+# Validar sintaxe NTSL antes de commitar
+py _scripts/validate_ntsl.py --file robos/PADROES/meu_robo.ntfl
+py _scripts/validate_ntsl.py --fix   # corrige automaticamente
 
-# Instalar dependências Python
-py -m pip install -r requirements.txt
+# Analisar CSV de backtest exportado do Profit
+py scripts/analisa_backtest_profit.py backtest_resultados/resultado.csv
 ```
 
 ---
 
-## ⚠️ Erros NTSL Críticos (não compile sem checar)
+## ⚠️ Erros NTSL Críticos (causam falha silenciosa em produção)
 
-| ❌ ERRADO | ✅ CORRETO |
+| ❌ Errado | ✅ Correto |
 |---|---|
-| `Hour`, `Minute`, `Exit` | `Time() >= H*10000 + M*100` + `bDeveOperar` |
-| `div`, `mod` | Comparação direta com `Time()` |
-| `Maxima(N)`, `Minima(N)` | Loop manual: `if High[1] > fMax then fMax := High[1]` |
+| `Hour()`, `Minute()`, `Exit` | `Time() >= H*10000 + M*100` + flag `bDeveOperar` |
+| `Maxima(N)`, `Minima(N)` | loop manual: `if High[1] > fMax then fMax := High[1]` |
 | `Format('%.0f', [x])` | `IntToStr(Round(x))` |
-| `Floor(x)` | Divisão + `if x < 1 then x := 1` |
-| `PlotText()` em `.ntsl` | Só em `.ntfl` (indicadores) |
+| `Floor(x)` | divisão inteira + ajuste manual |
+| `PlotText()`, `XRay()`, `Alert()` em `.ntsl` | apenas em `.ntfl` (indicadores) |
 
 ---
 
 ## 📊 Dados Disponíveis
 
-**Ativos:** WINFUT, WINJ26, WDOFUT, WDOJ26  
+**Ativos:** WINFUT · WINJ26 · WDOFUT · WDOJ26  
 **Períodos:** 2012–2026 (biênios em `DadosCandlesBacktest/`)  
-**Timeframes:** 1min, 5min, 10min, 15min, 20min, 30min, 60min, Diário, Semanal
+**Timeframes:** 1min · 5min · 10min · 15min · 20min · 30min · 60min · Diário · Semanal
 
 ```python
 import pandas as pd
 df = pd.read_csv('DadosCandlesBacktest/2024_26/WINFUT_F_0_5min.csv',
                  sep=';', encoding='utf-8-sig')
+# Colunas: Data, Hora, Abertura, Maximo, Minimo, Fechamento, Volume
 ```
 
 ---
@@ -234,172 +239,5 @@ df = pd.read_csv('DadosCandlesBacktest/2024_26/WINFUT_F_0_5min.csv',
 
 - [PriceAction_Fisica](https://github.com/wesleyzilva/PriceAction_Fisica) — teorias, guias e indicadores base
 - Branch de desenvolvimento: `abril_teoria` | Branch estável: `main`
-
-
-> Repositório de desenvolvimento de robôs NTSL/NTFL para Neologica Profit, focado em identificar **áreas de confluência geométrica** como zonas de gatilho de alta probabilidade, com RRR ≥ 2.0.
-
-**Autor:** Wesley Zilva (wesley.zilva@gmail.com) — Trader + Mestre em Matemática + Desenvolvedor Python  
-**Objetivo:** Sincronizar janelas de oportunidade através de tripletas matemáticas. O foco é a **Eficiência de Janela**: Operar apenas quando as 10 janelas de 60m (Contexto) e as 19 de 30m (Direção) autorizarem os gatilhos no TF menor.
-
----
-
----
-
-## 🗂️ Estrutura do Workspace
-
-```
-RepoRobos/
-├── .github/
-│   ├── copilot-instructions.md       ← instruções completas do projeto para IA
-│   ├── prompts/                      ← prompts reutilizáveis no Copilot Chat
-│   │   ├── gerar_robo_ntsl.prompt.md
-│   │   ├── analise_confluencia.prompt.md
-│   │   ├── backtest_estatisticas.prompt.md
-│   │   ├── analise_padroes_python.prompt.md
-│   │   └── calibrar_gestao_risco.prompt.md
-│   ├── ISSUE_TEMPLATE/               ← templates de issues do GitHub
-│   │   ├── novo_robo.md
-│   │   ├── resultado_backtest.md
-│   │   └── bug_report.md
-│   └── pull_request_template.md      ← checklist de PR para robôs
-│
-├── skills/                           ← base de conhecimento especializado
-│   ├── skill_ntsl_syntax.md          ← sintaxe NTSL/NTFL completa
-│   ├── skill_confluencia_geometrica.md  ← como construir e validar zonas
-│   ├── skill_gestao_risco.md         ← SL, SG, RRR, dimensionamento
-│   ├── skill_estatisticas_backtest.md   ← métricas, código Python, critérios
-│   └── skill_price_action.md         ← padrões de candle e contexto
-│
-├── agents/                           ← definições de agentes IA especializados
-│   ├── agent_gerador_robo.md         ← gera código NTSL completo
-│   ├── agent_analisador_candles.md   ← analisa CSVs históricos em Python
-│   └── agent_backtest_stats.md       ← avalia resultados e aprova/reprova
-│
-├── templates/                        ← templates NTSL prontos para usar
-│   ├── template_robo_confluencia.ntsl    ← robô de confluência completo
-│   ├── template_indicador_areas.ntfl    ← indicador visual de zonas
-│   └── template_semaforo_multiTF.ntsl   ← semáforo tripleta (v2.0)
-│
-├── robos/                            ← robôs e indicadores aprovados em backtest
-│   ├── IFR/                          ← estratégias com IFR (RSI)
-│   ├── MACD/                         ← estratégias com MACD
-│   ├── MEDIA20200/                   ← estratégias com Médias 20/200
-│   ├── ATR/                          ← estratégias com ATR
-│   ├── ADX/                          ← estratégias com ADX
-│   ├── VWAP/                         ← estratégias com VWAP
-│   ├── OBV/                          ← estratégias com OBV
-│   ├── VOLUME/                       ← estratégias com Volume/VSA
-│   ├── FORCA/                        ← estratégias F = M × A
-│   ├── PADROES/                      ← padrões de candle (engolfo, doji, OCO...)
-│   └── CONFLUENCIA/                  ← zonas de confluência múltipla
-│
-│   Convenção de nomes: {mes}_{indicador}_{descricaoCurta}_v{NNN}.ntfl
-│   Exemplo: abril_ifr_divergencia_v001.ntfl  →  robos/IFR/
-│            abr_atr_semaforoPorVolume_v001.ntsl  →  robos/ATR/
-├── scripts/                          ← scripts Python de análise e backtest
-├── DadosCandlesBacktest/             ← dados históricos OHLCV em CSV
-│   ├── 2012_14/ ... 2024_26/         ← por biênio
-│   └── analiseCandles.md
-│
-├── docs/                             ← referências e documentação legacy
-│   ├── tabela_verdade_timeframes.md  ← tabela de tripletas TF1/TF2/TF3
-│   ├── cores_candles_degrade.md      ← sistema de gradiente RGB
-│   ├── exemplos_codigo_pascal.md     ← exemplos NTSL de referência
-│   ├── regras_semaforo_operacao.md
-│   ├── opcao1_definicao_areas_operacao_corpoCandle.md
-│   ├── opcao2_definicao_areas_operacao_maxima_minima.md
-│   └── README_MCP.md                 ← guia do servidor MCP filesystem
-│
-└── .vscode/
-    ├── mcp.json                      ← servidor MCP filesystem para IA
-    ├── settings.json                 ← configurações (.ntsl = pascal, CSV com ;)
-    └── extensions.json               ← extensões recomendadas
-```
-
----
-
-## 🎯 Objetivo Principal
-
-Identificar **áreas de confluência geométrica** — zonas onde múltiplas referências de preço se sobrepõem — e usá-las como gatilhos de entrada com:
-
-- **RRR ≥ 2.0** obrigatório antes de qualquer entrada
-- **SL** posicionado abaixo/acima da estrutura geométrica mais próxima
-- **Confirmação por F = M × A** (força direcional objetiva)
-- **Custos reais** descontados: 25 pts/trade (spread + slippage)
-
----
-
-## ⚡ Como Usar os Templates
-
-### 1. Criar um novo robô a partir do template
-```bash
-cp templates/template_robo_confluencia.ntsl robos/ROB_MEU_SETUP_V1.ntsl
-```
-Editar o cabeçalho com o nome, ativo, timeframe e parâmetros do setup.
-
-### 2. Criar um indicador de validação visual
-```bash
-cp templates/template_indicador_areas.ntfl robos/IND_VALIDACAO_V1.ntfl
-```
-Usar no Profit para validar visualmente o padrão antes de ativar o robô.
-
-### 3. Análise de dados com Python
-Usar os prompts em `.github/prompts/` com Copilot Chat ou chamar o agente `agent_analisador_candles`.
-
----
-
-## 📊 Dados Disponíveis
-
-**Ativos:** WINJ26, WDOJ26, WINFUT, WDOFUT  
-**Períodos:** 2012–2026 (biênios)  
-**Timeframes:** 1min, 5min, 10min, 15min, 20min, 30min, 60min, Diário, Semanal
-
-```python
-# Leitura padrão Python
-import pandas as pd
-df = pd.read_csv('DadosCandlesBacktest/2024_26/WINJ26_F_0_5min.csv',
-                 sep=';', encoding='latin1')
-```
-
----
-
-## 🔄 Workflow de Desenvolvimento
-
-```
-1. HIPÓTESE     Formular padrão/confluência a testar
-                ↓
-2. ANÁLISE      Usar agent_analisador_candles para validar nos dados CSV
-                ↓
-3. INDICADOR    Criar .ntfl a partir do template_indicador_areas para ver visualmente
-                ↓
-4. ROBÔ         Criar .ntsl a partir do template_robo_confluencia
-                ↓
-5. BACKTEST     Profit → Tick a Tick → descontar 25 pts/trade
-                ↓
-6. ESTATÍSTICAS Usar agent_backtest_stats para calcular métricas
-                ↓
-7. DECISÃO      Aprovado → mover para robos/ | Reprovado → ajustar ou descartar
-                ↓
-8. COMMIT       Criar PR com checklist preenchido
-```
-
----
-
-## 🚦 Critérios de Aprovação de Robô
-
-| Métrica | Mínimo |
-|---|---|
-| Total de trades | ≥ 100 |
-| Taxa de acerto | ≥ 40% |
-| RRR médio | ≥ 2.0 |
-| Fator de lucro | ≥ 1.3 |
-| Drawdown máximo | ≤ 500 pts |
-| Período testado | ≥ 90 dias |
-
----
-
-## 🔗 Referências
-
-- [PriceAction_Fisica](https://github.com/wesleyzilva/PriceAction_Fisica) — teorias, guias e indicadores base
-- Branch de desenvolvimento: `abril_teoria`
 - Contato: wesley.zilva@gmail.com
+
