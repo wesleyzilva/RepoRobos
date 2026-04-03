@@ -1,0 +1,317 @@
+// ============================================================
+// ROBO DE APRENDIZADO: OCO — One Cancels Other (3 Variantes)
+// Arquivo : abril_aprende_oco_basico_v001.ntsl
+// Versao  : 1.0 | Abril 2026
+// ============================================================
+// OBJETIVO EDUCACIONAL:
+//   Aprender e comparar 3 variantes de OCO no Profit/NTSL.
+//
+// O QUE É OCO:
+//   OCO = "One Cancels Other" — duas ordens ativas ao mesmo tempo:
+//   1. STOP LOSS  : proteção (se o preço vai contra)
+//   2. TAKE PROFIT: alvo (se o preço vai a favor)
+//   A primeira que executar CANCELA a outra automaticamente.
+//
+// COMO O PROFIT IMPLEMENTA OCO:
+//   Long aberto:
+//     SellToCoverStop (fSL, fSL - offset, qtd)   ← stop de proteção
+//     SellToCoverLimit(fTP, qtd)                  ← alvo (limit)
+//   Short aberto:
+//     BuyToCoverStop (fSL, fSL + offset, qtd)    ← stop de proteção
+//     BuyToCoverLimit(fTP, qtd)                   ← alvo (limit)
+//
+//   IMPORTANTE: enviar as DUAS a cada barra.
+//   O Profit mantém a última enviada e cancela a anterior quando uma executa.
+//
+// VARIANTE 1 — OCO SIMPLES (RRR fixo)
+//   SL = ATR * multiplicador | TP = SL * RRR
+//   Padrão mais simples para aprender. Claro e fácil de calibrar.
+//
+// VARIANTE 2 — OCO DUPLO ALVO (saída parcial)
+//   1/2 posição fecha em Alvo1 (RRR 1.0) — reduz risco
+//   1/2 posição fecha em Alvo2 (RRR 2.5) — deixa correr
+//   Pro: garante pelo menos breakeven, deixa parte correr para o alvo grande
+//   COMO FUNCIONA: usa Contratos=2, fecha 1 em cada alvo
+//
+// VARIANTE 3 — OCO COM BREAKEVEN
+//   Após atingir Alvo1 (RRR 1.0):
+//     Move SL para entrada (breakeven) — risco zerado
+//     Mantém restante para Alvo2 (RRR 2.5)
+//   SIMULAÇÃO em backtest: usa flag bBreakevenAtivado
+//
+// ENTRADA: F=MA com contexto de média — foco é na SAÍDA, não na entrada.
+// ============================================================
+
+input
+  // Seletor de variante (1=Simples, 2=Duplo Alvo, 3=Breakeven)
+  VarianteOCO      : Integer := 1;
+
+  // Stop base (ATR)
+  PeriodoATR       : Integer := 14;
+  MultiplicadorSL  : Float   := 0.7;   // ATR * mult = distância do SL
+
+  // Alvos (em múltiplos do SL)
+  RRR_Alvo1        : Float   := 1.0;   // Alvo 1 (parcial ou único)
+  RRR_Alvo2        : Float   := 2.5;   // Alvo 2 (restante — variante 2 e 3)
+
+  // StopLimit offset (distância entre stop e limite de execução)
+  StopOffset       : Float   := 5;     // pontos de slippage no stop
+
+  // Filtros de entrada
+  ForcaMinima      : Float   := 50;
+  PeriodoMedia     : Integer := 20;
+  PeriodoVol       : Integer := 21;
+
+  // Gestão
+  Contratos        : Integer := 2;     // USAR 2 para variantes 2 e 3 (parcial)
+  StopHorario_H    : Integer := 17;
+  StopHorario_M    : Integer := 45;
+  HoraInicioH      : Integer := 9;
+  HoraInicioM      : Integer := 15;
+
+var
+  // F=MA
+  fCorpo          : Float;
+  fRange          : Float;
+  fVolMedia       : Float;
+  fForca          : Float;
+
+  // Direção
+  fMedia          : Float;
+  bDirecaoAlta    : Boolean;
+  bDirecaoBaixa   : Boolean;
+
+  // Sinais
+  bEntradaLong    : Boolean;
+  bEntradaShort   : Boolean;
+
+  // ATR e níveis
+  fATR            : Float;
+  fSL             : Float;
+  fTP1            : Float;
+  fTP2            : Float;
+  fRisco          : Float;
+  fOffsetPts      : Float;
+
+  // Controle breakeven (variante 3)
+  bBreakevenLong  : Boolean;
+  bBreakevenShort : Boolean;
+  fSLAtual        : Float;   // SL dinâmico após breakeven
+
+  // Controle
+  bDeveOperar     : Boolean;
+  iR, iG, iB     : Integer;
+
+begin
+
+  // ============================================================
+  // SEÇÃO 1: F=MA
+  // ============================================================
+  fRange := High - Low;
+  if fRange <= 0 then fRange := MinPriceIncrement;
+
+  fCorpo    := Close - Open;
+  fVolMedia := Media(PeriodoVol, Volume);
+  if fVolMedia <= 0 then fVolMedia := 1;
+
+  fForca := (fCorpo / fRange) * (Volume / fVolMedia) * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ============================================================
+  // SEÇÃO 2: FILTRO DE DIREÇÃO
+  // ============================================================
+  fMedia        := Media(PeriodoMedia, Close);
+  bDirecaoAlta  := Close > fMedia;
+  bDirecaoBaixa := Close < fMedia;
+
+  bEntradaLong  := (fForca >= ForcaMinima)  and bDirecaoAlta;
+  bEntradaShort := (fForca <= -ForcaMinima) and bDirecaoBaixa;
+
+  // ============================================================
+  // SEÇÃO 3: PAINT BAR
+  // ============================================================
+  iR := 128; iG := 128; iB := 128;
+  if bEntradaLong  then begin iR := 0;   iG := 200; iB := 120; end;
+  if bEntradaShort then begin iR := 220; iG := 50;  iB := 50;  end;
+  PaintBar(RGB(iR, iG, iB));
+
+  // ============================================================
+  // SEÇÃO 4: STOP HORÁRIO
+  // ============================================================
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar     := False;
+    bBreakevenLong  := False;
+    bBreakevenShort := False;
+  end
+  else
+    bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
+
+  // ============================================================
+  // SEÇÃO 5: ATR e níveis base
+  // ============================================================
+  fATR := ATR(PeriodoATR);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+  fOffsetPts := StopOffset * MinPriceIncrement;
+
+  // ============================================================
+  // SEÇÃO 6: GESTÃO DE POSIÇÃO LONGA — OCO
+  // ============================================================
+  if IsBought then
+  begin
+    fRisco := BuyPrice - (BuyPrice - fATR * MultiplicadorSL);
+    if fRisco < MinPriceIncrement then fRisco := MinPriceIncrement;
+
+    fSL  := BuyPrice - fRisco;
+    fTP1 := BuyPrice + fRisco * RRR_Alvo1;
+    fTP2 := BuyPrice + fRisco * RRR_Alvo2;
+
+    // ── VARIANTE 1: OCO SIMPLES ──────────────────────────────
+    //   Uma ordem stop de proteção + uma ordem de alvo
+    //   O Profit cancela uma quando a outra executa
+    if VarianteOCO = 1 then
+    begin
+      SellToCoverStop (fSL,  fSL  - fOffsetPts, Contratos);
+      SellToCoverLimit(fTP1, Contratos);
+    end
+
+    // ── VARIANTE 2: OCO DUPLO ALVO ───────────────────────────
+    //   Contratos=2: fecha metade em Alvo1, metade em Alvo2
+    //   Stop único protege os 2 contratos
+    else if VarianteOCO = 2 then
+    begin
+      // 1 contrato fecha em Alvo1 (RRR 1.0) — realização parcial
+      SellToCoverLimit(fTP1, 1);
+      // 1 contrato fecha em Alvo2 (RRR 2.5) — deixa correr
+      SellToCoverLimit(fTP2, 1);
+      // Stop protege os 2 contratos
+      SellToCoverStop(fSL, fSL - fOffsetPts, Contratos);
+    end
+
+    // ── VARIANTE 3: OCO COM BREAKEVEN ────────────────────────
+    //   Fase 1: SL normal, Alvo1 como saída parcial
+    //   Fase 2: quando preço atinge Alvo1 → move SL para entrada
+    //           mantém restante até Alvo2
+    else if VarianteOCO = 3 then
+    begin
+      // Verifica se preço já atingiu Alvo1 (breakeven ativado)
+      if (not bBreakevenLong) and (High >= fTP1) then
+        bBreakevenLong := True;
+
+      if bBreakevenLong then
+      begin
+        // Fase 2: SL no breakeven (entrada), mirando Alvo2
+        fSLAtual := BuyPrice;   // zero risco
+        SellToCoverStop (fSLAtual, fSLAtual - fOffsetPts, 1);
+        SellToCoverLimit(fTP2, 1);
+      end
+      else
+      begin
+        // Fase 1: OCO normal com Alvo1
+        SellToCoverStop (fSL,  fSL  - fOffsetPts, Contratos);
+        SellToCoverLimit(fTP1, 1);
+      end;
+    end;
+
+    // Plot para visualizar os níveis
+    Plot1(fSL);
+    Plot2(fTP1);
+    if VarianteOCO > 1 then Plot3(fTP2);
+  end;
+
+  // ============================================================
+  // SEÇÃO 7: GESTÃO DE POSIÇÃO CURTA — OCO
+  // ============================================================
+  if IsSold then
+  begin
+    fRisco := (SellPrice + fATR * MultiplicadorSL) - SellPrice;
+    if fRisco < MinPriceIncrement then fRisco := MinPriceIncrement;
+
+    fSL  := SellPrice + fRisco;
+    fTP1 := SellPrice - fRisco * RRR_Alvo1;
+    fTP2 := SellPrice - fRisco * RRR_Alvo2;
+
+    if VarianteOCO = 1 then
+    begin
+      BuyToCoverStop (fSL,  fSL  + fOffsetPts, Contratos);
+      BuyToCoverLimit(fTP1, Contratos);
+    end
+
+    else if VarianteOCO = 2 then
+    begin
+      BuyToCoverLimit(fTP1, 1);
+      BuyToCoverLimit(fTP2, 1);
+      BuyToCoverStop(fSL, fSL + fOffsetPts, Contratos);
+    end
+
+    else if VarianteOCO = 3 then
+    begin
+      if (not bBreakevenShort) and (Low <= fTP1) then
+        bBreakevenShort := True;
+
+      if bBreakevenShort then
+      begin
+        fSLAtual := SellPrice;
+        BuyToCoverStop (fSLAtual, fSLAtual + fOffsetPts, 1);
+        BuyToCoverLimit(fTP2, 1);
+      end
+      else
+      begin
+        BuyToCoverStop (fSL,  fSL  + fOffsetPts, Contratos);
+        BuyToCoverLimit(fTP1, 1);
+      end;
+    end;
+
+    Plot1(fSL);
+    Plot2(fTP1);
+    if VarianteOCO > 1 then Plot3(fTP2);
+  end;
+
+  // Reset breakeven ao fechar posição
+  if (not IsBought) and (not IsSold) then
+  begin
+    bBreakevenLong  := False;
+    bBreakevenShort := False;
+  end;
+
+  // ============================================================
+  // SEÇÃO 8: ENTRADAS
+  // ============================================================
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+    if bEntradaLong then
+      BuyAtMarket(Contratos);
+
+    if bEntradaShort then
+      SellShortAtMarket(Contratos);
+  end;
+
+end;
+
+// ============================================================
+// GUIA DE COMPARAÇÃO — O QUE OBSERVAR NO BACKTEST
+// ============================================================
+// VarianteOCO = 1 (Simples):
+//   → Baseline. Veja taxa de acerto e PF com RRR_Alvo1.
+//   → Testar: Alvo1=1.5 vs 2.0 vs 2.5. Qual RRR maximiza PF?
+//
+// VarianteOCO = 2 (Duplo Alvo):
+//   → Requer Contratos=2
+//   → Compara com Simples: o 2º alvo compensa as perdas extras?
+//   → Esperar: mais trades chegam ao Alvo1 do que ao Alvo2
+//
+// VarianteOCO = 3 (Breakeven):
+//   → Risco zero após Alvo1 atingido — psicologicamente mais fácil
+//   → Custo: mais operações encerradas no breakeven (0 pts)
+//   → Melhor em mercados com tendência forte e clara
+//
+// DICA:
+//   Rode cada variante no MESMO período e ativo.
+//   Compare: PF total | N trades | Drawdown | % de alvos atingidos
+//
+// SINTAXE OCO RESUMIDA:
+//   Long → SellToCoverStop(sl, sl-offset, qty) + SellToCoverLimit(tp, qty)
+//   Short → BuyToCoverStop(sl, sl+offset, qty) + BuyToCoverLimit(tp, qty)
+// ============================================================

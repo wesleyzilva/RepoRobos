@@ -1,0 +1,258 @@
+// ============================================================
+// ROBO DE APRENDIZADO: Stop Loss — 4 Tipos Comparáveis
+// Arquivo : abril_aprende_stoploss_tipos_v001.ntsl
+// Versao  : 1.0 | Abril 2026
+// ============================================================
+// OBJETIVO EDUCACIONAL:
+//   Comparar 4 estratégias de stop loss diferentes no backtest.
+//   Troque o parâmetro TipoStop (1 a 4) e rode o backtest para
+//   ver como cada tipo afeta o resultado.
+//
+// TIPO 1 — STOP FIXO (pontos)
+//   SL = entrada ± StopFixo pontos
+//   Pro: simples, fácil de calcular RRR
+//   Contra: ignora volatilidade — pode ser muito largo ou apertado
+//
+// TIPO 2 — STOP ATR
+//   SL = entrada ± (ATR14 * MultiplicadorATR)
+//   Pro: adapta à volatilidade atual do mercado
+//   Contra: varia por período — precisa calibrar o multiplicador
+//
+// TIPO 3 — STOP ESTRUTURA (Low/High do candle gatilho)
+//   Long : SL = Low do candle entrada - Buffer
+//   Short: SL = High do candle entrada + Buffer
+//   Pro: lógico — o trade é inválido se a estrutura quebrar
+//   Contra: SL pode ser muito largo em candles de range alto
+//
+// TIPO 4 — STOP MÍNIMO (menor válido)
+//   SL = mínimo entre Estrutura e ATR*0.5
+//   Pro: menor drawdown por trade, maior RRR potencial
+//   Contra: mais suscetível a whipsaw (ruído do mercado)
+//
+// ENTRADA: F=MA com filtro de direção simples (fechamento vs média)
+//   A entrada é INTENCIONAL MENTE simples para isolar o efeito do SL.
+//
+// COMO USAR:
+//   1. Copie este arquivo para testar em qualquer ativo/TF
+//   2. Mude TipoStop de 1 a 4 e rode backtest em cada
+//   3. Compare: N de trades, PF, Drawdown, taxa de acerto
+//   4. Use os resultados para entender qual SL combina com o setup
+// ============================================================
+
+input
+  // Seletor de tipo de stop (1=Fixo, 2=ATR, 3=Estrutura, 4=Minimo)
+  TipoStop          : Integer := 3;
+
+  // Stop Tipo 1: Fixo
+  StopFixo          : Float   := 150;    // pontos fixos de SL
+
+  // Stop Tipo 2: ATR
+  PeriodoATR        : Integer := 14;
+  MultiplicadorATR  : Float   := 0.8;   // quanto do ATR usar como SL
+
+  // Stop Tipo 3 e 4: Estrutura
+  BufferEstrutura   : Float   := 5;     // pontos além do Low/High
+
+  // Alvo: sempre RRR x SL (para comparação justa entre tipos)
+  RRR               : Float   := 2.0;   // relação risco/retorno
+
+  // Filtros de entrada
+  ForcaMinima       : Float   := 45;    // F=MA mínimo para entrar
+  PeriodoMedia      : Integer := 20;    // média para filtro de direção
+  PeriodoVol        : Integer := 21;    // média de volume
+
+  // Gestão
+  Contratos         : Integer := 1;
+  StopHorario_H     : Integer := 17;
+  StopHorario_M     : Integer := 45;
+  HoraInicioH       : Integer := 9;
+  HoraInicioM       : Integer := 15;
+
+var
+  // F=MA
+  fCorpo       : Float;
+  fRange       : Float;
+  fVolMedia    : Float;
+  fForca       : Float;
+
+  // Filtro de direção
+  fMedia       : Float;
+  bDirecaoAlta : Boolean;
+  bDirecaoBaixa: Boolean;
+
+  // Sinais
+  bEntradaLong : Boolean;
+  bEntradaShort: Boolean;
+
+  // Níveis de stop e alvo
+  fSL          : Float;
+  fTP          : Float;
+  fRisco       : Float;
+  fATR         : Float;
+
+  // Controle
+  bDeveOperar  : Boolean;
+  iR, iG, iB  : Integer;
+
+begin
+
+  // ============================================================
+  // SEÇÃO 1: F=MA (força do candle)
+  // ============================================================
+  fRange := High - Low;
+  if fRange <= 0 then fRange := MinPriceIncrement;
+
+  fCorpo    := Close - Open;
+  fVolMedia := Media(PeriodoVol, Volume);
+  if fVolMedia <= 0 then fVolMedia := 1;
+
+  fForca := (fCorpo / fRange) * (Volume / fVolMedia) * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ============================================================
+  // SEÇÃO 2: FILTRO DE DIREÇÃO (fechamento vs média)
+  //   Simples e intencional — queremos isolar o efeito do SL
+  // ============================================================
+  fMedia        := Media(PeriodoMedia, Close);
+  bDirecaoAlta  := Close > fMedia;
+  bDirecaoBaixa := Close < fMedia;
+
+  // ============================================================
+  // SEÇÃO 3: SINAIS DE ENTRADA
+  // ============================================================
+  bEntradaLong  := (fForca >= ForcaMinima)  and bDirecaoAlta;
+  bEntradaShort := (fForca <= -ForcaMinima) and bDirecaoBaixa;
+
+  // ============================================================
+  // SEÇÃO 4: PAINT BAR (visualização)
+  // ============================================================
+  iR := 128; iG := 128; iB := 128;
+  if bEntradaLong  then begin iR := 0;   iG := 200; iB := 80;  end;
+  if bEntradaShort then begin iR := 220; iG := 40;  iB := 40;  end;
+  PaintBar(RGB(iR, iG, iB));
+
+  // ============================================================
+  // SEÇÃO 5: STOP HORÁRIO
+  // ============================================================
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := False;
+  end
+  else
+    bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
+
+  // ============================================================
+  // SEÇÃO 6: SAÍDA — STOP LOSS (reaplica a cada barra)
+  //
+  //   IMPORTANTE: em NTSL o Profit executa a ÚLTIMA ordem enviada
+  //   por barra. Enviar a ordem a cada barra mantém o SL/TP ativos.
+  //   Para OCO real (SL + Alvo simultâneos) use SellToCoverStop +
+  //   SellToCoverLimit juntos — veja abril_aprende_oco_basico_v001.
+  // ============================================================
+  fATR := ATR(PeriodoATR);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+
+  if IsBought then
+  begin
+    // Calcula SL de acordo com o tipo selecionado
+    if TipoStop = 1 then
+      // TIPO 1: Fixo — distância constante em pontos
+      fSL := BuyPrice - StopFixo * MinPriceIncrement
+
+    else if TipoStop = 2 then
+      // TIPO 2: ATR — distância proporcional à volatilidade
+      fSL := BuyPrice - fATR * MultiplicadorATR
+
+    else if TipoStop = 3 then
+      // TIPO 3: Estrutura — abaixo do Low do candle de entrada
+      //   Low do candle de ENTRADA (quando IsBought ficou true pela 1ª vez)
+      //   Usamos Low como proxy — no backtest será o Low do candle atual
+      fSL := Low - BufferEstrutura * MinPriceIncrement
+
+    else
+      // TIPO 4: Mínimo — o menor entre Estrutura e ATR*0.5
+      //   Garante que o stop seja o mais apertado possível mas ainda válido
+      begin
+        fSL := Low - BufferEstrutura * MinPriceIncrement;
+        if (BuyPrice - fATR * 0.5) > fSL then
+          fSL := BuyPrice - fATR * 0.5;
+      end;
+
+    // Alvo: sempre RRR * risco para comparação justa
+    fRisco := BuyPrice - fSL;
+    if fRisco < MinPriceIncrement then fRisco := MinPriceIncrement;
+    fTP := BuyPrice + fRisco * RRR;
+
+    // Envia STOP (proteção) — único por barra, sem alvo simultâneo
+    // Para adicionar alvo conjunto → veja o rob oco_basico
+    SellToCoverStop(fSL, fSL - 5 * MinPriceIncrement, Contratos);
+
+    // Plot para visualizar os níveis no gráfico
+    Plot1(fSL);   // linha de stop loss
+    Plot2(fTP);   // linha de take profit (referência)
+  end;
+
+  if IsSold then
+  begin
+    if TipoStop = 1 then
+      fSL := SellPrice + StopFixo * MinPriceIncrement
+
+    else if TipoStop = 2 then
+      fSL := SellPrice + fATR * MultiplicadorATR
+
+    else if TipoStop = 3 then
+      fSL := High + BufferEstrutura * MinPriceIncrement
+
+    else
+      begin
+        fSL := High + BufferEstrutura * MinPriceIncrement;
+        if (SellPrice + fATR * 0.5) < fSL then
+          fSL := SellPrice + fATR * 0.5;
+      end;
+
+    fRisco := fSL - SellPrice;
+    if fRisco < MinPriceIncrement then fRisco := MinPriceIncrement;
+    fTP := SellPrice - fRisco * RRR;
+
+    BuyToCoverStop(fSL, fSL + 5 * MinPriceIncrement, Contratos);
+
+    Plot1(fSL);
+    Plot2(fTP);
+  end;
+
+  // ============================================================
+  // SEÇÃO 7: ENTRADAS
+  // ============================================================
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+    if bEntradaLong then
+      BuyAtMarket(Contratos);
+
+    if bEntradaShort then
+      SellShortAtMarket(Contratos);
+  end;
+
+end;
+
+// ============================================================
+// GUIA DE COMPARAÇÃO — COMO ANALISAR OS RESULTADOS
+// ============================================================
+// TipoStop = 1 (Fixo)
+//   → StopFixo = 100: muitos stops, poucos alvos | StopFixo = 300: mais alvos mas drawdown maior
+//
+// TipoStop = 2 (ATR)
+//   → MultiplicadorATR = 0.5: SL apertado (mais whipsaw) | 1.5: SL largo (menos stops, mas mais drawdown)
+//
+// TipoStop = 3 (Estrutura)
+//   → Mais lógico — o trade é inválido se o Low/High romper
+//   → Funciona bem em candles de padrão bem definido (Pin Bar, IB)
+//
+// TipoStop = 4 (Mínimo)
+//   → Maior quantidade de stops, mas maior potencial de RRR
+//   → Usar apenas com setups de alta precisão (F=MA >= 70, confluência)
+//
+// MÉTRICA PRINCIPAL: Profit Factor (PF) vs Drawdown
+//   → Se PF aumenta e Drawdown cai ao mudar tipo = melhor SL para este setup
+// ============================================================

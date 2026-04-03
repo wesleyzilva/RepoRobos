@@ -1,0 +1,330 @@
+// ============================================================
+// ROBO DE APRENDIZADO: Trailing Stop — 3 Estratégias
+// Arquivo : abril_aprende_trailing_v001.ntsl
+// Versao  : 1.0 | Abril 2026
+// ============================================================
+// OBJETIVO EDUCACIONAL:
+//   Comparar 3 estratégias de trailing stop.
+//   Trailing = stop que ACOMPANHA o preço quando ele vai a favor,
+//   mas não volta quando o preço recua.
+//
+// O QUE É TRAILING STOP:
+//   • Diferente do SL fixo: o stop "sobe" junto com o preço (long)
+//   • Garante lock-in de lucros progressivamente
+//   • Não tem alvo fixo: deixa o movimento correr até o stop
+//
+// VARIANTE 1 — TRAILING FIXO (pontos)
+//   Stop = MelhorPreco - TrailPontos
+//   Pro: simples, fácil de visualizar
+//   Contra: ignora volatilidade — muito apertado ou largo dependendo do período
+//
+// VARIANTE 2 — TRAILING ATR
+//   Stop = MelhorPreco - ATR14 * Multiplicador
+//   Pro: adapta à volatilidade — afasta em períodos agitados
+//   Contra: pode deixar muito lucro na mesa em tendências longas
+//
+// VARIANTE 3 — TRAILING COM BREAKEVEN INICIAL
+//   Fase 1: SL fixo na entrada (SL Estrutura = Low - Buffer)
+//   Fase 2: quando lucro >= PontosBreakeven → ativa trailing ATR
+//   Pro: protege a entrada até confirmação da tendência
+//   Contra: mais complexo — dois estados para gerenciar
+//
+// ENTRADA: F=MA com filtro de contexto.
+//
+// COMO USAR:
+//   1. VarianteTrail = 1, 2 ou 3
+//   2. Rode backtest e compare: PF, lucro total, trades fechados por stop vs tempo
+//   3. Observe Plot1 no gráfico para ver o trail se mover
+// ============================================================
+
+input
+  // Seletor de variante (1=Fixo, 2=ATR, 3=Breakeven+Trail)
+  VarianteTrail      : Integer := 2;
+
+  // Trailing Variante 1: Fixo
+  TrailPontos        : Float   := 120;    // pontos fixos de distância
+
+  // Trailing Variante 2 e 3: ATR
+  PeriodoATR         : Integer := 14;
+  TrailMultATR       : Float   := 0.8;   // ATR * mult = distância do trail
+
+  // Variante 3: Breakeven
+  PontosBreakeven    : Float   := 50;    // pontos de lucro para ativar trail
+  SLInicialBuffer    : Float   := 5;     // buffer além de Low/High inicial
+
+  // Stop limit offset (slippage)
+  StopOffset         : Float   := 5;
+
+  // Filtros de entrada
+  ForcaMinima        : Float   := 50;
+  PeriodoMedia       : Integer := 20;
+  PeriodoVol         : Integer := 21;
+
+  // Gestão
+  Contratos          : Integer := 1;
+  StopHorario_H      : Integer := 17;
+  StopHorario_M      : Integer := 45;
+  HoraInicioH        : Integer := 9;
+  HoraInicioM        : Integer := 15;
+
+var
+  // F=MA
+  fCorpo             : Float;
+  fRange             : Float;
+  fVolMedia          : Float;
+  fForca             : Float;
+
+  // Direção
+  fMedia             : Float;
+  bDirecaoAlta       : Boolean;
+  bDirecaoBaixa      : Boolean;
+
+  // Sinais
+  bEntradaLong       : Boolean;
+  bEntradaShort      : Boolean;
+
+  // ATR
+  fATR               : Float;
+  fTrailDist         : Float;
+  fOffsetPts         : Float;
+
+  // Trailing — melhor preço atingido
+  fMelhorPrecoLong   : Float;   // máxima desde a entrada long
+  fMelhorPrecoShort  : Float;   // mínima desde a entrada short
+
+  // Trailing stop calculado
+  fTrailStop         : Float;
+
+  // SL inicial da entrada (variante 3)
+  fSLInicialLong     : Float;
+  fSLInicialShort    : Float;
+
+  // Controle de fase (variante 3)
+  bTrailAtivoLong    : Boolean;
+  bTrailAtivoShort   : Boolean;
+
+  // Controle
+  bDeveOperar        : Boolean;
+  iR, iG, iB        : Integer;
+
+begin
+
+  // ============================================================
+  // SEÇÃO 1: F=MA
+  // ============================================================
+  fRange := High - Low;
+  if fRange <= 0 then fRange := MinPriceIncrement;
+
+  fCorpo    := Close - Open;
+  fVolMedia := Media(PeriodoVol, Volume);
+  if fVolMedia <= 0 then fVolMedia := 1;
+
+  fForca := (fCorpo / fRange) * (Volume / fVolMedia) * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ============================================================
+  // SEÇÃO 2: FILTRO DE DIREÇÃO
+  // ============================================================
+  fMedia        := Media(PeriodoMedia, Close);
+  bDirecaoAlta  := Close > fMedia;
+  bDirecaoBaixa := Close < fMedia;
+
+  bEntradaLong  := (fForca >= ForcaMinima)  and bDirecaoAlta;
+  bEntradaShort := (fForca <= -ForcaMinima) and bDirecaoBaixa;
+
+  // ============================================================
+  // SEÇÃO 3: PAINT BAR
+  // ============================================================
+  iR := 128; iG := 128; iB := 128;
+  if bEntradaLong  then begin iR := 0;   iG := 200; iB := 120; end;
+  if bEntradaShort then begin iR := 200; iG := 50;  iB := 50;  end;
+  PaintBar(RGB(iR, iG, iB));
+
+  // ============================================================
+  // SEÇÃO 4: STOP HORÁRIO
+  // ============================================================
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar      := False;
+    bTrailAtivoLong  := False;
+    bTrailAtivoShort := False;
+  end
+  else
+    bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
+
+  // ============================================================
+  // SEÇÃO 5: ATR e distância base do trail
+  // ============================================================
+  fATR       := ATR(PeriodoATR);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+  fTrailDist := fATR * TrailMultATR;
+  fOffsetPts := StopOffset * MinPriceIncrement;
+
+  // ============================================================
+  // SEÇÃO 6: TRAILING STOP — POSIÇÃO LONGA
+  // ============================================================
+  if IsBought then
+  begin
+    // Atualiza o melhor preço (máxima desde a entrada)
+    if High > fMelhorPrecoLong then
+      fMelhorPrecoLong := High;
+
+    // ── VARIANTE 1: Trail Fixo ────────────────────────────────
+    if VarianteTrail = 1 then
+    begin
+      // Trail = máxima atingida - pontos fixos
+      fTrailStop := fMelhorPrecoLong - TrailPontos * MinPriceIncrement;
+
+      // Garantir que o trail nunca volta (mantém mínimo = SL original)
+      if fTrailStop < (BuyPrice - TrailPontos * MinPriceIncrement) then
+        fTrailStop := BuyPrice - TrailPontos * MinPriceIncrement;
+    end
+
+    // ── VARIANTE 2: Trail ATR ─────────────────────────────────
+    else if VarianteTrail = 2 then
+    begin
+      // Trail = máxima atingida - ATR*mult
+      fTrailStop := fMelhorPrecoLong - fTrailDist;
+
+      // Nunca retrocede além do SL inicial calculado pela entrada
+      if fTrailStop < (BuyPrice - fTrailDist) then
+        fTrailStop := BuyPrice - fTrailDist;
+    end
+
+    // ── VARIANTE 3: Breakeven + Trail ATR ────────────────────
+    //   Fase 1 (trail inativo): SL fixo no Low da entrada - buffer
+    //   Fase 2 (trail ativo): trailing ATR quando lucro >= breakeven
+    else if VarianteTrail = 3 then
+    begin
+      // SL inicial = Low de quando entrou (proxy: Low atual da 1ª barra)
+      if fSLInicialLong = 0 then
+        fSLInicialLong := BuyPrice - SLInicialBuffer * MinPriceIncrement;
+
+      // Verificar se breakeven já foi atingido
+      if (not bTrailAtivoLong) and
+         (fMelhorPrecoLong >= BuyPrice + PontosBreakeven * MinPriceIncrement) then
+        bTrailAtivoLong := True;
+
+      if bTrailAtivoLong then
+      begin
+        // Fase 2: trailing ATR a partir da máxima
+        fTrailStop := fMelhorPrecoLong - fTrailDist;
+        // Mínimo = entrada (breakeven — nunca aceita perda após ativar)
+        if fTrailStop < BuyPrice then
+          fTrailStop := BuyPrice;
+      end
+      else
+      begin
+        // Fase 1: SL estrutura fixo — aguardando breakeven
+        fTrailStop := fSLInicialLong;
+      end;
+    end;
+
+    // Enviar o stop (trailing) — sem alvo fixo
+    SellToCoverStop(fTrailStop, fTrailStop - fOffsetPts, Contratos);
+
+    // Plot1 = linha do trailing stop no gráfico
+    Plot1(fTrailStop);
+    Plot2(fMelhorPrecoLong);  // linha da máxima atingida (referência)
+  end;
+
+  // ============================================================
+  // SEÇÃO 7: TRAILING STOP — POSIÇÃO CURTA
+  // ============================================================
+  if IsSold then
+  begin
+    // Atualiza o melhor preço (mínima desde a entrada short)
+    if (fMelhorPrecoShort = 0) or (Low < fMelhorPrecoShort) then
+      fMelhorPrecoShort := Low;
+
+    if VarianteTrail = 1 then
+    begin
+      fTrailStop := fMelhorPrecoShort + TrailPontos * MinPriceIncrement;
+      if fTrailStop > (SellPrice + TrailPontos * MinPriceIncrement) then
+        fTrailStop := SellPrice + TrailPontos * MinPriceIncrement;
+    end
+
+    else if VarianteTrail = 2 then
+    begin
+      fTrailStop := fMelhorPrecoShort + fTrailDist;
+      if fTrailStop > (SellPrice + fTrailDist) then
+        fTrailStop := SellPrice + fTrailDist;
+    end
+
+    else if VarianteTrail = 3 then
+    begin
+      if fSLInicialShort = 0 then
+        fSLInicialShort := SellPrice + SLInicialBuffer * MinPriceIncrement;
+
+      if (not bTrailAtivoShort) and
+         (fMelhorPrecoShort <= SellPrice - PontosBreakeven * MinPriceIncrement) then
+        bTrailAtivoShort := True;
+
+      if bTrailAtivoShort then
+      begin
+        fTrailStop := fMelhorPrecoShort + fTrailDist;
+        if fTrailStop > SellPrice then
+          fTrailStop := SellPrice;
+      end
+      else
+        fTrailStop := fSLInicialShort;
+    end;
+
+    BuyToCoverStop(fTrailStop, fTrailStop + fOffsetPts, Contratos);
+
+    Plot1(fTrailStop);
+    Plot2(fMelhorPrecoShort);
+  end;
+
+  // Reset ao fechar posição
+  if (not IsBought) and (not IsSold) then
+  begin
+    fMelhorPrecoLong  := 0;
+    fMelhorPrecoShort := 0;
+    fSLInicialLong    := 0;
+    fSLInicialShort   := 0;
+    bTrailAtivoLong   := False;
+    bTrailAtivoShort  := False;
+  end;
+
+  // ============================================================
+  // SEÇÃO 8: ENTRADAS
+  // ============================================================
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+    if bEntradaLong then
+      BuyAtMarket(Contratos);
+
+    if bEntradaShort then
+      SellShortAtMarket(Contratos);
+  end;
+
+end;
+
+// ============================================================
+// GUIA DE COMPARAÇÃO — TRAILING STOP
+// ============================================================
+// VarianteTrail = 1 (Fixo):
+//   → Melhor em ativos com volatilidade constante
+//   → Testar TrailPontos: 80, 120, 200 — qual captura mais da tendência?
+//
+// VarianteTrail = 2 (ATR):
+//   → Se afasta em períodos voláteis, se aperta em períodos calmos
+//   → Testar TrailMultATR: 0.5, 0.8, 1.2
+//   → Geralmente superior ao fixo em WIN por causa da volatilidade variável
+//
+// VarianteTrail = 3 (Breakeven + Trail ATR):
+//   → Menor drawdown — nunca perde após breakeven
+//   → Custo: algumas trades encerram no breakeven (0 pts)
+//   → Ideal quando entrada é boa mas timing de saída é incerto
+//
+// Plot1 = linha do trailing stop (veja no gráfico se faz sentido)
+// Plot2 = melhor preço atingido (máxima/mínima desde entrada)
+//
+// COMPARAR COM OCO:
+//   OCO (alvo fixo): melhor em laterais e movimentos curtos
+//   Trailing:        melhor em tendências longas
+//   → Rodar ambos no mesmo período e comparar PF
+// ============================================================
