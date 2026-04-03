@@ -1,0 +1,273 @@
+// ============================================================
+// INDICADOR: Inside Bar — Detector, Compressao e Breakout
+// Arquivo   : abril_padroes_insidebar_v001.ntfl
+// Versao    : 1.0 | Abril 2025
+// ============================================================
+// DESCRICAO:
+//   Inside Bar = candle completamente contido dentro do candle anterior.
+//   Representa compressao de volatilidade e acumulacao de pressao.
+//   O breakout do "candle mae" define a direcao.
+//
+//   IB Detectado   : High[1] <= High[2] AND Low[1] >= Low[2]
+//   Breakout ALTA  : Close > High da candle mae (High[2] quando IB foi detectado)
+//   Breakout BAIXA : Close < Low  da candle mae (Low[2]  quando IB foi detectado)
+//
+// COMO USAR:
+//   1. Aplique no grafico — candles da "inside bar" serao destacados em CINZA
+//   2. O candle MAE fica destacado em AMARELO (contexto da compressao)
+//   3. Breakout ALTA = candle VERDE BRILHANTE passando o topo da mae
+//   4. Breakout BAIXA = candle VERMELHO BRILHANTE rompendo a base da mae
+//   5. Plot1 = nivel de breakout alta (topo da candle mae)
+//   6. Plot2 = nivel de breakout baixa (base da candle mae)
+//   7. Plot3 = ponto medio da candle mae
+//
+// LEGENDA DE CORES (PaintBar):
+//   🟡 Amarelo       = Candle MAE (gerou o inside bar)
+//   ⚪ Cinza         = Inside Bar (compressao, aguardando)
+//   🟩 Verde brilhante = Breakout de ALTA confirmado
+//   🔴 Vermelho bril. = Breakout de BAIXA confirmado
+//   🩵 Ciano         = IB com F=MA alta (momentum comprimido)
+//
+// SL REFERENCE:
+//   Long  : SL abaixo de Plot2 (Low da candle mae) — estrutura rompe se violar
+//   Short : SL acima de Plot1 (High da candle mae)
+// ============================================================
+
+input
+  iForcaMinima     : Float   := 25;  // Forca F=MA no candle mae para validar IB
+  iPeriodoVolume   : Integer := 21;  // Periodo media de volume
+  iExtensaoNiveis  : Integer := 30;  // Barras que os niveis ficam plotados
+  iMaxInsideBars   : Integer := 5;   // Max inside bars antes de invalidar padrao
+  bMostrarXRay     : Boolean := True;
+  bMostrarAlertas  : Boolean := True;
+
+var
+  // F=MA
+  fCorpo          : Float;
+  fRange          : Float;
+  fVolRatio       : Float;
+  fForca          : Float;
+  fMediaVol       : Float;
+
+  // Inside Bar — deteccao
+  bInsideBar       : Boolean;
+  bMaeDetectada    : Boolean;
+  iBarsIB          : Integer;   // barras consecutivas de inside bar
+
+  // Niveis da candle mae
+  fMae_High        : Float;
+  fMae_Low         : Float;
+  fMae_Meio        : Float;
+  bNiveisAtivos    : Boolean;
+  iNiveisBar       : Integer;
+
+  // Breakout
+  bBreakoutAlta    : Boolean;
+  bBreakoutBaixa   : Boolean;
+  bAlertado        : Boolean;
+
+  // XRay cores
+  iR, iG, iB      : Integer;
+
+begin
+
+  // ============================================================
+  // SECAO 1: CALCULO F=MA
+  // ============================================================
+  fRange := High - Low;
+  if fRange > 0 then
+    fCorpo := Abs(Close - Open) / fRange * 100
+  else
+    fCorpo := 0;
+
+  fMediaVol := Media(iPeriodoVolume, Volume);
+  if fMediaVol > 0 then
+    fVolRatio := Volume / fMediaVol
+  else
+    fVolRatio := 1;
+
+  fForca := fCorpo * fVolRatio;
+  if fForca > 100 then fForca := 100;
+  if fForca < 0   then fForca := 0;
+
+  // ============================================================
+  // SECAO 2: DETECCAO DE INSIDE BAR
+  // ============================================================
+  // O candle[1] eh completamente contido dentro do candle[2]?
+  // Verificamos no candle ATUAL se o ANTERIOR era inside do que veio antes
+  bInsideBar   := False;
+  bMaeDetectada := False;
+
+  // Inside bar: candle[1] dentro de candle[2]
+  if (High[1] <= High[2]) and (Low[1] >= Low[2]) then
+  begin
+    bInsideBar := True;
+
+    // Candle mae = candle[2], verificar se tinha forca minima
+    // Calculamos forca do candle[2] manualmente
+    if (High[2] - Low[2]) > 0 then
+    begin
+      // Usa a forca do candle mae (candle[2]) na deteccao
+      // Como nao temos valor historico de fForca[2], verificamos
+      // se o range da mae foi relevante (proxy: range mae > range filho * 1.5)
+      if (High[2] - Low[2]) > ((High[1] - Low[1]) * 1.2) then
+        bMaeDetectada := True;
+    end;
+  end;
+
+  // ============================================================
+  // SECAO 3: CONTROLE DE ESTADO — NIVEIS ATIVOS
+  // ============================================================
+  if bInsideBar and bMaeDetectada then
+  begin
+    // Novo conjunto de niveis — candle mae = candle[2] do momento atual
+    fMae_High    := High[2];
+    fMae_Low     := Low[2];
+    fMae_Meio    := (High[2] + Low[2]) / 2;
+    bNiveisAtivos := True;
+    iNiveisBar   := 0;
+    iBarsIB      := 0;
+    bAlertado    := False;
+  end
+  else
+  begin
+    // Incrementa contador de barras dos niveis ativos
+    if bNiveisAtivos then
+    begin
+      iNiveisBar := iNiveisBar + 1;
+      if iNiveisBar > iExtensaoNiveis then
+        bNiveisAtivos := False;
+    end;
+    iBarsIB := 0;
+  end;
+
+  // Contar inside bars consecutivos (chains de inside bar)
+  if bInsideBar then
+    iBarsIB := iBarsIB + 1
+  else
+    iBarsIB := 0;
+
+  // ============================================================
+  // SECAO 4: DETECCAO DE BREAKOUT
+  // ============================================================
+  bBreakoutAlta  := False;
+  bBreakoutBaixa := False;
+
+  if bNiveisAtivos and (not bInsideBar) then
+  begin
+    if Close > fMae_High then
+      bBreakoutAlta := True
+    else if Close < fMae_Low then
+      bBreakoutBaixa := True;
+  end;
+
+  // ============================================================
+  // SECAO 5: PLOTAGEM DOS NIVEIS
+  // ============================================================
+  if bNiveisAtivos then
+  begin
+    Plot1(fMae_High);
+    Plot2(fMae_Low);
+    Plot3(fMae_Meio);
+  end
+  else
+  begin
+    Plot1(Close);
+    Plot2(Close);
+    Plot3(Close);
+  end;
+
+  // ============================================================
+  // SECAO 6: PAINT BAR — COLORIR CANDLES
+  // ============================================================
+  if bBreakoutAlta then
+    // Breakout de alta → verde forte
+    PaintBar(RGB(0, 230, 100))
+  else if bBreakoutBaixa then
+    // Breakout de baixa → vermelho forte
+    PaintBar(RGB(230, 40, 60))
+  else if bInsideBar and (fForca >= 50) then
+    // Inside bar com momentum comprimido → ciano
+    PaintBar(RGB(0, 200, 220))
+  else if bInsideBar then
+    // Inside bar normal → cinza (compressao)
+    PaintBar(RGB(150, 150, 160))
+  else if bMaeDetectada and (High[2] = fMae_High) and (Low[2] = fMae_Low) then
+    // Candle mae → amarelo (contexto)
+    PaintBar(RGB(240, 200, 0));
+
+  // ============================================================
+  // SECAO 7: XRAY — PAINEL LATERAL
+  // ============================================================
+  if bMostrarXRay then
+  begin
+    // F=MA atual
+    if fForca >= 70 then begin iR:=0;   iG:=230; iB:=100; end
+    else if fForca >= 40 then begin iR:=240; iG:=200; iB:=0;   end
+    else begin iR:=180; iG:=60;  iB:=60;  end;
+
+    XRay('F=MA', IntToStr(Round(fForca)) + '%', 'IB', 0, RGB(iR, iG, iB));
+
+    if bInsideBar then
+      XRay('Status', 'INSIDE BAR', 'IB', 0, RGB(0, 200, 220))
+    else if bBreakoutAlta then
+      XRay('Status', 'BREAK ALTA!', 'IB', 0, RGB(0, 230, 100))
+    else if bBreakoutBaixa then
+      XRay('Status', 'BREAK BAIXA!', 'IB', 0, RGB(230, 40, 60))
+    else if bNiveisAtivos then
+      XRay('Status', 'aguard ' + IntToStr(iNiveisBar) + 'b', 'IB', 0, RGB(180, 180, 60))
+    else
+      XRay('Status', 'sem padrao', 'IB', 0, RGB(80, 80, 80));
+
+    if bNiveisAtivos then
+    begin
+      XRay('Mae Hi', IntToStr(Round(fMae_High)), 'IB', 0, RGB(0, 210, 100));
+      XRay('Mae Lo', IntToStr(Round(fMae_Low)),  'IB', 0, RGB(210, 60, 60));
+      XRay('Meio  ', IntToStr(Round(fMae_Meio)), 'IB', 0, RGB(160, 160, 200));
+      XRay('Barras', IntToStr(iNiveisBar) + ' / ' + IntToStr(iExtensaoNiveis), 'IB', 0, RGB(120, 120, 120));
+    end;
+  end;
+
+  // ============================================================
+  // SECAO 8: ALERTAS SONOROS
+  // ============================================================
+  if bMostrarAlertas then
+  begin
+    // Alerta ao detectar Inside Bar
+    if bInsideBar and (not bInsideBar[1]) then
+      Alert(RGB(0, 200, 220));
+
+    // Alerta ao breakout de alta (primeira ocorrencia)
+    if bBreakoutAlta and (not bBreakoutAlta[1]) and (not bAlertado) then
+    begin
+      Alert(RGB(0, 230, 100));
+      bAlertado := True;
+    end;
+
+    // Alerta ao breakout de baixa (primeira ocorrencia)
+    if bBreakoutBaixa and (not bBreakoutBaixa[1]) and (not bAlertado) then
+    begin
+      Alert(RGB(230, 40, 60));
+      bAlertado := True;
+    end;
+  end;
+
+end;
+
+// ============================================================
+// RESUMO RAPIDO
+// ============================================================
+// INSIDE BAR  : High[1] <= High[2] E Low[1] >= Low[2]  → ⚪ cinza
+// BREAKOUT ▲  : Close > Mae_High                        → 🟩 verde
+// BREAKOUT ▼  : Close < Mae_Low                         → 🔴 vermelho
+//
+// Plot1 = High da candle mae = nivel de breakout longa
+// Plot2 = Low  da candle mae = nivel de breakout curta / SL longa
+// Plot3 = Meio da candle mae = alvo parcial / suporte/resistencia
+//
+// SL Long  : abaixo de Plot2
+// SL Short : acima de Plot1
+//
+// MELHOR CONFLUENCIA:
+//   IB em zona de OB ou FVG + F=MA comprimido + volume caindo = Premium
+// ============================================================

@@ -1,0 +1,320 @@
+{
+  Indicador: ABRIL_PADROES_ORDERBLOCK_v001
+  Descricao: Detecta e plota Order Blocks (OB) — candl institucional antes de um impulso forte.
+             OB de Compra: candle bearish (venda) seguido de impulso bullish forte.
+             OB de Venda : candle bullish (compra) seguido de impulso bearish forte.
+             Plota os limites da zona do OB como linhas horizontais.
+             Alerta quando o preco retorna para a zona (teste do OB).
+  Ativo: WIN / WDO
+  Timeframe: qualquer (melhor em 5min, 15min, 60min)
+  Versao: 1.0
+
+  Visualizacao:
+    Candles:
+      Azul brilhante   = candle detectado como OB de Compra (bearish antes do impulso)
+      Laranja brilhante= candle detectado como OB de Venda  (bullish antes do impulso)
+      Ciano            = preco RETORNOU para zona do OB de Compra (teste do OB)
+      Rosa/magenta     = preco RETORNOU para zona do OB de Venda
+      Amarelo          = F=MA confirma + preco no OB (gatilho de alta probabilidade)
+      Cinza            = neutro
+
+    Linhas (configurar no Profit):
+      Plot1 (azul solido)  = High do OB de Compra (limite superior da zona)
+      Plot2 (azul tracejado)= Low  do OB de Compra (limite inferior = SL Long)
+      Plot3 (laranja solido)= High do OB de Venda  (limite superior = SL Short)
+      Plot4 (laranja tracejado)= Low do OB de Venda (limite inferior da zona)
+
+    XRay:
+      OB Compra: tipo, nivel, distancia em pts
+      OB Venda:  tipo, nivel, distancia em pts
+      Score:     F=MA atual + se esta no OB
+
+  Logica de deteccao:
+    OB Bullish (compra):
+      candle[2] era BEARISH (Close[2] < Open[2]) — o OB
+      candle[1] era BULLISH forte (forca >= ForcaImpulso) — o impulso
+      candle[0] atual pode ser o retorno para o OB
+      Zona do OB = [Low[2], High[2]]
+
+    OB Bearish (venda):
+      candle[2] era BULLISH (Close[2] > Open[2]) — o OB
+      candle[1] era BEARISH forte (forca <= -ForcaImpulso) — o impulso
+      Zona do OB = [Low[2], High[2]]
+}
+
+input
+  ForcaImpulso(60.0);         // forca minima do impulso para validar o OB
+  PeriodoMediaVolume(20);     // media de volume para calculo F=MA
+  BarrasExtensaoOB(40);       // quantas barras a zona do OB persiste
+  MostrarXRay(true);
+  MostrarAlertas(true);
+
+var
+  // F=MA do candle atual e do candle de impulso
+  fCorpo, fRange, fVolMedia, fMassa, fAceleracao, fForca : float;
+  fCorpoImpulso, fRangeImpulso, fForcaImpulso           : float;
+
+  // Zona do OB de Compra (OBC)
+  fOBC_High    : float;     // High do candle OB (limite superior da zona)
+  fOBC_Low     : float;     // Low  do candle OB (limite inferior = SL Long)
+  iOBC_Barras  : integer;   // barras desde a criacao do OB
+  bOBC_Ativo   : boolean;   // OB de compra esta ativo?
+
+  // Zona do OB de Venda (OBV)
+  fOBV_High    : float;
+  fOBV_Low     : float;
+  iOBV_Barras  : integer;
+  bOBV_Ativo   : boolean;
+
+  // Estado de preco
+  bRetornoOBC  : boolean;   // preco retornou para zona do OBC
+  bRetornoOBV  : boolean;   // preco retornou para zona do OBV
+  bGatilhoOBC  : boolean;   // retorno + confirmacao F=MA
+  bGatilhoOBV  : boolean;
+
+  // Cores
+  iR, iG, iB  : integer;
+
+begin
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 1 — F=MA DO CANDLE ATUAL
+  // ═══════════════════════════════════════════════════════════════════════════
+  fCorpo := Close - Open;
+  fRange := High - Low;
+  if fRange <= 0 then fRange := 0.0001;
+
+  fVolMedia   := Media(PeriodoMediaVolume, Volume);
+  if fVolMedia <= 0 then fVolMedia := 1;
+
+  fMassa      := fCorpo / fRange;
+  fAceleracao := Volume / fVolMedia;
+  fForca      := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 2 — F=MA DO CANDLE DE IMPULSO (candle[1] = 1 barra atras)
+  // ═══════════════════════════════════════════════════════════════════════════
+  fCorpoImpulso  := Close[1] - Open[1];
+  fRangeImpulso  := High[1] - Low[1];
+  if fRangeImpulso <= 0 then fRangeImpulso := 0.0001;
+
+  fForcaImpulso := (fCorpoImpulso / fRangeImpulso)
+                 * (Volume[1] / fVolMedia) * 100;
+  if fForcaImpulso >  100 then fForcaImpulso :=  100;
+  if fForcaImpulso < -100 then fForcaImpulso := -100;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 3 — DETECTAR ORDER BLOCKS
+  //
+  // OB de COMPRA detectado quando:
+  //   candle[2] = bearish (Close[2] < Open[2])
+  //   candle[1] = impulso bullish forte (fForcaImpulso >= ForcaImpulso)
+  //
+  // OB de VENDA detectado quando:
+  //   candle[2] = bullish (Close[2] > Open[2])
+  //   candle[1] = impulso bearish forte (fForcaImpulso <= -ForcaImpulso)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // OB de Compra (bullish OB)
+  if (Close[2] < Open[2])                          // candle[2] era bearish (o OB)
+    and (fForcaImpulso >= ForcaImpulso)             // candle[1] foi impulso bullish
+    and (Close[1] > Close[2]) then                 // impulso superou o OB
+  begin
+    fOBC_High   := High[2];    // zona = range do candle OB
+    fOBC_Low    := Low[2];
+    iOBC_Barras := 0;
+    bOBC_Ativo  := true;
+  end
+  else
+  begin
+    iOBC_Barras := iOBC_Barras + 1;
+    // Invalidar OB se preco fechou ABAIXO da base do OB (rompeu para baixo)
+    if bOBC_Ativo and (Close < fOBC_Low) then
+      bOBC_Ativo := false;
+    // Invalidar OB por validade (muitas barras)
+    if iOBC_Barras > BarrasExtensaoOB then
+      bOBC_Ativo := false;
+  end;
+
+  // OB de Venda (bearish OB)
+  if (Close[2] > Open[2])                          // candle[2] era bullish (o OB)
+    and (fForcaImpulso <= -ForcaImpulso)            // candle[1] foi impulso bearish
+    and (Close[1] < Close[2]) then                 // impulso rompeu abaixo do OB
+  begin
+    fOBV_High   := High[2];
+    fOBV_Low    := Low[2];
+    iOBV_Barras := 0;
+    bOBV_Ativo  := true;
+  end
+  else
+  begin
+    iOBV_Barras := iOBV_Barras + 1;
+    // Invalidar OB se preco fechou ACIMA do topo do OB (rompeu para cima)
+    if bOBV_Ativo and (Close > fOBV_High) then
+      bOBV_Ativo := false;
+    if iOBV_Barras > BarrasExtensaoOB then
+      bOBV_Ativo := false;
+  end;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 4 — DETECTAR RETORNO PARA O OB (teste da zona)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Retorno ao OB de Compra: preco fechou dentro da zona (entre Low e High do OB)
+  bRetornoOBC := bOBC_Ativo
+              and (iOBC_Barras > 0)           // nao o proprio candle de criacao
+              and (Close <= fOBC_High)
+              and (Close >= fOBC_Low);
+
+  // Retorno ao OB de Venda
+  bRetornoOBV := bOBV_Ativo
+              and (iOBV_Barras > 0)
+              and (Close <= fOBV_High)
+              and (Close >= fOBV_Low);
+
+  // Gatilho = retorno + F=MA na mesma direcao do OB
+  bGatilhoOBC := bRetornoOBC and (fForca >= 20);   // qualquer forca positiva no OB
+  bGatilhoOBV := bRetornoOBV and (fForca <= -20);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 5 — LINHAS (Plots)
+  //   Plot1 = limite superior do OB de Compra (High[2] do candle OBC)
+  //   Plot2 = limite inferior do OB de Compra (Low[2]  do candle OBC) = SL Long
+  //   Plot3 = limite superior do OB de Venda  (High[2] do candle OBV) = SL Short
+  //   Plot4 = limite inferior do OB de Venda  (Low[2]  do candle OBV)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if bOBC_Ativo then
+  begin
+    Plot1(fOBC_High);   // topo da zona OBC — resistencia interna
+    Plot2(fOBC_Low);    // base da zona OBC — SL do long
+  end;
+
+  if bOBV_Ativo then
+  begin
+    Plot3(fOBV_High);   // topo da zona OBV — SL do short
+    Plot4(fOBV_Low);    // base da zona OBV — suporte interno
+  end;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 6 — COLORACAO DOS CANDLES
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  iR := 150; iG := 150; iB := 150;   // cinza = neutro
+
+  // Candle que VAI CRIAR o OB (2 barras atras sao identificadas agora):
+  // Nao podemos pintar candles passados, entao pintamos quando detectamos
+
+  if bGatilhoOBC then
+  begin
+    // Amarelo = gatilho: preco no OBC + F=MA positiva
+    iR := 255; iG := 220; iB := 0;
+  end
+  else if bGatilhoOBV then
+  begin
+    iR := 255; iG := 150; iB := 0;   // laranja escuro = gatilho short
+  end
+  else if bRetornoOBC then
+  begin
+    // Ciano = retorno ao OBC (aguardando F=MA confirmar)
+    iR :=   0; iG := 220; iB := 220;
+  end
+  else if bRetornoOBV then
+  begin
+    // Rosa = retorno ao OBV
+    iR := 220; iG :=   0; iB := 220;
+  end
+  else if (iOBC_Barras = 0) and bOBC_Ativo then
+  begin
+    // Azul brilhante = candle atual CRIOU OB de compra (por identificacao atual)
+    iR :=  30; iG := 100; iB := 255;
+  end
+  else if (iOBV_Barras = 0) and bOBV_Ativo then
+  begin
+    // Laranja brilhante = candle atual CRIOU OB de venda
+    iR := 255; iG := 120; iB :=  0;
+  end;
+
+  PaintBar(RGB(iR, iG, iB));
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 7 — XRAY
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if MostrarXRay then
+  begin
+    // Status OB Compra
+    if bGatilhoOBC then
+      XRay("OBC", "★ GATILHO LONG — OBC " + IntToStr(Round(fOBC_Low)) + "-" + IntToStr(Round(fOBC_High)), "OrderBlock", 0, RGB(255,220,0))
+    else if bRetornoOBC then
+      XRay("OBC", "Retorno OBC: " + IntToStr(Round(fOBC_Low)) + "-" + IntToStr(Round(fOBC_High)) + " [aguarda F=MA]", "OrderBlock", 0, RGB(0,220,220))
+    else if bOBC_Ativo then
+      XRay("OBC", "OBC ativo: " + IntToStr(Round(fOBC_Low)) + "-" + IntToStr(Round(fOBC_High)) + "  [" + IntToStr(iOBC_Barras) + " bars]", "OrderBlock", 0, RGB(80,150,255))
+    else
+      XRay("OBC", "OBC: inativo", "OrderBlock", 0, RGB(80,80,80));
+
+    // Status OB Venda
+    if bGatilhoOBV then
+      XRay("OBV", "★ GATILHO SHORT — OBV " + IntToStr(Round(fOBV_Low)) + "-" + IntToStr(Round(fOBV_High)), "OrderBlock", 0, RGB(255,150,0))
+    else if bRetornoOBV then
+      XRay("OBV", "Retorno OBV: " + IntToStr(Round(fOBV_Low)) + "-" + IntToStr(Round(fOBV_High)) + " [aguarda F=MA]", "OrderBlock", 0, RGB(220,0,220))
+    else if bOBV_Ativo then
+      XRay("OBV", "OBV ativo: " + IntToStr(Round(fOBV_Low)) + "-" + IntToStr(Round(fOBV_High)) + "  [" + IntToStr(iOBV_Barras) + " bars]", "OrderBlock", 0, RGB(255,120,0))
+    else
+      XRay("OBV", "OBV: inativo", "OrderBlock", 0, RGB(80,80,80));
+
+    // F=MA atual
+    XRay("F=MA", "Forca atual: " + IntToStr(Round(fForca)), "OrderBlock", 0, RGB(200,200,200));
+  end;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 8 — ALERTAS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if MostrarAlertas then
+  begin
+    // Alerta no primeiro retorno ao OBC
+    if bRetornoOBC and (not bRetornoOBC[1]) then
+      Alert(RGB(0, 200, 200));
+
+    // Alerta no primeiro retorno ao OBV
+    if bRetornoOBV and (not bRetornoOBV[1]) then
+      Alert(RGB(200, 100, 0));
+
+    // Alerta no gatilho (retorno + F=MA confirmando)
+    if bGatilhoOBC and (not bGatilhoOBC[1]) then
+      Alert(RGB(255, 220, 0));
+    if bGatilhoOBV and (not bGatilhoOBV[1]) then
+      Alert(RGB(255, 120, 0));
+  end;
+
+end;
+
+{
+  LEGENDA RAPIDA:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  🔵 Azul          → OB de Compra criado (bearish ante impulso)│
+  │  🟠 Laranja       → OB de Venda criado  (bullish ante impulso)│
+  │  🩵 Ciano         → Retorno ao OBC (aguardando F=MA)          │
+  │  💜 Rosa/Magenta  → Retorno ao OBV (aguardando F=MA)          │
+  │  🟡 Amarelo       → GATILHO LONG  (retorno OBC + F=MA > 20)  │
+  │  🟧 Laranja escuro→ GATILHO SHORT (retorno OBV + F=MA < -20) │
+  ├─────────────────────────────────────────────────────────────┤
+  │  Plot1 (azul)   → High do OBC — topo da zona                 │
+  │  Plot2 (azul)   → Low  do OBC — SL do Long                   │
+  │  Plot3 (laranja)→ High do OBV — SL do Short                  │
+  │  Plot4 (laranja)→ Low  do OBV — base da zona                 │
+  ├─────────────────────────────────────────────────────────────┤
+  │  SL CORRETO:                                                  │
+  │    Long:  SL = fOBC_Low  - buffer (5pts)                     │
+  │    Short: SL = fOBV_High + buffer (5pts)                     │
+  └─────────────────────────────────────────────────────────────┘
+
+  PROXIMOS PASSOS (v002):
+    - Historico de multiplos OBs (lista de zonas ativas)
+    - Score de qualidade: impulso% + volume + multi-TF
+    - OB mitigado = preco fechou dentro (zona consumida = invalidar)
+    - OB premium = zona testada 2x sem ser consumida
+}

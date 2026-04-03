@@ -1,0 +1,392 @@
+// ============================================================
+// INDICADOR: Estrutura de Mercado — Pivots HH/HL/LH/LL
+// Arquivo   : abril_padroes_pivots_v001.ntfl
+// Versao    : 1.0 | Abril 2025
+// ============================================================
+// DESCRICAO:
+//   Identifica a estrutura de mercado via pivots de swing:
+//
+//   SWING HIGH : High[N] > todos os Highs ao redor (janela = iJanela)
+//   SWING LOW  : Low[N]  < todos os Lows ao redor  (janela = iJanela)
+//
+//   ESTRUTURA ALTA   (uptrend)   : HH + HL  → mercado fazendo topos e fundos crescentes
+//   ESTRUTURA BAIXA  (downtrend) : LH + LL  → mercado fazendo topos e fundos decrescentes
+//   ESTRUTURA LATERAL (ranging)  : topos e fundos sem direcao clara
+//
+//   CHoCH (Change of Character): primeiro sinal de reversao
+//     - Em uptrend: LL formado → CHoCH bearish
+//     - Em downtrend: HH formado → CHoCH bullish
+//
+//   BOS  (Break of Structure): confirmacao da nova tendencia
+//     - Preco fecha acima do ultimo swing high em downtrend → BOS bullish
+//     - Preco fecha abaixo do ultimo swing low em uptrend   → BOS bearish
+//
+// COMO USAR:
+//   1. Aplique no grafico — candles de pivot sao marcados
+//   2. Plot1 = ultimo swing high
+//   3. Plot2 = ultimo swing low
+//   4. XRay mostra estrutura atual: ALTA / BAIXA / LATERAL
+//   5. Alerta em CHoCH (primeiro sinal de reversao estrutural)
+//
+// LEGENDA DE CORES (PaintBar no candle atual):
+//   🟢 Verde brilhante  = HH confirmado (novo topo estrutural)
+//   🩵 Ciano            = HL confirmado (fundo crescente — estrutura alta)
+//   🔴 Vermelho         = LH confirmado (topo decrescente — estrutura baixa)
+//   🟠 Laranja          = LL confirmado (novo fundo estrutural)
+//   🟡 Amarelo          = CHoCH detectado (mudanca de carater)
+//   ⚪ Sem cor          = candle normal, sem pivot confirmado
+//
+// SL REFERENCE:
+//   Long  : SL abaixo do ultimo HL (Plot2) — se HL romper, estrutura quebrada
+//   Short : SL acima do ultimo LH (Plot1)  — se LH romper, estrutura quebrada
+// ============================================================
+
+input
+  iJanela          : Integer := 3;   // Barras de confirmacao de cada lado do pivot
+  iPeriodoVolume   : Integer := 21;  // Periodo media de volume para F=MA
+  bMostrarXRay     : Boolean := True;
+  bMostrarAlertas  : Boolean := True;
+
+var
+  // F=MA (contexto)
+  fCorpo          : Float;
+  fRange          : Float;
+  fVolRatio       : Float;
+  fForca          : Float;
+  fMediaVol       : Float;
+
+  // Verificacao de swing (janela iJanela de cada lado)
+  bSwingHigh      : Boolean;
+  bSwingLow       : Boolean;
+
+  // Scan de janela para pivot
+  iK              : Integer;
+  bEhMaior        : Boolean;
+  bEhMenor        : Boolean;
+
+  // Ultimo swing high e low
+  fUltimoSH       : Float;
+  fUltimoSL       : Float;
+  fAntepenultimoSH: Float;
+  fAntepenultimoSL: Float;
+
+  // Contadores de estrutura
+  iContSH         : Integer;
+  iContSL         : Integer;
+
+  // Tipo de pivot atual
+  bHH             : Boolean;
+  bHL             : Boolean;
+  bLH             : Boolean;
+  bLL             : Boolean;
+
+  // Estrutura global
+  iEstrutura      : Integer;  // 1=ALTA, -1=BAIXA, 0=LATERAL
+
+  // CHoCH e BOS
+  bCHoCH          : Boolean;
+  bBOS            : Boolean;
+
+  // XRay cores
+  iR, iG, iB     : Integer;
+
+begin
+
+  // ============================================================
+  // SECAO 1: CALCULO F=MA
+  // ============================================================
+  fRange := High - Low;
+  if fRange > 0 then
+    fCorpo := Abs(Close - Open) / fRange * 100
+  else
+    fCorpo := 0;
+
+  fMediaVol := Media(iPeriodoVolume, Volume);
+  if fMediaVol > 0 then
+    fVolRatio := Volume / fMediaVol
+  else
+    fVolRatio := 1;
+
+  fForca := fCorpo * fVolRatio;
+  if fForca > 100 then fForca := 100;
+  if fForca < 0   then fForca := 0;
+
+  // ============================================================
+  // SECAO 2: DETECCAO DE SWING HIGH
+  //   High[iJanela] deve ser MAIOR que todos os Highs vizinhos
+  //   Janela: de High[0] ate High[iJanela*2] excluindo High[iJanela]
+  // ============================================================
+  bSwingHigh := True;
+  bEhMaior   := True;
+
+  // Verifica barras ANTES do candidato (mais recentes: [0..iJanela-1])
+  iK := 0;
+  while (iK < iJanela) and bEhMaior do
+  begin
+    if High[iK] >= High[iJanela] then
+      bEhMaior := False;
+    iK := iK + 1;
+  end;
+
+  if not bEhMaior then bSwingHigh := False;
+
+  // Verifica barras DEPOIS do candidato (mais antigas: [iJanela+1..iJanela*2])
+  if bSwingHigh then
+  begin
+    iK := iJanela + 1;
+    while (iK <= iJanela * 2) and bSwingHigh do
+    begin
+      if High[iK] >= High[iJanela] then
+        bSwingHigh := False;
+      iK := iK + 1;
+    end;
+  end;
+
+  // ============================================================
+  // SECAO 3: DETECCAO DE SWING LOW
+  //   Low[iJanela] deve ser MENOR que todos os Lows vizinhos
+  // ============================================================
+  bSwingLow := True;
+  bEhMenor  := True;
+
+  // Barras ANTES
+  iK := 0;
+  while (iK < iJanela) and bEhMenor do
+  begin
+    if Low[iK] <= Low[iJanela] then
+      bEhMenor := False;
+    iK := iK + 1;
+  end;
+
+  if not bEhMenor then bSwingLow := False;
+
+  // Barras DEPOIS
+  if bSwingLow then
+  begin
+    iK := iJanela + 1;
+    while (iK <= iJanela * 2) and bSwingLow do
+    begin
+      if Low[iK] <= Low[iJanela] then
+        bSwingLow := False;
+      iK := iK + 1;
+    end;
+  end;
+
+  // ============================================================
+  // SECAO 4: CLASSIFICACAO HH / HL / LH / LL
+  // ============================================================
+  bHH := False;
+  bHL := False;
+  bLH := False;
+  bLL := False;
+
+  if bSwingHigh then
+  begin
+    // Novo Swing High confirmado neste candle
+    fAntepenultimoSH := fUltimoSH;
+    if High[iJanela] > fUltimoSH then
+    begin
+      bHH := True;           // Higher High
+    end
+    else
+    begin
+      bLH := True;           // Lower High
+    end;
+    fUltimoSH := High[iJanela];
+    iContSH   := iContSH + 1;
+  end;
+
+  if bSwingLow then
+  begin
+    // Novo Swing Low confirmado neste candle
+    fAntepenultimoSL := fUltimoSL;
+    if (Low[iJanela] > fUltimoSL) and (fUltimoSL > 0) then
+    begin
+      bHL := True;           // Higher Low
+    end
+    else if fUltimoSL > 0 then
+    begin
+      bLL := True;           // Lower Low
+    end;
+    fUltimoSL := Low[iJanela];
+    iContSL   := iContSL + 1;
+  end;
+
+  // ============================================================
+  // SECAO 5: ESTRUTURA — ALTA / BAIXA / LATERAL
+  //   Logica simplificada: ultimos 2 pivots definem estrutura
+  // ============================================================
+
+  // Atualizar estrutura com base nos pivots recentes
+  if bHH then      iEstrutura := 1   // Confirma alta
+  else if bLL then iEstrutura := -1  // Confirma baixa
+  else if bHL then iEstrutura := 1   // Suporte crescente → alta
+  else if bLH then iEstrutura := -1; // Resistencia crescendo nao → baixa
+
+  // ============================================================
+  // SECAO 6: CHoCH e BOS
+  // ============================================================
+  bCHoCH := False;
+  bBOS   := False;
+
+  // CHoCH: primeiro sinal contra a estrutura
+  if (iEstrutura = 1) and bLL then
+  begin
+    bCHoCH := True;        // Uptrend criou LL = primeiro sinal de reversao
+    iEstrutura := 0;       // Estrutura fica indefinida ate BOS
+  end;
+
+  if (iEstrutura = -1) and bHH then
+  begin
+    bCHoCH := True;        // Downtrend criou HH = primeiro sinal de reversao
+    iEstrutura := 0;
+  end;
+
+  // BOS: fechamento alem do ultimo pivot contrario
+  if (iEstrutura = 1) and (fUltimoSL > 0) and (Close < fUltimoSL) then
+  begin
+    bBOS    := True;
+    iEstrutura := -1;      // Quebra estrutural bearish confirmada
+  end;
+
+  if (iEstrutura = -1) and (fUltimoSH > 0) and (Close > fUltimoSH) then
+  begin
+    bBOS    := True;
+    iEstrutura := 1;       // Quebra estrutural bullish confirmada
+  end;
+
+  // ============================================================
+  // SECAO 7: PLOTAGEM DOS NIVEIS
+  // ============================================================
+  if fUltimoSH > 0 then
+    Plot1(fUltimoSH)
+  else
+    Plot1(High);
+
+  if fUltimoSL > 0 then
+    Plot2(fUltimoSL)
+  else
+    Plot2(Low);
+
+  // Plot3 = ponto medio entre SH e SL (equilibrio)
+  if (fUltimoSH > 0) and (fUltimoSL > 0) then
+    Plot3((fUltimoSH + fUltimoSL) / 2)
+  else
+    Plot3(Close);
+
+  // ============================================================
+  // SECAO 8: PAINT BAR
+  // ============================================================
+  if bCHoCH then
+    // CHoCH = mudanca de carater (alerta maximo)
+    PaintBar(RGB(255, 220, 0))
+  else if bBOS then
+    // BOS = quebra de estrutura confirmada
+    PaintBar(RGB(255, 120, 0))
+  else if bHH then
+    // Higher High → verde brilhante
+    PaintBar(RGB(0, 240, 80))
+  else if bHL then
+    // Higher Low → ciano (suporte crescente)
+    PaintBar(RGB(0, 200, 230))
+  else if bLH then
+    // Lower High → vermelho (resistencia decrescente)
+    PaintBar(RGB(230, 50, 50))
+  else if bLL then
+    // Lower Low → laranja (novo fundo)
+    PaintBar(RGB(240, 120, 0));
+
+  // ============================================================
+  // SECAO 9: XRAY — PAINEL LATERAL
+  // ============================================================
+  if bMostrarXRay then
+  begin
+    // Estrutura
+    if iEstrutura = 1 then begin
+      XRay('Estrut  ', 'ALTA   (Bull)', 'Pivots', 0, RGB(0, 230, 80));
+    end
+    else if iEstrutura = -1 then begin
+      XRay('Estrut  ', 'BAIXA  (Bear)', 'Pivots', 0, RGB(230, 50, 50));
+    end
+    else begin
+      XRay('Estrut  ', 'LATERAL      ', 'Pivots', 0, RGB(180, 180, 60));
+    end;
+
+    // Ultimo pivot
+    if bHH then
+      XRay('Pivot   ', 'HH  (topo +)', 'Pivots', 0, RGB(0, 240, 80))
+    else if bHL then
+      XRay('Pivot   ', 'HL  (fundo +)', 'Pivots', 0, RGB(0, 200, 230))
+    else if bLH then
+      XRay('Pivot   ', 'LH  (topo -) ', 'Pivots', 0, RGB(230, 50, 50))
+    else if bLL then
+      XRay('Pivot   ', 'LL  (fundo -)', 'Pivots', 0, RGB(240, 120, 0))
+    else
+      XRay('Pivot   ', 'sem pivot   ', 'Pivots', 0, RGB(80, 80, 80));
+
+    // CHoCH / BOS
+    if bCHoCH then
+      XRay('SINAL   ', '>>> CHoCH <<<', 'Pivots', 0, RGB(255, 220, 0))
+    else if bBOS then
+      XRay('SINAL   ', '>>> BOS   <<<', 'Pivots', 0, RGB(255, 120, 0))
+    else
+      XRay('SINAL   ', '-           ', 'Pivots', 0, RGB(80, 80, 80));
+
+    // Niveis
+    if fUltimoSH > 0 then
+      XRay('Ult.SH  ', IntToStr(Round(fUltimoSH)), 'Pivots', 0, RGB(0, 200, 100));
+    if fUltimoSL > 0 then
+      XRay('Ult.SL  ', IntToStr(Round(fUltimoSL)), 'Pivots', 0, RGB(200, 60, 60));
+
+    // F=MA contexto
+    if fForca >= 70 then begin iR:=0;   iG:=230; iB:=100; end
+    else if fForca >= 40 then begin iR:=240; iG:=200; iB:=0;   end
+    else begin iR:=180; iG:=60;  iB:=60;  end;
+    XRay('F=MA    ', IntToStr(Round(fForca)) + '%', 'Pivots', 0, RGB(iR, iG, iB));
+  end;
+
+  // ============================================================
+  // SECAO 10: ALERTAS
+  // ============================================================
+  if bMostrarAlertas then
+  begin
+    // Alerta CHoCH (mudanca de carater — mais importante)
+    if bCHoCH and (not bCHoCH[1]) then
+      Alert(RGB(255, 220, 0));
+
+    // Alerta BOS (quebra estrutural — confirmacao)
+    if bBOS and (not bBOS[1]) then
+      Alert(RGB(255, 120, 0));
+
+    // Alerta novo HH (tendencia de alta saudavel)
+    if bHH and (not bHH[1]) then
+      Alert(RGB(0, 240, 80));
+
+    // Alerta novo LL (tendencia de baixa saudavel)
+    if bLL and (not bLL[1]) then
+      Alert(RGB(240, 120, 0));
+  end;
+
+end;
+
+// ============================================================
+// RESUMO RAPIDO
+// ============================================================
+// HH (Higher High) : novo topo estrutural    → 🟢 verde
+// HL (Higher Low)  : fundo crescente         → 🩵 ciano
+// LH (Lower High)  : topo decrescente        → 🔴 vermelho
+// LL (Lower Low)   : novo fundo estrutural   → 🟠 laranja
+// CHoCH            : mudanca de carater      → 🟡 amarelo
+// BOS              : quebra de estrutura     → 🟠 laranja brilhante
+//
+// Plot1 = ultimo swing high = resistencia / SL Short
+// Plot2 = ultimo swing low  = suporte / SL Long
+// Plot3 = equilibrio (meio entre SH e SL)
+//
+// ESTRUTURA ALTA  : HH + HL sequenciais
+// ESTRUTURA BAIXA : LH + LL sequenciais
+// REVERSAO        : CHoCH → depois BOS confirma
+//
+// iJanela = 3 → pivot confirmado por 3 barras de cada lado
+// Aumentar iJanela = pivots mais significativos (menos sinais)
+// ============================================================

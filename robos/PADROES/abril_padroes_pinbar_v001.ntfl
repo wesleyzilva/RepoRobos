@@ -1,0 +1,355 @@
+// ============================================================
+// INDICADOR: Pin Bar — Deteccao e Score de Qualidade
+// Arquivo   : abril_padroes_pinbar_v001.ntfl
+// Versao    : 1.0 | Abril 2025
+// ============================================================
+// DESCRICAO:
+//   Pin Bar = vela de rejeicao com cauda longa (shadow/wick).
+//   Representa tentativa de movimento rejeitada pelo mercado.
+//
+//   PIN BAR BULLISH (cauda baixo = rejeicao de queda):
+//     - Cauda inferior >= 60% do range total
+//     - Corpo <= 30% do range total
+//     - Sinal: mercado tentou cair mas fechou alto
+//
+//   PIN BAR BEARISH (cauda cima = rejeicao de alta):
+//     - Cauda superior >= 60% do range total
+//     - Corpo <= 30% do range total
+//     - Sinal: mercado tentou subir mas fechou baixo
+//
+//   SCORE DE QUALIDADE (0-100%):
+//     Cauda >= 70%   → +30 pts
+//     Corpo <= 20%   → +20 pts
+//     F=MA >= 70     → +20 pts (volume confirmando rejeicao)
+//     Volume >= 1.5x → +15 pts
+//     Range >= ATR   → +15 pts (range relevante)
+//
+// COMO USAR:
+//   1. Aplique no grafico — Pin Bars sao coloridos automaticamente
+//   2. Ciano  = Pin Bar Bullish (oportunidade Long)
+//   3. Magenta = Pin Bar Bearish (oportunidade Short)
+//   4. Amarelo brilhante = Pin Bar PREMIUM (score >= 70%)
+//   5. Plot1 = High da vela (entrada ref. bearish, SL Long)
+//   6. Plot2 = Low  da vela (entrada ref. bullish, SL Short)
+//   7. XRay mostra detalhes: cauda%, corpo%, F=MA, score
+//
+// LEGENDA DE CORES:
+//   🩵 Ciano brilhante = Pin Bar Bullish (cauda inferior)
+//   🟣 Magenta        = Pin Bar Bearish  (cauda superior)
+//   🟡 Amarelo ouro   = Pin Bar PREMIUM  (score >= 70%)
+//   ⚪ Cinza claro    = Pin Bar fraco    (score < 40%)
+//
+// SL REFERENCE:
+//   Pin Bar Bullish : SL = Low da vela (ponta da cauda) — Plot2
+//   Pin Bar Bearish : SL = High da vela (ponta da cauda) — Plot1
+// ============================================================
+
+input
+  iPeriodoATR      : Integer := 14;  // ATR para validar range relevante
+  iPeriodoVolume   : Integer := 21;  // Periodo media de volume
+  fCaudaMinima     : Float   := 55;  // % minima da cauda sobre range
+  fCorpoMaximo     : Float   := 35;  // % maxima do corpo sobre range
+  iScorePremium    : Integer := 65;  // Score minimo para Pin Premium
+  bMostrarXRay     : Boolean := True;
+  bMostrarAlertas  : Boolean := True;
+
+var
+  // Ranges e calculos
+  fRange          : Float;
+  fCorpoPct       : Float;
+  fCaudaInf       : Float;    // cauda inferior (wick low)
+  fCaudaSup       : Float;    // cauda superior (wick high)
+  fCaudaInfPct    : Float;    // cauda inferior em % do range
+  fCaudaSupPct    : Float;    // cauda superior em % do range
+
+  // F=MA
+  fCorpoAbs       : Float;
+  fVolRatio       : Float;
+  fForca          : Float;
+  fMediaVol       : Float;
+  fATR            : Float;
+
+  // Deteccao
+  bPinBull        : Boolean;
+  bPinBear        : Boolean;
+
+  // Score
+  iScore          : Integer;
+  bPremium        : Boolean;
+
+  // Niveis e extensao
+  fPinHigh        : Float;
+  fPinLow         : Float;
+  bNivelAtivo     : Boolean;
+  iBarNivel       : Integer;
+
+  // XRay cores
+  iR, iG, iB     : Integer;
+
+begin
+
+  // ============================================================
+  // SECAO 1: CALCULOS BASE
+  // ============================================================
+  fRange := High - Low;
+
+  if fRange > 0 then
+  begin
+    // Corpo em percentual do range
+    fCorpoAbs  := Abs(Close - Open);
+    fCorpoPct  := fCorpoAbs / fRange * 100;
+
+    // Cauda inferior: do Low ate o min(Open, Close)
+    if Open < Close then
+      fCaudaInf := Open - Low
+    else
+      fCaudaInf := Close - Low;
+
+    // Cauda superior: do max(Open, Close) ate o High
+    if Open > Close then
+      fCaudaSup := High - Open
+    else
+      fCaudaSup := High - Close;
+
+    fCaudaInfPct := fCaudaInf / fRange * 100;
+    fCaudaSupPct := fCaudaSup / fRange * 100;
+  end
+  else
+  begin
+    fCorpoPct    := 0;
+    fCaudaInfPct := 0;
+    fCaudaSupPct := 0;
+    fCaudaInf    := 0;
+    fCaudaSup    := 0;
+  end;
+
+  // F=MA
+  fMediaVol := Media(iPeriodoVolume, Volume);
+  if fMediaVol > 0 then
+    fVolRatio := Volume / fMediaVol
+  else
+    fVolRatio := 1;
+
+  fForca := fCorpoPct * fVolRatio;
+  if fForca > 100 then fForca := 100;
+  if fForca < 0   then fForca := 0;
+
+  // ATR
+  fATR := ATR(iPeriodoATR);
+
+  // ============================================================
+  // SECAO 2: DETECCAO DE PIN BAR
+  // ============================================================
+  bPinBull := False;
+  bPinBear := False;
+
+  // Pin Bar Bullish: cauda inferior >= fCaudaMinima% E corpo <= fCorpoMaximo%
+  if (fCaudaInfPct >= fCaudaMinima) and (fCorpoPct <= fCorpoMaximo) then
+    bPinBull := True;
+
+  // Pin Bar Bearish: cauda superior >= fCaudaMinima% E corpo <= fCorpoMaximo%
+  if (fCaudaSupPct >= fCaudaMinima) and (fCorpoPct <= fCorpoMaximo) then
+    bPinBear := True;
+
+  // Evitar conflito (pode ter ambos em doji — priorizar a maior cauda)
+  if bPinBull and bPinBear then
+  begin
+    if fCaudaInfPct >= fCaudaSupPct then
+      bPinBear := False
+    else
+      bPinBull := False;
+  end;
+
+  // ============================================================
+  // SECAO 3: SCORE DE QUALIDADE
+  // ============================================================
+  iScore  := 0;
+  bPremium := False;
+
+  if bPinBull or bPinBear then
+  begin
+    // Qualidade da cauda (principal critério)
+    if bPinBull then
+    begin
+      if fCaudaInfPct >= 70 then iScore := iScore + 30
+      else if fCaudaInfPct >= 60 then iScore := iScore + 20;
+    end
+    else
+    begin
+      if fCaudaSupPct >= 70 then iScore := iScore + 30
+      else if fCaudaSupPct >= 60 then iScore := iScore + 20;
+    end;
+
+    // Corpo pequeno (mais limpo)
+    if fCorpoPct <= 20 then iScore := iScore + 20
+    else if fCorpoPct <= 30 then iScore := iScore + 10;
+
+    // F=MA (volume confirmando rejeicao)
+    if fForca >= 70 then iScore := iScore + 20
+    else if fForca >= 40 then iScore := iScore + 10;
+
+    // Volume acima da media
+    if fVolRatio >= 1.5 then iScore := iScore + 15
+    else if fVolRatio >= 1.1 then iScore := iScore + 8;
+
+    // Range relevante (>= ATR14)
+    if fRange >= fATR then iScore := iScore + 15
+    else if fRange >= (fATR * 0.7) then iScore := iScore + 8;
+
+    if iScore >= iScorePremium then
+      bPremium := True;
+  end;
+
+  // ============================================================
+  // SECAO 4: NIVEIS — HIGH/LOW DO PIN BAR
+  // ============================================================
+  if bPinBull or bPinBear then
+  begin
+    fPinHigh    := High;
+    fPinLow     := Low;
+    bNivelAtivo := True;
+    iBarNivel   := 0;
+  end
+  else
+  begin
+    if bNivelAtivo then
+    begin
+      iBarNivel := iBarNivel + 1;
+      if iBarNivel > 30 then
+        bNivelAtivo := False;
+    end;
+  end;
+
+  // ============================================================
+  // SECAO 5: PLOTAGEM DOS NIVEIS
+  // ============================================================
+  if bNivelAtivo then
+  begin
+    Plot1(fPinHigh);
+    Plot2(fPinLow);
+  end
+  else
+  begin
+    Plot1(Close);
+    Plot2(Close);
+  end;
+
+  // ============================================================
+  // SECAO 6: PAINT BAR
+  // ============================================================
+  if bPremium and bPinBull then
+    // Pin Bull PREMIUM → amarelo ouro
+    PaintBar(RGB(255, 210, 0))
+  else if bPremium and bPinBear then
+    // Pin Bear PREMIUM → amarelo ouro
+    PaintBar(RGB(255, 200, 20))
+  else if bPinBull and (iScore >= 40) then
+    // Pin Bull bom → ciano brilhante
+    PaintBar(RGB(0, 220, 240))
+  else if bPinBear and (iScore >= 40) then
+    // Pin Bear bom → magenta
+    PaintBar(RGB(220, 60, 220))
+  else if bPinBull then
+    // Pin Bull fraco → ciano fraco
+    PaintBar(RGB(80, 160, 180))
+  else if bPinBear then
+    // Pin Bear fraco → rosa fraco
+    PaintBar(RGB(160, 80, 160));
+
+  // ============================================================
+  // SECAO 7: XRAY — PAINEL LATERAL
+  // ============================================================
+  if bMostrarXRay then
+  begin
+    // Tipo do padrao
+    if bPremium and bPinBull then
+    begin
+      XRay('PIN BAR ', 'BULL PREMIUM', 'Pin', 0, RGB(255, 210, 0));
+    end
+    else if bPremium and bPinBear then
+    begin
+      XRay('PIN BAR ', 'BEAR PREMIUM', 'Pin', 0, RGB(255, 200, 20));
+    end
+    else if bPinBull then
+    begin
+      XRay('PIN BAR ', 'BULL', 'Pin', 0, RGB(0, 220, 240));
+    end
+    else if bPinBear then
+    begin
+      XRay('PIN BAR ', 'BEAR', 'Pin', 0, RGB(220, 60, 220));
+    end
+    else
+    begin
+      XRay('PIN BAR ', 'sem padrao', 'Pin', 0, RGB(80, 80, 80));
+    end;
+
+    // Score
+    if iScore >= iScorePremium then begin iR:=255; iG:=210; iB:=0; end
+    else if iScore >= 40 then begin iR:=180; iG:=180; iB:=60; end
+    else begin iR:=120; iG:=120; iB:=120; end;
+    XRay('Score   ', IntToStr(iScore) + ' / 100', 'Pin', 0, RGB(iR, iG, iB));
+
+    // Detalhes geometricos
+    if bPinBull then
+      XRay('Cauda   ', IntToStr(Round(fCaudaInfPct)) + '% (inf)', 'Pin', 0, RGB(0, 200, 220))
+    else if bPinBear then
+      XRay('Cauda   ', IntToStr(Round(fCaudaSupPct)) + '% (sup)', 'Pin', 0, RGB(200, 60, 200))
+    else
+      XRay('Cauda   ', 'N/A', 'Pin', 0, RGB(80, 80, 80));
+
+    XRay('Corpo   ', IntToStr(Round(fCorpoPct)) + '%', 'Pin', 0, RGB(160, 160, 160));
+
+    // F=MA
+    if fForca >= 70 then begin iR:=0; iG:=230; iB:=100; end
+    else if fForca >= 40 then begin iR:=240; iG:=200; iB:=0; end
+    else begin iR:=180; iG:=60; iB:=60; end;
+    XRay('F=MA    ', IntToStr(Round(fForca)) + '%', 'Pin', 0, RGB(iR, iG, iB));
+
+    // Volume ratio
+    if fVolRatio >= 1.5 then begin iR:=0; iG:=200; iB:=100; end
+    else if fVolRatio >= 1.0 then begin iR:=180; iG:=180; iB:=60; end
+    else begin iR:=160; iG:=80; iB:=80; end;
+    XRay('VolRatio', IntToStr(Round(fVolRatio * 10)) + 'x', 'Pin', 0, RGB(iR, iG, iB));
+  end;
+
+  // ============================================================
+  // SECAO 8: ALERTAS
+  // ============================================================
+  if bMostrarAlertas then
+  begin
+    // Alerta Pin Bar Bullish (Premium = cor diferente)
+    if bPinBull and (not bPinBull[1]) then
+    begin
+      if bPremium then
+        Alert(RGB(255, 210, 0))   // Premium: amarelo
+      else
+        Alert(RGB(0, 220, 240));  // Normal: ciano
+    end;
+
+    // Alerta Pin Bar Bearish
+    if bPinBear and (not bPinBear[1]) then
+    begin
+      if bPremium then
+        Alert(RGB(255, 200, 20))  // Premium: amarelo
+      else
+        Alert(RGB(220, 60, 220)); // Normal: magenta
+    end;
+  end;
+
+end;
+
+// ============================================================
+// RESUMO RAPIDO
+// ============================================================
+// PIN BULL : cauda inf >= 55% + corpo <= 35%   → 🩵 ciano
+// PIN BEAR : cauda sup >= 55% + corpo <= 35%   → 🟣 magenta
+// PREMIUM  : score >= 65%                      → 🟡 amarelo
+//
+// SCORE = cauda(30) + corpo(20) + F=MA(20) + vol(15) + range(15)
+//
+// Plot1 = High da vela → SL Long / entrada referencia Bearish
+// Plot2 = Low  da vela → SL Short / entrada referencia Bullish
+//
+// MELHOR CONFLUENCIA:
+//   Pin Bar PREMIUM + em zona de OB/FVG + VWAP + 3TF alinhados = A+
+// ============================================================

@@ -1,0 +1,295 @@
+// ============================================================
+// INDICADOR: Fair Value Gap (FVG) — Detector e Visualizador
+// Arquivo   : abril_padroes_fvg_v001.ntfl
+// Versao    : 1.0 | Abril 2025
+// ============================================================
+// DESCRICAO:
+//   Fair Value Gap = janela de inefficiency entre candles.
+//   FVG BULLISH : Low[0] > High[2]  → gap deixado por impulso de alta
+//   FVG BEARISH : High[0] < Low[2]  → gap deixado por impulso de baixa
+//
+//   A deteccao ocorre no candle[1] (o "candle do meio"), quando o
+//   candle[0] ja confirmou o gap.
+//
+// COMO USAR:
+//   1. Aplique no gráfico de QUALQUER TF no Profit Chart
+//   2. Candles marcados = FVG detectado (candle do meio)
+//   3. Linhas Plot1/Plot2 = limites do gap (zona de inefficiency)
+//   4. Quando preco retorna ao gap → alerta sonoro
+//   5. XRay mostra qual FVG esta ativo e quantas barras passaram
+//
+// LEGENDA DE CORES (PaintBar):
+//   🟢 Verde agua    = FVG Bullish detectado (candle do meio)
+//   🔴 Vermelho vinho= FVG Bearish detectado (candle do meio)
+//   🟡 Amarelo       = Preco PREENCHENDO o FVG (filling)
+//   ⚪ Cinza         = FVG Bullish ativo mas nao sendo preenchido
+//   🩶 Cinza escuro  = FVG Bearish ativo mas nao sendo preenchido
+//
+// LINHAS:
+//   Plot1 (Verde)  = Topo do FVG Bullish / Topo do FVG Bearish
+//   Plot2 (Vermelho) = Base do FVG Bullish / Base do FVG Bearish
+//
+// SL REFERENCE:
+//   FVG Bullish: SL abaixo de Plot2 (base do gap)
+//   FVG Bearish: SL acima de Plot1 (topo do gap)
+// ============================================================
+
+input
+  iForcaMinima   : Float  := 30;  // Forca F=MA minima para validar FVG
+  iPeriodoVolume : Integer := 21; // Periodo da media de volume
+  iExtensao      : Integer := 20; // Barras que o FVG fica ativo
+  bMostrarXRay   : Boolean := True;
+  bMostrarAlertas: Boolean := True;
+
+var
+  // F=MA
+  fCorpo        : Float;
+  fRange        : Float;
+  fVolRatio     : Float;
+  fForca        : Float;
+  fMediaVol     : Float;
+
+  // FVG Bullish
+  bFVG_Bull     : Boolean;
+  fFVG_Bull_Top : Float;
+  fFVG_Bull_Bot : Float;
+  bFVG_Bull_Ativo: Boolean;
+  iFVG_Bull_Bar : Integer;
+
+  // FVG Bearish
+  bFVG_Bear     : Boolean;
+  fFVG_Bear_Top : Float;
+  fFVG_Bear_Bot : Float;
+  bFVG_Bear_Ativo: Boolean;
+  iFVG_Bear_Bar : Integer;
+
+  // Filling
+  bFilling_Bull : Boolean;
+  bFilling_Bear : Boolean;
+  bAlertado_Bull: Boolean;
+  bAlertado_Bear: Boolean;
+
+  // Cores XRay
+  iR, iG, iB   : Integer;
+
+begin
+
+  // ============================================================
+  // SECAO 1: CALCULO F=MA (Forca = Massa x Aceleracao)
+  // ============================================================
+  fRange := High - Low;
+  if fRange > 0 then
+    fCorpo := Abs(Close - Open) / fRange * 100
+  else
+    fCorpo := 0;
+
+  fMediaVol := Media(iPeriodoVolume, Volume);
+  if fMediaVol > 0 then
+    fVolRatio := Volume / fMediaVol
+  else
+    fVolRatio := 1;
+
+  fForca := fCorpo * fVolRatio;
+  if fForca > 100 then fForca := 100;
+  if fForca < 0   then fForca := 0;
+
+  // ============================================================
+  // SECAO 2: DETECCAO DE FAIR VALUE GAP
+  // ============================================================
+  // FVG BULLISH: gap para cima
+  //   candle[2] = qualquer direcao
+  //   candle[1] = impulso (sera o candle do meio)
+  //   candle[0] = atual → sua base (Low) > topo do candle[2] (High[2])
+  //   Resultado: Low[0] > High[2] significa gap entre c[0] e c[2]
+  bFVG_Bull := False;
+  if (Low > High[2]) and (fForca >= iForcaMinima) then
+  begin
+    bFVG_Bull     := True;
+    fFVG_Bull_Bot := High[2];   // base do gap = topo do candle[2]
+    fFVG_Bull_Top := Low;       // topo do gap = base do candle atual
+  end;
+
+  // FVG BEARISH: gap para baixo
+  //   High[0] < Low[2] significa gap entre c[0] e c[2]
+  bFVG_Bear := False;
+  if (High < Low[2]) and (fForca >= iForcaMinima) then
+  begin
+    bFVG_Bear     := True;
+    fFVG_Bear_Top := Low[2];    // topo do gap = base do candle[2]
+    fFVG_Bear_Bot := High;      // base do gap = topo do candle atual
+  end;
+
+  // ============================================================
+  // SECAO 3: ATIVAR / EXPIRAR FVG
+  // ============================================================
+
+  // --- FVG Bullish ---
+  if bFVG_Bull then
+  begin
+    bFVG_Bull_Ativo := True;
+    iFVG_Bull_Bar   := 0;
+    bAlertado_Bull  := False;
+  end
+  else
+  begin
+    if bFVG_Bull_Ativo then
+    begin
+      iFVG_Bull_Bar := iFVG_Bull_Bar + 1;
+      if iFVG_Bull_Bar > iExtensao then
+        bFVG_Bull_Ativo := False;
+    end;
+  end;
+
+  // --- FVG Bearish ---
+  if bFVG_Bear then
+  begin
+    bFVG_Bear_Ativo := True;
+    iFVG_Bear_Bar   := 0;
+    bAlertado_Bear  := False;
+  end
+  else
+  begin
+    if bFVG_Bear_Ativo then
+    begin
+      iFVG_Bear_Bar := iFVG_Bear_Bar + 1;
+      if iFVG_Bear_Bar > iExtensao then
+        bFVG_Bear_Ativo := False;
+    end;
+  end;
+
+  // ============================================================
+  // SECAO 4: DETECTING FILLING (preco retornando ao gap)
+  // ============================================================
+  bFilling_Bull := False;
+  bFilling_Bear := False;
+
+  if bFVG_Bull_Ativo and (not bFVG_Bull) then
+    if (Low <= fFVG_Bull_Top) and (Close >= fFVG_Bull_Bot) then
+      bFilling_Bull := True;
+
+  if bFVG_Bear_Ativo and (not bFVG_Bear) then
+    if (High >= fFVG_Bear_Bot) and (Close <= fFVG_Bear_Top) then
+      bFilling_Bear := True;
+
+  // ============================================================
+  // SECAO 5: PLOTAGEM DAS ZONAS (Plot1 = topo, Plot2 = base)
+  // ============================================================
+  if bFVG_Bull_Ativo then
+  begin
+    Plot1(fFVG_Bull_Top);
+    Plot2(fFVG_Bull_Bot);
+  end
+  else if bFVG_Bear_Ativo then
+  begin
+    Plot1(fFVG_Bear_Top);
+    Plot2(fFVG_Bear_Bot);
+  end
+  else
+  begin
+    Plot1(Close);
+    Plot2(Close);
+  end;
+
+  // ============================================================
+  // SECAO 6: PAINT BAR — COLORIR CANDLES
+  // ============================================================
+  if bFVG_Bull then
+    // FVG Bullish detectado → verde agua (impulso de alta)
+    PaintBar(RGB(0, 210, 180))
+  else if bFVG_Bear then
+    // FVG Bearish detectado → vermelho vinho (impulso de baixa)
+    PaintBar(RGB(180, 30, 60))
+  else if bFilling_Bull then
+    // Preco preenchendo FVG Bullish → amarelo atencao
+    PaintBar(RGB(255, 220, 0))
+  else if bFilling_Bear then
+    // Preco preenchendo FVG Bearish → amarelo atencao
+    PaintBar(RGB(255, 200, 30))
+  else if bFVG_Bull_Ativo then
+    // FVG Bullish ativo mas sem filling → cinza azulado
+    PaintBar(RGB(80, 120, 160))
+  else if bFVG_Bear_Ativo then
+    // FVG Bearish ativo mas sem filling → cinza rosado
+    PaintBar(RGB(140, 80, 100));
+
+  // ============================================================
+  // SECAO 7: XRAY — PAINEL LATERAL
+  // ============================================================
+  if bMostrarXRay then
+  begin
+    // F=MA atual
+    if fForca >= 70 then begin iR:=0;   iG:=220; iB:=80;  end
+    else if fForca >= 40 then begin iR:=220; iG:=180; iB:=0;  end
+    else begin iR:=180; iG:=60;  iB:=60;  end;
+
+    XRay('F=MA', IntToStr(Round(fForca)) + '%', 'FVG', 0, RGB(iR, iG, iB));
+
+    if bFVG_Bull_Ativo then
+    begin
+      XRay('FVG Bull', 'ATIVO  ' + IntToStr(iFVG_Bull_Bar) + 'b', 'FVG', 0, RGB(0, 210, 180));
+      XRay('Gap Top ', IntToStr(Round(fFVG_Bull_Top)), 'FVG', 0, RGB(180, 220, 200));
+      XRay('Gap Bot ', IntToStr(Round(fFVG_Bull_Bot)), 'FVG', 0, RGB(100, 160, 140));
+    end
+    else
+      XRay('FVG Bull', 'inativo', 'FVG', 0, RGB(80, 80, 80));
+
+    if bFVG_Bear_Ativo then
+    begin
+      XRay('FVG Bear', 'ATIVO  ' + IntToStr(iFVG_Bear_Bar) + 'b', 'FVG', 0, RGB(200, 60, 80));
+      XRay('Gap Top ', IntToStr(Round(fFVG_Bear_Top)), 'FVG', 0, RGB(200, 140, 150));
+      XRay('Gap Bot ', IntToStr(Round(fFVG_Bear_Bot)), 'FVG', 0, RGB(160, 80, 90));
+    end
+    else
+      XRay('FVG Bear', 'inativo', 'FVG', 0, RGB(80, 80, 80));
+
+    if bFilling_Bull then
+      XRay('STATUS  ', 'FILLING BULL!', 'FVG', 0, RGB(255, 220, 0))
+    else if bFilling_Bear then
+      XRay('STATUS  ', 'FILLING BEAR!', 'FVG', 0, RGB(255, 180, 0))
+    else
+      XRay('STATUS  ', 'aguardando...', 'FVG', 0, RGB(100, 100, 100));
+  end;
+
+  // ============================================================
+  // SECAO 8: ALERTAS SONOROS
+  // ============================================================
+  if bMostrarAlertas then
+  begin
+    // Alerta ao DETECTAR novo FVG Bullish
+    if bFVG_Bull and (not bFVG_Bull[1]) then
+      Alert(RGB(0, 220, 180));
+
+    // Alerta ao DETECTAR novo FVG Bearish
+    if bFVG_Bear and (not bFVG_Bear[1]) then
+      Alert(RGB(200, 40, 80));
+
+    // Alerta ao PREENCHER FVG Bullish (primeira vez)
+    if bFilling_Bull and (not bFilling_Bull[1]) and (not bAlertado_Bull) then
+    begin
+      Alert(RGB(255, 220, 0));
+      bAlertado_Bull := True;
+    end;
+
+    // Alerta ao PREENCHER FVG Bearish (primeira vez)
+    if bFilling_Bear and (not bFilling_Bear[1]) and (not bAlertado_Bear) then
+    begin
+      Alert(RGB(255, 180, 0));
+      bAlertado_Bear := True;
+    end;
+  end;
+
+end;
+
+// ============================================================
+// RESUMO RAPIDO
+// ============================================================
+// FVG BULL : Low > High[2]  → 🟢 verde agua no candle do meio
+// FVG BEAR : High < Low[2]  → 🔴 vermelho vinho no candle do meio
+// FILLING  : preco volta ao gap → 🟡 amarelo
+//
+// SL BULL  : abaixo de Plot2 (base do gap)
+// SL BEAR  : acima de Plot1  (topo do gap)
+//
+// MELHOR CONFLUENCIA:
+//   FVG + F=MA >= 70 + volume acima da media + VWAP na zona = Premium
+// ============================================================
