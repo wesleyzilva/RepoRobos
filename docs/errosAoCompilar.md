@@ -3465,3 +3465,73 @@ Parser[193,28]: Depois de um statement deve vir " ; "
 Parser[208,28]: Depois de um statement deve vir " ; "
 Parser[219,1]: O código deve começar com begin
 Erro de Sintaxe
+
+---
+
+# 🔴 BUG CRÍTICO: Posição em aberto no fim do backtest (stop horário não disparou)
+
+## O que aconteceu
+Nos backtests de `abril_confluencia_RoboSeguro_v002` em todos os TFs < 60min,
+uma venda aberta em 30/10/2025 **ficou aberta até 03/04/2026** (fim do backtest).
+O Profit encerrou ao preço de mercado 188.660, gerando perda de ~6.400 pts por TF.
+
+## Por que aconteceu (3 causas possíveis)
+
+**Causa 1 — Stop horário com `Hour`/`Exit` inválidos:**
+O robô usava `Hour`, `Minute`, `Exit` que **não existem em NTSL**.
+O código compilava com erro → o stop horário nunca executou → posição ficou aberta.
+
+**Causa 2 — Barra de encerramento não coincidiu com horário exato:**
+Mesmo com `Time() >= H*10000 + M*100` correto, se o último candle do dia
+cair em 17:30 e o stop for 17:45, o robô não vê o horário → posição vira noite.
+
+**Causa 3 — Posição overnight em backtest:**
+O Profit não força o encerramento ao final do pregão em backtest. A posição
+dorme e acorda no dia seguinte ainda aberta, acumulando perda.
+
+## Impacto real (backtest 22/08/2025 → 03/04/2026)
+| TF    | Resultado sem o bug | Resultado com bug |
+|-------|--------------------|--------------------|
+| 5min  | +510 pts           | **-6.070 pts**     |
+| 10min | +64 pts            | **-6.695 pts**     |
+| 15min | +613 pts           | **-5.900 pts**     |
+| 20min | +757 pts           | **-5.636 pts**     |
+| 30min | +763 pts           | **-6.056 pts**     |
+| 60min | +1.924 pts         | **+1.924 pts** ✅  |
+
+O 60min funcionou porque `iJanelaCtx=4` bloqueou o sinal vendedor naquele dia.
+
+## Como corrigir (PADRÃO OBRIGATÓRIO)
+
+```pascal
+// ── CORRETO: stop horário em NTSL ────────────────────────────────────────────
+// Time() retorna HHMMSS como inteiro. Ex: 17:45:00 = 174500
+// Comparar diretamente: Time() >= H * 10000 + M * 100
+// NUNCA usar: Hour, Minute, Exit, div, mod
+
+if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
+begin
+  if IsBought or IsSold then ClosePosition;
+  bDeveOperar := false;
+end
+else
+  bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
+
+// TODA lógica de entradas DENTRO do bloco:
+if bDeveOperar and (not IsBought) and (not IsSold) then
+begin
+  // entradas aqui
+end;
+```
+
+## Recomendação adicional
+Usar `StopHorario_M := 30` (17h30) para garantir margem antes do fechamento real (17h55).
+Isso garante que pelo menos 1 candle de 15min ou 30min seja processado antes do fim.
+
+## ❌ NUNCA fazer
+```pascal
+// ERRADO — não compila em NTSL:
+if (Hour >= 17) and (Minute >= 45) then ...
+if Time() div 10000 >= 17 then ...    // div/mod não existem
+Exit;                                  // Exit não existe
+```

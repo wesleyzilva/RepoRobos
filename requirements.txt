@@ -1,0 +1,15 @@
+# Dependências Python — RepoRobos
+# Instalar: pip install -r requirements.txt
+# Windows: py -m pip install -r requirements.txt
+#
+# NÚCLEO (obrigatório)
+pandas>=2.0          # análise de CSVs de backtest (analisa_backtest_profit.py)
+numpy>=1.24          # cálculos estatísticos (IC, Monte Carlo, desvio padrão)
+scipy>=1.11          # teste t, distribuições (skill_probabilidade_operacional.md)
+
+# VISUALIZAÇÃO (opcional, melhora os relatórios)
+tabulate>=0.9        # tabelas formatadas no terminal (analisa_backtest_profit.py)
+rich>=13.0           # cores e tabelas ricas no terminal (relatórios)
+
+# ANÁLISE ESTATÍSTICA (para Monte Carlo e backtests)
+matplotlib>=3.7      # gráficos de equity curve, distribuição de retornos

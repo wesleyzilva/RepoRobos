@@ -1,0 +1,342 @@
+{
+  Indicador: ZONAS_RETANGULARES_60M_v001
+  Descricao: Plota areas retangulares de confluencia em tempo real no grafico 60min.
+             Cada candle de forca (F=MA) gera uma zona (Low a High) que se estende
+             N barras para a direita. Quando duas zonas se sobrepoem = CONFLUENCIA.
+
+  Visualizacao:
+    Candles:
+      Verde brilhante   = candle criou ZONA DE COMPRA  (forca positiva >= limiar)
+      Vermelho brilhante= candle criou ZONA DE VENDA   (forca negativa >= limiar)
+      Verde medio       = preco DENTRO da zona de compra ativa
+      Vermelho medio    = preco DENTRO da zona de venda ativa
+      Amarelo           = CONFLUENCIA: preco dentro de AMBAS as zonas ao mesmo tempo
+      Branco/cinza      = neutro, fora de qualquer zona
+
+    Linhas (Plot):
+      Plot1 (verde solido)    = topo da zona de compra
+      Plot2 (verde tracejado) = base da zona de compra
+      Plot3 (vermelho solido) = topo da zona de venda
+      Plot4 (vermelho trach.) = base da zona de venda
+
+    XRay (painel lateral):
+      Status   = estado atual do preco em relacao as zonas
+      F=MA     = valor da forca do candle atual
+      Zona C   = limites + barras restantes da zona de compra
+      Zona V   = limites + barras restantes da zona de venda
+      Overlap  = faixa exata da confluencia quando existir
+
+    Alertas sonoros:
+      Verde  = preco entrou na zona de compra
+      Vermelh= preco entrou na zona de venda
+      Amarelo= confluencia detectada (entrada em ambas as zonas)
+
+  Regra matematica F=MA:
+    Massa       = Corpo / Range     (quao direcional foi o candle)
+    Aceleracao  = Volume / VolMedia (quao intenso foi o volume)
+    Forca       = Massa * Aceleracao * 100  (-100 a +100)
+
+  Ativo: WIN / WDO
+  Timeframe: 60min (rodar neste TF para zonas estruturais)
+  Versao: 1.0
+}
+
+input
+  ForcaMinimaZona(55.0);      // limiar F=MA para criar zona (default: 55)
+  BarrasExtensaoZona(30);     // quantas barras a zona se estende para a direita
+  PeriodoMediaVolume(20);     // periodo da media de volume (base do calculo F=MA)
+  MostrarXRay(true);          // exibe painel XRay com status detalhado
+  MostrarAlertas(true);       // dispara alerta sonoro ao entrar nas zonas
+
+var
+  // ── F=MA ──────────────────────────────────────────────────────────────────
+  fCorpo       : float;
+  fRange       : float;
+  fMassa       : float;
+  fAceleracao  : float;
+  fForca       : float;
+  fVolMedia    : float;
+
+  // ── ZONA DE COMPRA (suporte) ───────────────────────────────────────────────
+  // Criada por candle de forca positiva. Zona = Low ate High do candle.
+  fZC_Top    : float;     // High do candle de forca alta
+  fZC_Bot    : float;     // Low  do candle de forca alta
+  iZC_Barras : integer;   // barras desde a criacao (0 = barra atual de criacao)
+
+  // ── ZONA DE VENDA (resistencia) ────────────────────────────────────────────
+  // Criada por candle de forca negativa. Zona = Low ate High do candle.
+  fZV_Top    : float;
+  fZV_Bot    : float;
+  iZV_Barras : integer;
+
+  // ── CONFLUENCIA (sobreposicao geometrica das duas zonas) ──────────────────
+  fConfl_Top : float;     // limite superior da sobreposicao
+  fConfl_Bot : float;     // limite inferior da sobreposicao
+  bConflAtiva : boolean;  // existe sobreposicao geometrica entre as zonas?
+
+  // ── ESTADO DE PRECO ────────────────────────────────────────────────────────
+  bDentroZC  : boolean;   // Close esta dentro da zona de compra?
+  bDentroZV  : boolean;   // Close esta dentro da zona de venda?
+  bDentroConfl : boolean; // Close esta dentro da regiao de confluencia?
+
+  // ── CORES ──────────────────────────────────────────────────────────────────
+  iR, iG, iB : integer;
+
+begin
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 1 — CALCULO F=MA
+  // ═══════════════════════════════════════════════════════════════════════════
+  fCorpo := Close - Open;
+  fRange := High - Low;
+  if fRange <= 0 then fRange := 0.0001;
+
+  fVolMedia := Media(PeriodoMediaVolume, Volume);
+  if fVolMedia <= 0 then fVolMedia := 1;
+
+  fMassa      := fCorpo / fRange;
+  fAceleracao := Volume / fVolMedia;
+  fForca      := fMassa * fAceleracao * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 2 — CRIAR OU ATUALIZAR ZONAS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Zona de COMPRA: candle de forca positiva forte
+  if fForca >= ForcaMinimaZona then
+  begin
+    fZC_Top    := High;   // zona vai da minima ate a maxima do candle
+    fZC_Bot    := Low;
+    iZC_Barras := 0;      // comecou agora
+  end
+  else
+    iZC_Barras := iZC_Barras + 1;
+
+  // Zona de VENDA: candle de forca negativa forte
+  if fForca <= -ForcaMinimaZona then
+  begin
+    fZV_Top    := High;
+    fZV_Bot    := Low;
+    iZV_Barras := 0;
+  end
+  else
+    iZV_Barras := iZV_Barras + 1;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 3 — VERIFICAR SE PRECO ESTA DENTRO DAS ZONAS
+  //           (iZC_Barras > 0 evita colorir o proprio candle de criacao)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  bDentroZC := (fZC_Bot > 0)
+            and (iZC_Barras > 0)
+            and (iZC_Barras <= BarrasExtensaoZona)
+            and (Close >= fZC_Bot)
+            and (Close <= fZC_Top);
+
+  bDentroZV := (fZV_Bot > 0)
+            and (iZV_Barras > 0)
+            and (iZV_Barras <= BarrasExtensaoZona)
+            and (Close >= fZV_Bot)
+            and (Close <= fZV_Top);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 4 — DETECCAO DE CONFLUENCIA GEOMETRICA
+  //           Sobreposicao = max(bot_ZC, bot_ZV) <= min(top_ZC, top_ZV)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  bConflAtiva := false;
+  fConfl_Top  := 0;
+  fConfl_Bot  := 0;
+
+  if (fZC_Bot > 0) and (fZV_Bot > 0)
+    and (iZC_Barras <= BarrasExtensaoZona)
+    and (iZV_Barras <= BarrasExtensaoZona) then
+  begin
+    // Calcula a faixa de sobreposicao entre as duas zonas
+    if fZC_Bot > fZV_Bot then
+      fConfl_Bot := fZC_Bot
+    else
+      fConfl_Bot := fZV_Bot;
+
+    if fZC_Top < fZV_Top then
+      fConfl_Top := fZC_Top
+    else
+      fConfl_Top := fZV_Top;
+
+    // Ha sobreposicao se o topo da confluencia > base da confluencia
+    bConflAtiva := fConfl_Top > fConfl_Bot;
+  end;
+
+  // Preco dentro da faixa de confluencia?
+  bDentroConfl := bConflAtiva
+               and (Close >= fConfl_Bot)
+               and (Close <= fConfl_Top);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 5 — PLOT DAS LINHAS DE ZONA (simulam bordas do retangulo)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Zona de COMPRA (verde): Plot1 = topo, Plot2 = base
+  if (fZC_Bot > 0) and (iZC_Barras <= BarrasExtensaoZona) then
+  begin
+    Plot(fZC_Top);
+    Plot2(fZC_Bot);
+  end;
+
+  // Zona de VENDA (vermelho): Plot3 = topo, Plot4 = base
+  if (fZV_Bot > 0) and (iZV_Barras <= BarrasExtensaoZona) then
+  begin
+    Plot3(fZV_Top);
+    Plot4(fZV_Bot);
+  end;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 6 — CORES DOS CANDLES
+  //   Prioridade: Criacao > Confluencia > Dentro ZC > Dentro ZV > Neutro
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Padrao: branco/neutro
+  iR := 200; iG := 200; iB := 200;
+
+  if fForca >= ForcaMinimaZona then
+  begin
+    // Candle criou nova ZONA DE COMPRA: verde brilhante
+    iR :=   0; iG := 255; iB :=  80;
+  end
+  else if fForca <= -ForcaMinimaZona then
+  begin
+    // Candle criou nova ZONA DE VENDA: vermelho brilhante
+    iR := 255; iG :=  50; iB :=  50;
+  end
+  else if bDentroConfl then
+  begin
+    // CONFLUENCIA ATIVA: amarelo intenso
+    iR := 255; iG := 220; iB :=   0;
+  end
+  else if bDentroZC and bDentroZV then
+  begin
+    // Dentro de ambas as zonas mas sem confluencia geometrica estrita: laranja
+    iR := 255; iG := 150; iB :=   0;
+  end
+  else if bDentroZC then
+  begin
+    // Dentro da zona de compra: verde medio
+    iR :=   0; iG := 170; iB :=   0;
+  end
+  else if bDentroZV then
+  begin
+    // Dentro da zona de venda: vermelho medio
+    iR := 190; iG :=  20; iB :=  20;
+  end;
+
+  PaintBar(RGB(iR, iG, iB));
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 7 — XRAY (PAINEL DE INFORMACAO)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if MostrarXRay then
+  begin
+    // Status geral
+    if bDentroConfl then
+      XRay("Status", "CONFLUENCIA — ZONA QUENTE!", "Zonas 60m", 0, RGB(255, 220,   0))
+    else if bDentroZC and bDentroZV then
+      XRay("Status", "DENTRO DE AMBAS (sem overlap exato)", "Zonas 60m", 0, RGB(255, 150,   0))
+    else if bDentroZC then
+      XRay("Status", "DENTRO ZONA COMPRA", "Zonas 60m", 0, RGB(  0, 255,   0))
+    else if bDentroZV then
+      XRay("Status", "DENTRO ZONA VENDA",  "Zonas 60m", 0, RGB(255,   0,   0))
+    else if fForca >= ForcaMinimaZona then
+      XRay("Status", "CRIOU ZONA COMPRA",  "Zonas 60m", 0, RGB(  0, 255,  80))
+    else if fForca <= -ForcaMinimaZona then
+      XRay("Status", "CRIOU ZONA VENDA",   "Zonas 60m", 0, RGB(255,  80,  80))
+    else
+      XRay("Status", "NEUTRO",             "Zonas 60m", 0, RGB(150, 150, 150));
+
+    // Forca atual
+    XRay("F=MA", "Forca: " + IntToStr(Round(fForca)), "Zonas 60m", 0, RGB(200, 200, 200));
+
+    // Info zona de compra
+    if (fZC_Bot > 0) and (iZC_Barras <= BarrasExtensaoZona) then
+      XRay("Zona C",
+           "ZC: " + IntToStr(Round(fZC_Bot)) + " - " + IntToStr(Round(fZC_Top))
+           + "  [" + IntToStr(BarrasExtensaoZona - iZC_Barras) + " bars restantes]",
+           "Zonas 60m", 0, RGB(0, 200, 0))
+    else
+      XRay("Zona C", "ZC: inativa", "Zonas 60m", 0, RGB(80, 80, 80));
+
+    // Info zona de venda
+    if (fZV_Bot > 0) and (iZV_Barras <= BarrasExtensaoZona) then
+      XRay("Zona V",
+           "ZV: " + IntToStr(Round(fZV_Bot)) + " - " + IntToStr(Round(fZV_Top))
+           + "  [" + IntToStr(BarrasExtensaoZona - iZV_Barras) + " bars restantes]",
+           "Zonas 60m", 0, RGB(200, 0, 0))
+    else
+      XRay("Zona V", "ZV: inativa", "Zonas 60m", 0, RGB(80, 80, 80));
+
+    // Info confluencia geometrica
+    if bConflAtiva then
+      XRay("Overlap",
+           "OVERLAP: " + IntToStr(Round(fConfl_Bot)) + " - " + IntToStr(Round(fConfl_Top))
+           + "  (" + IntToStr(Round(fConfl_Top - fConfl_Bot)) + " pts)",
+           "Zonas 60m", 0, RGB(255, 200, 0))
+    else
+      XRay("Overlap", "Overlap: nenhum", "Zonas 60m", 0, RGB(80, 80, 80));
+  end;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECAO 8 — ALERTAS SONOROS
+  //           Disparam apenas na ENTRADA (transicao de fora para dentro)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if MostrarAlertas then
+  begin
+    // Entrou na zona de confluencia
+    if bDentroConfl and (not bDentroConfl[1]) then
+      Alert(RGB(255, 200, 0));
+
+    // Entrou na zona de compra (apenas, sem confluencia)
+    if bDentroZC and (not bDentroZC[1]) and (not bDentroConfl) then
+      Alert(RGB(0, 200, 0));
+
+    // Entrou na zona de venda (apenas, sem confluencia)
+    if bDentroZV and (not bDentroZV[1]) and (not bDentroConfl) then
+      Alert(RGB(200, 0, 0));
+  end;
+
+end;
+
+{
+  LEGENDA VISUAL RAPIDA:
+  ┌────────────────────────────────────────────────────────┐
+  │  🟢 Verde brilhante  → Criou zona de compra (F+ forte) │
+  │  🔴 Vermelho bril.   → Criou zona de venda  (F- forte) │
+  │  🟡 Amarelo          → CONFLUENCIA: preco no overlap   │
+  │  🟠 Laranja          → Dentro das duas zonas           │
+  │  🟩 Verde medio      → Dentro da zona de compra        │
+  │  🟥 Vermelho medio   → Dentro da zona de venda         │
+  │  ⬜ Cinza/branco     → Neutro, fora de zonas           │
+  ├────────────────────────────────────────────────────────┤
+  │  LINHAS NO GRAFICO:                                     │
+  │  Plot1 (verde)  → Topo  da zona de compra              │
+  │  Plot2 (verde)  → Base  da zona de compra              │
+  │  Plot3 (vermel) → Topo  da zona de venda               │
+  │  Plot4 (vermel) → Base  da zona de venda               │
+  ├────────────────────────────────────────────────────────┤
+  │  PROXIMOS PASSOS (v002+):                               │
+  │  - Multiplas zonas simultaneas (historico de N candles) │
+  │  - Score de forca da zona (quantas vezes testada)       │
+  │  - Seta de entrada quando preco sai da zona pelo lado   │
+  │    favoravel (breakout da zona de confluencia)          │
+  │  - Integracao com tripleta TF1/TF2/TF3                  │
+  └────────────────────────────────────────────────────────┘
+
+  CONFIGURACAO RECOMENDADA NO PROFIT:
+    Plot1: cor verde, estilo solido, espessura 2
+    Plot2: cor verde, estilo tracejado, espessura 1
+    Plot3: cor vermelho, estilo solido, espessura 2
+    Plot4: cor vermelho, estilo tracejado, espessura 1
+    Escala: mesma do grafico de preco (eixo Y = preco)
+}

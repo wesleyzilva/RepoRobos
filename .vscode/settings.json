@@ -30,5 +30,62 @@
   "chat.promptFiles": true,
   "chat.promptFilesLocations": {
     ".github/prompts": true
-  }
+  },
+
+  // ── COPILOT AGENT MODE ─────────────────────────────────────────────────
+  // Habilita agente a usar todas as ferramentas sem pedir confirmação manual
+  "chat.agent.autoApprove": true,
+
+  // ── AUTO-APPROVE: Comandos de terminal por padrão de uso no projeto ────────
+  // Cobre todos os comandos usados no workflow: scripts Python, git, leitura de arquivos
+  "chat.tools.terminal.autoApprove": {
+
+    // ── Python: scripts em _scripts/ ─────────────────────────────────────
+    "/^(python|python3|py)\\s+_scripts\\/.*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Python: scripts em scripts/ ──────────────────────────────────────
+    "/^(python|python3|py)\\s+scripts\\/.*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Python: one-liners para análise rápida ─────────────────────────────
+    "/^(python|python3|py)\\s+-c\\s+.*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Python: heredoc / stdin ───────────────────────────────────────────
+    "/^(python|python3|py)\\s*$/": { "approve": true, "matchCommandLine": true },
+
+    // ── Git: leitura (status, log, diff, fetch, show) ─────────────────────
+    "/^git\\s+(status|log|diff|show|fetch|branch|tag|describe|shortlog|stash list).*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Git: escrita (add, commit, push, pull, reset) ─────────────────────
+    "/^git\\s+(add|commit|push|pull|reset|stash|checkout|merge|rebase|fetch).*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Git: configuração (SSL workaround, etc) ──────────────────────────
+    "/^git\\s+config\\s+.*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Git: com cd prefixado (padrão de sessão) ─────────────────────────
+    "/^cd\\s+.*repositorio_wes.*&&\\s+git.*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Navegação ─────────────────────────────────────────────────────────
+    "/^cd\\s+.*(repositorio_wes|RepoRobos|_scripts|scripts|robos|skills).*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Leitura de arquivos (somente leitura — seguros) ───────────────────
+    "/^(ls|find|head|tail|wc|cat|echo|type|dir)\\s*.*/": { "approve": true, "matchCommandLine": true },
+
+    // ── Shell scripts do projeto ──────────────────────────────────────────
+    "/^(bash|sh)\\s+_scripts\\/.*/": { "approve": true, "matchCommandLine": true },
+    "/^bash\\s+.*git_push.sh.*/":    { "approve": true, "matchCommandLine": true },
+
+    // ── pip install (dependências do projeto) ─────────────────────────────
+    "/^pip\\s+(install|list|freeze).*/":  { "approve": true, "matchCommandLine": true },
+    "/^pip3\\s+(install|list|freeze).*"/: { "approve": true, "matchCommandLine": true }
+  },
+
+  // ── EDITOR: ajustes para produtividade ───────────────────────────────
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 2000,
+  "editor.formatOnSave": false,
+
+  // ── PYTHON: interprete e linting ──────────────────────────────────
+  // Windows: tente 'py', 'python3' ou o caminho completo se 'python' não funcionar
+  "python.defaultInterpreterPath": "python",
+  "python.analysis.typeCheckingMode": "off"
 }

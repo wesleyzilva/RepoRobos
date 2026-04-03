@@ -15,7 +15,13 @@
      • Dúvida de risco/RRR?      → skills/skill_gestao_risco.md
      • Dúvida de confluência?    → skills/skill_confluencia_geometrica.md
      • Dúvida de price action?   → skills/skill_price_action.md
+     • Dúvida de padrões geométricos (Order Block, FVG, Flag, IB, Engolfo, Pin Bar)?
+                                 → skills/skill_padroes_geometricos.md
+     • Dúvida de Stop Loss mínimo / qual SL usar?
+                                 → skills/skill_gestao_risco.md (seção "Stop Loss Mínimo")
      • Dúvida de backtest?       → skills/skill_estatisticas_backtest.md
+     • Dúvida de Kelly/IC/Monte Carlo/significância? → skills/skill_probabilidade_operacional.md
+     • Qual o viés do dia? Hoje compra ou venda? Swing Trade? → skills/skill_contexto_longo_prazo.md
 
 2. 🟡 TEMPLATE (custo baixo — só ajustar parâmetros)
    → Robô de confluência?        → templates/template_robo_confluencia.ntsl
@@ -397,9 +403,17 @@ Ao analisar resultados, sempre reportar:
 3. DADOS       → analisar CSV DadosCandlesBacktest/ para confirmar padrão
 4. ROBÔ        → converter lógica validada para .ntsl
 5. BACKTEST    → executar Tick a Tick no Profit (com spread/slippage)
-6. ESTATÍSTICA → calcular métricas acima; descartar se fator < 1.5
-7. OTIMIZAR    → ajustar parâmetros; evitar overfitting
-8. COMMIT      → salvar em robos/ com métricas no cabeçalho
+6. ESTATÍSTICA → rodar: python scripts/analisa_backtest_profit.py backtest_resultados/
+                 Colar apenas o SUMÁRIO (10 linhas) no chat — nunca o CSV completo
+7. SIGNIFICÂNCIA → verificar critérios mínimos (skill_probabilidade_operacional.md):
+                    ✅ Esperança > 0
+                    ✅ PF > 1.3 com IC 95% inferior > 1.0
+                    ✅ Teste t > 1.645 (resultado não aleatório)
+                    ✅ Kelly > 0% (tamanho de posição viável)
+                    ✅ Walk-Forward: teste ≥ 60% do treino
+                    ❌ Qualquer critério falho → NÃO commitar como aprovado
+8. OTIMIZAR    → ajustar parâmetros; evitar overfitting
+9. COMMIT      → salvar em robos/ com métricas no cabeçalho
 ```
 
 ---
@@ -424,6 +438,21 @@ Ao analisar resultados, sempre reportar:
     5. git push (com workaround SSL abaixo)
     ```
     Workaround SSL (proxy corporativo): `git config --local http.sslVerify false` antes do push.
+
+11. **Manutenção completa** (rodar antes de cada sessão ou ao final):
+    ```bash
+    python _scripts/manutencao.py          # auditoria: NTSL + contexto + git + skills
+    python _scripts/manutencao.py --fix    # idem + corrigir erros NTSL automáticos
+    python _scripts/manutencao.py --all    # idem + push automático
+    ```
+
+12. **Python no Windows:** se `python` não funcionar, usar `py` ou `py -3`:
+    ```bash
+    py _scripts/manutencao.py
+    py _scripts/contexto_diario.py
+    py scripts/analisa_backtest_profit.py backtest_resultados/
+    ```
+    Dependências: `py -m pip install -r requirements.txt`
 ### 📋 Regra do Plano (OBRIGATÓRIO antes de criar qualquer robô)
 > Antes de gerar código NTSL, **sempre apresentar o plano** usando o template de `.github/prompts/plano_pre_robo.prompt.md` e **aguardar aprovação**.
 > O plano é uma tabela estruturada sem código que responde: hipótese, tripleta, SL, RRR, nome do arquivo.

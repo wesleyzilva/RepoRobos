@@ -105,12 +105,15 @@ begin
   bSinalCompra := (fForca >= ForcaMinimaEntrada) and (Volume >= fVolumeMedio * VolumeMultiplicador);
   bSinalVenda  := (fForca <= -ForcaMinimaEntrada) and (Volume >= fVolumeMedio * VolumeMultiplicador);
 
-  // ─── SEÇÃO 4: STOP HORÁRIO ────────────────────────────────────────────────
-  if (Hour >= StopHorario_H) and (Minute >= StopHorario_M) then
+  // ─── SEÇÃO 4: STOP HORÁRIO — padrão ÚNICO correto ─────────────────────────
+  // ⚠️ Hour(), Minute() e Exit NÃO EXISTEM em NTSL — usar Time() e bDeveOperar
+  if Time() >= (StopHorario_H * 10000 + StopHorario_M * 100) then
   begin
-    ClosePosition;
-    Exit; // não abrir novas posições
-  end;
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := Time() >= (HoraInicioH * 10000 + HoraInicioM * 100);
 
   // ─── SEÇÃO 5: GERENCIAR BARRAS EM POSIÇÃO ─────────────────────────────────
   if IsBought or IsSold then
@@ -118,10 +121,14 @@ begin
   else
     iBarrasEmPosicao := 0;
   if iBarrasEmPosicao >= MaxBarrasEmPosicao then
+  begin
     ClosePosition;
+    iBarrasEmPosicao := 0;
+    bDeveOperar := false;
+  end;
 
   // ─── SEÇÃO 6: ENTRADAS ────────────────────────────────────────────────────
-  if (not IsBought) and (not IsSold) then
+  if bDeveOperar and (not IsBought) and (not IsSold) then
   begin
     if bSinalCompra then
     begin
@@ -155,15 +162,24 @@ end;
 
 ```pascal
 Media(periodo, serie)          // média simples: Media(20, Volume)
-MediaExp(periodo, serie)       // média exponencial
-Maxima(periodo)                // máxima dos últimos N candles: Maxima(5)
-Minima(periodo)                // mínima dos últimos N candles: Minima(5)
+MediaExp(periodo, serie)       // média exponencial (EMA)
+ATR(periodo)                   // Average True Range: ATR(14)
 Volume                         // volume do candle atual
 High, Low, Open, Close         // OHLC do candle atual
-High[1], Low[1]                // OHLC do candle anterior (offset)
+High[1], Low[1]                // OHLC do candle anterior (offset N candles)
+Close[2], Volume[3]            // série completa com offset
+BuyPrice                       // preço médio de entrada comprada
+SellPrice                      // preço médio de entrada vendida
+MinPriceIncrement              // tick mínimo do ativo (ex: 5 pts no WIN)
 IsBought                       // true se em posição comprada
 IsSold                         // true se em posição vendida
 Time()                         // hora atual em formato HHMMSS (ex: 091500 = 09:15:00)
+
+// ❌ Maxima(N) e Minima(N) NÃO EXISTEM em NTSL (erro E14/E15 no validador)
+// ✅ Alternativa para máxima dos últimos N candles:
+fMax := High;
+if High[1] > fMax then fMax := High[1];
+if High[2] > fMax then fMax := High[2];  // repetir para N candles
 ```
 
 ### Controle de horário com Time() — padrão confirmado
@@ -200,13 +216,89 @@ end;
 ## Ordens disponíveis em robôs
 
 ```pascal
-BuyAtMarket;                         // compra a mercado
-SellShortAtMarket;                   // venda a mercado
-ClosePosition;                       // fecha posição
-BuyLimit(preco, quantidade);         // compra limitada
-SellShortLimit(preco, quantidade);   // venda limitada
-BuyStop(preco, quantidade);          // compra stop
-SellShortStop(preco, quantidade);    // venda stop
+// Ordens a mercado (sem quantidade = 1 contrato padrão)
+BuyAtMarket;                                        // compra a mercado, 1 contrato
+BuyAtMarket(quantidade);                            // compra N contratos
+SellShortAtMarket;                                  // venda a mercado, 1 contrato
+SellShortAtMarket(quantidade);                      // venda N contratos
+ClosePosition;                                      // fecha posição inteira
+
+// Ordens limitadas
+BuyLimit(preco, quantidade);                        // compra limitada
+SellShortLimit(preco, quantidade);                  // venda limitada
+
+// Ordens stop
+BuyStop(preco, quantidade);                         // compra stop
+SellShortStop(preco, quantidade);                   // venda stop
+
+// Saída com Trailing Stop (stop + preço limite)
+SellToCoverStop(stop_preco, limit_preco, qtd);      // encerra compra com stop
+BuyToCoverStop(stop_preco, limit_preco, qtd);       // encerra venda com stop
+
+// Variáveis de posição
+BuyPrice       // preço médio de entrada comprada
+SellPrice      // preço médio de entrada vendida
+```
+
+---
+
+## Funções e variáveis built-in — Referência completa
+
+```pascal
+// ── PREÇO ──────────────────────────────────────────────────────────────────
+Open               // abertura do candle atual
+High               // máxima do candle atual
+Low                // mínima do candle atual
+Close              // fechamento do candle atual
+Open[N]            // abertura N candles atrás: Open[1] = candle anterior
+High[N]            // máxima N candles atrás
+Low[N]             // mínima N candles atrás
+Close[N]           // fechamento N candles atrás
+
+// ── VOLUME ─────────────────────────────────────────────────────────────────
+Volume             // volume do candle atual
+Volume[N]          // volume N candles atrás
+
+// ── ATIVO ──────────────────────────────────────────────────────────────────
+MinPriceIncrement  // tick mínimo do ativo: 5.0 para WIN, 0.5 para WDO
+
+// ── INDICADORES ────────────────────────────────────────────────────────────
+Media(N, serie)         // média aritmética: Media(20, Volume), Media(9, Close)
+MediaExp(N, serie)      // média exponencial (EMA): MediaExp(21, Close)
+ATR(N)                  // Average True Range: ATR(14) — válido em NTSL ✅
+
+// ── ❌ NÃO EXISTEM EM NTSL (validador E14/E15) ────────────────────────────
+// Maxima(N)             — usar loop manual com High[0..N]
+// Minima(N)             — usar loop manual com Low[0..N]
+// IFR(N)                — não existe built-in; calcular manualmente ou usar indicador externo
+// OBV(), MACD(), etc.   — não existem built-in; replicar via Media/Volume
+
+// ── SIMULAÇÃO DE Maxima/Minima ─────────────────────────────────────────────
+// Máxima dos últimos 3 candles:
+fMax := High;
+if High[1] > fMax then fMax := High[1];
+if High[2] > fMax then fMax := High[2];
+// Mínima dos últimos 3 candles:
+fMin := Low;
+if Low[1] < fMin then fMin := Low[1];
+if Low[2] < fMin then fMin := Low[2];
+
+// ── POSIÇÃO ────────────────────────────────────────────────────────────────
+IsBought           // true se posição comprada aberta
+IsSold             // true se posição vendida aberta
+BuyPrice           // preço médio de entrada comprada
+SellPrice          // preço médio de entrada vendida
+
+// ── TEMPO ──────────────────────────────────────────────────────────────────
+Time()             // retorna HHMMSS como número: 09:15:00 → 91500
+                   // 17:45:00 → 174500
+                   // H*10000 + M*100 = referência de comparação
+
+// ── AUXILIARES ─────────────────────────────────────────────────────────────
+abs(x)             // valor absoluto
+round(x)           // arredonda para inteiro mais próximo
+IntToStr(x)        // converte inteiro para string (para PlotText em .ntfl)
+RGB(r, g, b)       // cor com componentes 0–255
 ```
 
 ---

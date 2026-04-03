@@ -110,7 +110,129 @@ def calcular_confluencias(areas, tolerancia=50):
 
 ---
 
-## Critérios de Qualidade da Zona
+## Implementação em NTSL — Zona em Tempo Real
+
+> O Python acima é para análise offline de backtests. Abaixo está a versão para rodar dentro de um robô ou indicador NTSL.
+
+### Lógica de zona de confluência em NTSL
+
+```pascal
+// ── VARIÁVEIS NECESSÁRIAS ──────────────────────────────────────────────────
+var
+  fCorpoAtual, fRangeAtual, fMassaAtual : float;
+  fForca : float;
+  fVolumeMedio : float;
+  fATR : float;
+
+  // Zona de Compra (referência do candle que criou a zona)
+  fZonaCompraMin, fZonaCompraMax : float;
+  iBarrasZonaCompra : integer;   // contador de barras desde criação
+
+  // Zona de Venda
+  fZonaVendaMin, fZonaVendaMax : float;
+  iBarrasZonaVenda : integer;
+
+  bZonaCompraAtiva, bZonaVendaAtiva : boolean;
+  bDentroZonaCompra, bDentroZonaVenda : boolean;
+  bConfluenteOV : boolean;       // overlap = ambas as zonas no mesmo nível
+
+begin
+  // ── FORÇA F = M × A ────────────────────────────────────────────────────
+  fCorpoAtual  := Close - Open;
+  fRangeAtual  := High - Low;
+  if fRangeAtual < 0.01 then fRangeAtual := 0.01;
+  fMassaAtual  := fCorpoAtual / fRangeAtual;
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio <= 0 then fVolumeMedio := 1;
+  fForca := fMassaAtual * (Volume / fVolumeMedio) * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  fATR := ATR(14);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+
+  // ── CRIAR ZONA DE COMPRA ───────────────────────────────────────────────
+  // Critério: F=MA >= 60 + volume confirmado → marca Low/High do candle
+  if (fForca >= ForcaMinimaZona) and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+  begin
+    fZonaCompraMin  := Low;
+    fZonaCompraMax  := High;
+    iBarrasZonaCompra := 0;
+    bZonaCompraAtiva  := true;
+  end;
+
+  // ── CRIAR ZONA DE VENDA ────────────────────────────────────────────────
+  if (fForca <= -ForcaMinimaZona) and (Volume >= fVolumeMedio * VolumeMultiplicador) then
+  begin
+    fZonaVendaMin  := Low;
+    fZonaVendaMax  := High;
+    iBarrasZonaVenda := 0;
+    bZonaVendaAtiva  := true;
+  end;
+
+  // ── ENVELHECER ZONAS (invalidar após N barras) ─────────────────────────
+  if bZonaCompraAtiva then
+  begin
+    iBarrasZonaCompra := iBarrasZonaCompra + 1;
+    if iBarrasZonaCompra >= MaxBarrasZona then
+      bZonaCompraAtiva := false;
+  end;
+  if bZonaVendaAtiva then
+  begin
+    iBarrasZonaVenda := iBarrasZonaVenda + 1;
+    if iBarrasZonaVenda >= MaxBarrasZona then
+      bZonaVendaAtiva := false;
+  end;
+
+  // ── INVALIDAR SE PREÇO FECHOU ALÉM DA ZONA ─────────────────────────────
+  // Zona de compra invalidada se fechar abaixo da mínima
+  if bZonaCompraAtiva and (Close < fZonaCompraMin - fATR * 0.3) then
+    bZonaCompraAtiva := false;
+  // Zona de venda invalidada se fechar acima da máxima
+  if bZonaVendaAtiva and (Close > fZonaVendaMax + fATR * 0.3) then
+    bZonaVendaAtiva := false;
+
+  // ── VERIFICAR SE PREÇO ESTÁ DENTRO DE UMA ZONA ─────────────────────────
+  bDentroZonaCompra := bZonaCompraAtiva
+                    and (Close >= fZonaCompraMin)
+                    and (Close <= fZonaCompraMax);
+
+  bDentroZonaVenda  := bZonaVendaAtiva
+                    and (Close >= fZonaVendaMin)
+                    and (Close <= fZonaVendaMax);
+
+  // ── DETECTAR CONFLUÊNCIA (OVERLAP) ─────────────────────────────────────
+  // Overlap = zona de compra e venda se sobrepõem → nível premium
+  bConfluenteOV := bZonaCompraAtiva and bZonaVendaAtiva
+               and (fZonaCompraMin <= fZonaVendaMax)
+               and (fZonaVendaMin  <= fZonaCompraMax);
+end;
+```
+
+### Inputs necessários para este bloco
+
+```pascal
+input
+  ForcaMinimaZona(60.0);        // força mínima para criar uma zona
+  VolumeMultiplicador(1.5);     // volume mínimo para criar zona
+  MaxBarrasZona(30);            // zona some após 30 barras
+```
+
+### SL via zona em NTSL
+
+```pascal
+// Entrada Long: usar bordas da zona como SL
+if bDentroZonaCompra and bSinalCompra then
+begin
+  fStopLoss   := fZonaCompraMin - BufferStop;      // abaixo da zona
+  fRisco      := Close - fStopLoss;
+  fTakeProfit := Close + fRisco * RRR_Minimo;
+  if (fRisco > 40) and (fRisco < 200) then          // filtro anti-SL absurdo
+    BuyAtMarket;
+end;
+```
+
+---
 
 | Confluências | Qualidade | Ação |
 |---|---|---|
