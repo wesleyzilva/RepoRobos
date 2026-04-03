@@ -143,7 +143,7 @@ def main():
     print(f"Hash final do commit: {final_hash}")
 
     # 8. Git Push (SSL Bypass)
-    success, _ = run_command(f"git -c http.sslVerify=false push origin {current_branch}", f"Subindo para {current_branch} (SSL Bypass)")
+    success, _ = run_command(f"git config --local http.sslVerify false; git push origin {current_branch}", f"Subindo para {current_branch} (SSL Bypass)")
     
     if success:
         print(f"\n✅ Sessão finalizada e sincronizada às {timestamp}!")

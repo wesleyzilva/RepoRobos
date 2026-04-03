@@ -1,6 +1,21 @@
 # Guia de Commits — RepoRobos
 
-## Sincronizar com o remoto (antes de qualquer alteração)
+## 🚀 Fluxo Automatizado (RECOMENDADO)
+
+Para evitar erros de SSL, formatação de data no PowerShell e esquecimento de logs, use o script Python. Ele valida o código, atualiza o `SESSION_LOG.md` e sobe para o GitHub.
+
+**No Terminal (PowerShell):**
+```powershell
+# Tente primeiro com 'python'
+python _scripts/sync_session.py "feat(robo): descricao da logica"
+
+# Se 'python' abrir a Windows Store, use 'py'
+py _scripts/sync_session.py "feat(robo): descricao da logica"
+```
+
+---
+
+## 🛠️ Sincronizar Manualmente (Fallback)
 
 Antes de iniciar qualquer alteração, garanta que seu repositório local está atualizado com o remoto:
 

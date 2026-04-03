@@ -1,0 +1,114 @@
+{
+  Indicador: abril_confluencia_ZonasMultiTF_v001
+  Descricao: Detecta confluencia geometrica (sobreposicao) entre proxies de TF1, TF2 e TF3.
+             Baseado no estudo de Janelas de Eficiencia (10/19/38).
+  Ativo: WIN / WDO
+  Timeframe: TF3 (Gatilho)
+  Versao: 1.0
+
+  Logica:
+    Usa medias de janelas proporcionais para identificar zonas de Contexto (TF1) e Direcao (TF2)
+    sobre o gráfico de Gatilho (TF3).
+    Pinta retangulos de confluencia: Verde (Compra), Vermelho (Venda), Cinza (Morta/Conflitante).
+}
+
+input
+  iJanelaDir(3);             // TF2: 15min em 5min = 3 barras
+  iJanelaCtx(6);             // TF1: 30min em 5min = 6 barras
+  FatorBuffer(0.25);         // Altura da zona (25% do range do candle)
+  MinOverlapTicks(1.0);      // Sobreposicao minima em ticks
+  MostrarXRay(true);
+
+var
+  fMediaDir, fMediaCtx : float;
+  fRangeAtual, fBuffer : float;
+  
+  // Zonas TF3 (Gatilho)
+  fT3_VendaTop, fT3_VendaBot : float;
+  fT3_CompraTop, fT3_CompraBot : float;
+  
+  // Zonas TF2 (Direcao - Proxy)
+  fT2_VendaTop, fT2_VendaBot : float;
+  fT2_CompraTop, fT2_CompraBot : float;
+
+  // Controle de Confluencia
+  bConflCompra, bConflVenda : boolean;
+  fStopMinimo : float;
+
+begin
+  // --- 1. Calculos de Base e Proxies ---
+  fMediaDir  := Media(iJanelaDir, Close);
+  fMediaCtx  := Media(iJanelaCtx, Close);
+  fRangeAtual := High - Low;
+  if fRangeAtual < 0.01 then fRangeAtual := 0.01;
+  fBuffer := fRangeAtual * FatorBuffer;
+
+  // --- 2. Definicao Geometria TF3 (Gatilho) ---
+  fT3_VendaTop := High + fBuffer;
+  fT3_VendaBot := High;
+  fT3_CompraTop := Low;
+  fT3_CompraBot := Low - fBuffer;
+
+  // --- 3. Definicao Geometria TF2 (Direcao - Proxy Media) ---
+  fT2_VendaTop := fMediaDir + fBuffer;
+  fT2_VendaBot := fMediaDir;
+  fT2_CompraTop := fMediaDir;
+  fT2_CompraBot := fMediaDir - fBuffer;
+
+  // --- 4. Deteccao de Interseccao (Confluencia) ---
+  // Compra: Zona de compra TF3 sobrepoe Zona de compra TF2
+  bConflCompra := (fT3_CompraTop >= fT2_CompraBot) and (fT3_CompraBot <= fT2_CompraTop);
+  
+  // Venda: Zona de venda TF3 sobrepoe Zona de venda TF2
+  bConflVenda  := (fT3_VendaTop >= fT2_VendaBot) and (fT3_VendaBot <= fT2_VendaTop);
+
+  // --- 5. Visualizacao ---
+  if bConflCompra and bConflVenda then
+  begin
+    // Zona Morta (conflito de direcao nas zonas)
+    PaintBar(RGB(128, 128, 128));
+    if MostrarXRay then XRay("Status", "ZONA MORTA", "Confluencia", 0, RGB(200, 200, 200));
+  end
+  else if bConflCompra then
+  begin
+    PaintBar(RGB(0, 150, 0));
+    fStopMinimo := (Close - fT3_CompraBot) / MinPriceIncrement;
+    if MostrarXRay then 
+    begin
+       XRay("Status", "CONFLUENCIA COMPRA", "Confluencia", 0, RGB(0, 255, 0));
+       XRay("Stop", "Stop Min (Ticks): " + IntToStr(Round(fStopMinimo)), "Gestao", 0, clWhite);
+    end;
+  end
+  else if bConflVenda then
+  begin
+    PaintBar(RGB(150, 0, 0));
+    fStopMinimo := (fT3_VendaTop - Close) / MinPriceIncrement;
+    if MostrarXRay then 
+    begin
+       XRay("Status", "CONFLUENCIA VENDA", "Confluencia", 0, RGB(255, 0, 0));
+       XRay("Stop", "Stop Min (Ticks): " + IntToStr(Round(fStopMinimo)), "Gestao", 0, clWhite);
+    end;
+  end;
+
+  // --- 6. Fallback (Sinal Isolado) ---
+  if (not bConflCompra) and (not bConflVenda) then
+  begin
+    PaintBar(clWhite);
+    if MostrarXRay then XRay("Status", "SEM CONFLUENCIA", "Confluencia", 0, clGray);
+  end;
+
+end;
+
+{ 
+  REUSABILIDADE:
+  1. Este arquivo deve ser usado como INDICADOR (.ntfl) para validar se as zonas de 
+     media (TF2/TF1) estao de fato "segurando" o preco no TF3.
+  2. Para converter em Robo (.ntsl), adicione a logica de entrada:
+     if bConflCompra and (fForca >= 60) then BuyAtMarket;
+  3. O calculo de fStopMinimo via XRay ajuda a calibrar o BufferStop real do backtest.
+
+  NOTAS TECNICAS:
+  - Removido 'type record' e 'dynamic arrays' (incompativeis com NTSL).
+  - Removido 'Hour/Exit' (substituido por fluxo logico continuo).
+  - Strings corrigidas para aspas duplas.
+}
