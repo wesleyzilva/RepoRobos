@@ -236,13 +236,20 @@ Toda operação usa **3 TFs em cadeia**: `Contexto → Direção → Gatilho`
 
 **Opera SOMENTE quando TF1 + TF2 estão alinhados. TF3 executa.**
 
-### Tripletas padrão (ver `docs/tabela_verdade_timeframes.md`)
+### Regra matemática obrigatória
 
-| Tripleta | Perfil | SL Gatilho WIN | SL Gatilho WDO |
-|---|---|---|---|
-| 60 / 30 / 15 | Estrutural | 250 pts | 10 pts |
-| **30 / 15 / 5** ⭐ | Day trade (padrão) | 150 pts | 6 pts |
-| 15 / 5 / 1 | Scalping | 80 pts | 3 pts |
+> `iJanelaDir = TF2 / TF3` e `iJanelaCtx = TF1 / TF3` devem ser **inteiros exatos**.
+> Tripletas com divisão não-inteira são **inválidas** (ex: 30/15/10 → 15÷10=1,5 ❌ PROIBIDO).
+
+### Tripletas válidas (ver `docs/tabela_verdade_timeframes.md`)
+
+| Tripleta | TF3 | iJanelaDir | iJanelaCtx | Perfil | SL WIN | SL WDO |
+|---|---|---|---|---|---|---|
+| **60 / 30 / 15** | 15min | 2 | 4 | Estrutural | 250 pts | 10 pts |
+| **30 / 15 / 5** ⭐ | 5min | 3 | 6 | Day trade (padrão) | 150 pts | 6 pts |
+| **15 / 10 / 5** | 5min | 2 | 3 | Day trade alternativo | 150 pts | 6 pts |
+| **30 / 10 / 5** | 5min | 2 | 6 | Day trade alternativo | 150 pts | 6 pts |
+| **15 / 5 / 1** | 1min | 5 | 15 | Scalping | 80 pts | 3 pts |
 
 **Tripleta padrão do projeto: 30/15/5** para WIN e WDO.
 
