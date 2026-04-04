@@ -11,8 +11,8 @@
     240/120/60 -> roda em 60min -> iJanelaDir=2 (120min), iJanelaCtx=4 (240min)
 
   Parametros 60min:
-    ATR_StopMult = 1.0   -> stop = ATR * 1.0
-    ATR_AlvoMult = 2.0   -> alvo = ATR * 2.0  (RRR 1:2)
+    ATR_StopMult = 1.2   -> stop = ATR * 1.2  [calibrado dados reais: 60m=715pts]
+    ATR_AlvoMult = 2.4   -> alvo = ATR * 2.4  (RRR 2.0)
 }
 
 input
@@ -24,8 +24,8 @@ input
   Contratos(3);
   // ATR — Stop e Alvo dinamicos (60min)
   PeriodoATR(14);
-  ATR_StopMult(1.0);         // 60min = 1.0
-  ATR_AlvoMult(2.0);         // 60min = 2.0  (RRR 1:2)
+  ATR_StopMult(1.2);         // SL = ATR(14) x 1.2  [60min: ~715pts | calibrado dados reais 2024_26]
+  ATR_AlvoMult(2.4);         // TP = ATR(14) x 2.4  [RRR 2.0]
   StopLimitOffset(5.0);
   // Horario
   StopHorario_H(17);

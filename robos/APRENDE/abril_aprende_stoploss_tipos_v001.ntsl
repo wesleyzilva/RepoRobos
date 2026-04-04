@@ -44,11 +44,11 @@ input
   TipoStop          : Integer := 3;
 
   // Stop Tipo 1: Fixo
-  StopFixo          : Float   := 150;    // pontos fixos de SL
+  StopFixo          : Float   := 41;     // [ticks WIN] 41 ticks x 5pts = 205pts  [ATR real 2024_26]
 
   // Stop Tipo 2: ATR
   PeriodoATR        : Integer := 14;
-  MultiplicadorATR  : Float   := 0.8;   // quanto do ATR usar como SL
+  MultiplicadorATR  : Float   := 1.2;   // SL = ATR x 1.2  [calibrado dados reais WINFUT 2024_26]
 
   // Stop Tipo 3 e 4: Estrutura
   BufferEstrutura   : Float   := 5;     // pontos além do Low/High
@@ -243,7 +243,7 @@ end;
 //   → StopFixo = 100: muitos stops, poucos alvos | StopFixo = 300: mais alvos mas drawdown maior
 //
 // TipoStop = 2 (ATR)
-//   → MultiplicadorATR = 0.5: SL apertado (mais whipsaw) | 1.5: SL largo (menos stops, mas mais drawdown)
+//   → MultiplicadorATR = 1.2: calibrado dados reais 2024_26 | 0.8: apertado (mais whipsaw) | 1.8: largo
 //
 // TipoStop = 3 (Estrutura)
 //   → Mais lógico — o trade é inválido se o Low/High romper

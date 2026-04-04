@@ -11,10 +11,10 @@
     60/30/15 -> roda em 15min -> iJanelaDir=2 (30min), iJanelaCtx=4 (60min)
     30/15/5  -> roda em 5min  -> iJanelaDir=3 (15min), iJanelaCtx=6 (30min)
 
-  Configuracoes ATR por TF:
-    15min: ATR_TrailMult=0.5
-    30min: ATR_TrailMult=0.75
-    60min: ATR_TrailMult=1.0
+  Configuracoes ATR (calibrado por dados reais WINFUT 2020-2026):
+    Todos os TFs: ATR_TrailMult=1.2
+    Trail fica a ATR(14)*1.2 do melhor preco | funciona sem reconfigurar por TF
+    Ref 2024_26: 5m=205pts | 15m=355pts | 30m=515pts | 60m=715pts
 }
 
 input
@@ -26,7 +26,7 @@ input
   Contratos(3);
   // Trailing ATR
   PeriodoATR(14);
-  ATR_TrailMult(0.5);        // distancia do trail em ATR  (15min=0.5, 30min=0.75, 60min=1.0)
+  ATR_TrailMult(1.2);        // trail = ATR(14) x 1.2  [calibrado: 5m=205pts, 15m=355pts, 30m=515pts, 60m=715pts]
   TrailOffset(5.0);          // slippage do stop limit
   // Horario
   StopHorario_H(17);

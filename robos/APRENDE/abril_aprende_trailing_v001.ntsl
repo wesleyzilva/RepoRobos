@@ -46,11 +46,11 @@ input
 
   // Trailing Variante 2 e 3: ATR
   PeriodoATR         : Integer := 14;
-  TrailMultATR       : Float   := 0.8;   // ATR * mult = distância do trail
+  TrailMultATR       : Float   := 1.2;   // ATR x 1.2 = distancia do trail  [calibrado 2024_26]
 
   // Variante 3: Breakeven
   PontosBreakeven    : Float   := 50;    // pontos de lucro para ativar trail
-  SLInicialBuffer    : Float   := 5;     // buffer além de Low/High inicial
+  SLInicialBuffer    : Float   := 41;    // [ticks WIN] 41 ticks x 5pts = 205pts  [ATR real 2024_26]
 
   // Stop limit offset (slippage)
   StopOffset         : Float   := 5;

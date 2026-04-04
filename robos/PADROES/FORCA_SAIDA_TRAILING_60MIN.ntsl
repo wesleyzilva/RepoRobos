@@ -12,7 +12,7 @@
     240/120/60 -> roda em 60min -> iJanelaDir=2 (120min), iJanelaCtx=4 (240min)
 
   Parametros 60min:
-    ATR_TrailMult = 1.0  -> trail = ATR * 1.0 abaixo do melhor preco
+    ATR_TrailMult = 1.2  -> trail = ATR * 1.2 abaixo do melhor preco  [calibrado dados reais: 60m=715pts]
 }
 
 input
@@ -24,7 +24,7 @@ input
   Contratos(3);
   // Trailing ATR (60min)
   PeriodoATR(14);
-  ATR_TrailMult(1.0);        // 60min = 1.0
+  ATR_TrailMult(1.2);        // trail = ATR(14) x 1.2  [60min: ~715pts | calibrado dados reais 2024_26]
   TrailOffset(5.0);          // slippage do stop limit
   // Horario
   StopHorario_H(17);

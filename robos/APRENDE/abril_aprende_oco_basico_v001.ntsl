@@ -48,7 +48,7 @@ input
 
   // Stop base (ATR)
   PeriodoATR       : Integer := 14;
-  MultiplicadorSL  : Float   := 0.7;   // ATR * mult = distância do SL
+  MultiplicadorSL  : Float   := 1.2;   // ATR x 1.2 = SL  [calibrado dados reais WINFUT 2024_26]
 
   // Alvos (em múltiplos do SL)
   RRR_Alvo1        : Float   := 1.0;   // Alvo 1 (parcial ou único)

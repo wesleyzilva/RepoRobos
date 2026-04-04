@@ -11,10 +11,10 @@
     60/30/15 -> roda em 15min -> iJanelaDir=2 (30min), iJanelaCtx=4 (60min)
     30/15/5  -> roda em 5min  -> iJanelaDir=3 (15min), iJanelaCtx=6 (30min)
 
-  Configuracoes ATR por TF:
-    15min: ATR_StopMult=0.5  ATR_BEMult=0.3  ATR_AlvoMult=1.0
-    30min: ATR_StopMult=0.75 ATR_BEMult=0.4  ATR_AlvoMult=1.5
-    60min: ATR_StopMult=1.0  ATR_BEMult=0.5  ATR_AlvoMult=2.0
+  Configuracoes ATR (calibrado por dados reais WINFUT 2020-2026):
+    Todos os TFs: ATR_StopMult=1.2  ATR_BEMult=0.7  ATR_AlvoMult=2.4 (RRR 2.0)
+    BE ativa quando lucro >= ATR*0.7 | SL=ATR*1.2 | TP=ATR*2.4
+    Ref 2024_26: 5m=205pts | 15m=355pts | 30m=515pts | 60m=715pts
 }
 
 input
@@ -26,9 +26,9 @@ input
   Contratos(3);
   // ATR — Stop, Breakeven e Alvo dinamicos
   PeriodoATR(14);
-  ATR_StopMult(0.5);         // stop inicial em ATR        (15min=0.5, 30min=0.75, 60min=1.0)
-  ATR_BEMult(0.3);           // gatilho breakeven em ATR   (15min=0.3, 30min=0.4,  60min=0.5)
-  ATR_AlvoMult(1.0);         // alvo em ATR                (15min=1.0, 30min=1.5,  60min=2.0)
+  ATR_StopMult(1.2);         // SL inicial = ATR(14) x 1.2  [calibrado dados reais 2024_26]
+  ATR_BEMult(0.7);           // gatilho BE = ATR(14) x 0.7  [ativa BE quando 58% do SL a favor]
+  ATR_AlvoMult(2.4);         // alvo = ATR(14) x 2.4  [RRR 2.0 com StopMult=1.2]
   StopLimitOffset(5.0);
   // Horario
   StopHorario_H(17);
