@@ -1,0 +1,402 @@
+{
+  Robo: WESQUAD_V1
+  Descricao: Estratégia WESQUAD — zonas retangulares ±200pts ao redor do fechamento.
+             Semáforo 2/3 TFs (60/30/15). Gatilho: 2 candles consecutivos com F=MA
+             significante no mesmo sentido (Verde Lima = compra / Fúcsia = venda).
+             SG: 150pts fixo. SL: menor possível (corpo do candle de gatilho).
+
+  Referencia: docs/wesquad_estrategia.md
+  Ativo: WINFUT
+  Timeframe: 5min (proxy para semáforo 60/30/15 + gatilho de 2 barras)
+  Versao: 1.0
+
+  LOGICA RESUMIDA:
+    1. Semáforo 60/30/15 — pelo menos 2 dos 3 TFs com mesmo sinal (compra ou venda)
+    2. Candle de referência em 15min: não-esticado (corpo >= 40% do range)
+       Zona = Close[N] ± ZonaPts (default 200pts)
+    3. Candle de referência em 5min: F=MA significante + volume acima da média
+       Zona 5min = Close[N] ± ZonaPts
+    4. Gatilho: 2 candles consecutivos no mesmo sentido com F >= ForcaMedia
+       Preço deve ter rompido a zona 5min E estar dentro da zona 15min
+    5. SG: 150pts fixo (SG_Pts)
+    6. SL: borda do corpo do candle de gatilho + BufferStop (menor possível)
+
+  CORES:
+    Verde Lima: sinal de compra (Fúcsia: sinal de venda) — nos candles de gatilho
+    Ciano: zona de compra 15min / Laranja: zona de venda 15min
+    Verde: zona de compra 5min  / Vermelho: zona de venda 5min
+
+  METRICAS ALVO (pendente backtest):
+    SG: 150pts fixo
+    SL: ~80-120pts (corpo do gatilho)
+    RRR esperado: ~1.2-1.8 (depende do SL real no backtest)
+    Assertividade hipotese: >= 50% (2/3 semaforo filtra muito)
+}
+
+input
+  // --- Semáforo ---
+  ForcaMedia(60.0);             // F minimo para sinal de operacao
+  ForcaFraca(40.0);             // F minimo para monitorar
+  ForcaForte(80.0);             // F pleno
+  VolumeMultiplicador(1.5);     // volume minimo = media20 x 1.5
+
+  // --- Proxies de TF (rodando em 5min) ---
+  iJanela15min(3);              // 15min = 3 barras de 5min
+  iJanela30min(6);              // 30min = 6 barras de 5min
+  iJanela60min(12);             // 60min = 12 barras de 5min
+
+  // --- Zonas ---
+  ZonaPts(200.0);               // ±200pts ao redor do fechamento de referencia
+  MaxBarrasZona(20);            // zona expira apos N barras
+
+  // --- Filtro candle nao-esticado (15min) ---
+  MaxCorpoRatio(0.60);          // corpo <= 60% do range = nao-esticado
+
+  // --- SL/SG ---
+  SG_Pts(150.0);                // take profit fixo (WESQUAD: ate 150pts)
+  BufferStop(5.0);              // buffer alem do corpo do gatilho
+
+  // --- Horario ---
+  HoraInicio(14);
+  HoraFim(17);
+  HoraFimM(30);
+  ModoBacktestInicial(true);
+
+var
+  // F = M x A
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fForca            : float;
+  fVolumeMedio      : float;
+
+  // Cores (3 niveis)
+  iCorR, iCorG, iCorB : integer;
+
+  // Semáforo proxy (3 TFs por media de janela)
+  fMedia15          : float;
+  fMedia15Ant       : float;
+  fMedia30          : float;
+  fMedia30Ant       : float;
+  fMedia60          : float;
+  fMedia60Ant       : float;
+  iSemCompra        : integer;  // quantos dos 3 TFs com sinal de compra
+  iSemVenda         : integer;  // quantos dos 3 TFs com sinal de venda
+  bSemaforo2de3Alta : boolean;
+  bSemaforo2de3Baixa: boolean;
+
+  // Zona 15min
+  fZona15CompraMin  : float;
+  fZona15CompraMax  : float;
+  fZona15VendaMin   : float;
+  fZona15VendaMax   : float;
+  iIdadeZona15Compra: integer;
+  iIdadeZona15Venda : integer;
+  bZona15Ok         : boolean;
+
+  // Zona 5min
+  fZona5CompraMin   : float;
+  fZona5CompraMax   : float;
+  fZona5VendaMin    : float;
+  fZona5VendaMax    : float;
+  iIdadeZona5Compra : integer;
+  iIdadeZona5Venda  : integer;
+
+  // Gatilho: 2 candles consecutivos mesma cor
+  bGatilhoCompra    : boolean;  // barra atual E barra anterior >= ForcaMedia (alta)
+  bGatilhoVenda     : boolean;  // barra atual E barra anterior <= -ForcaMedia (baixa)
+  fForcaAnt         : float;    // F da barra anterior (para checar 2 consecutivas)
+
+  // Sinais e gestao
+  bNaZonaCompra     : boolean;
+  bNaZonaVenda      : boolean;
+  bSinalCompra      : boolean;
+  bSinalVenda       : boolean;
+  bVolConfirmado    : boolean;
+
+  fEntrada          : float;
+  fStopLoss         : float;
+  fTakeProfit       : float;
+  fRisco            : float;
+  iBarrasEmPosicao  : integer;
+  bDeveOperar       : boolean;
+
+  // Auxiliar para candle de referencia 15min
+  fCorpoRef         : float;
+  fRangeRef         : float;
+  bNaoEsticado      : boolean;
+
+begin
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 1 — FORÇA F = M x A
+  // ─────────────────────────────────────────────────────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio <= 0 then fVolumeMedio := 1;
+
+  fForca := (fCorpoCandle / fRangeCandle) * (Volume / fVolumeMedio) * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 2 — PALETA 3 NÍVEIS (Verde Lima = compra operacional / Fúcsia = venda)
+  // ─────────────────────────────────────────────────────────────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;  // cinza padrao
+
+  if (fRangeCandle > 0) and (Abs(fCorpoCandle) < 0.10 * fRangeCandle) then
+  begin
+    iCorR := 128; iCorG := 128; iCorB := 128;  // CINZA — doji
+  end
+  else if Abs(fForca) < ForcaFraca then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255;  // BRANCO — ruido
+  end
+  else if fForca >= ForcaForte then
+  begin
+    // Verde Lima (gatilho de compra FORTE)
+    iCorR :=   0; iCorG := 255; iCorB :=   0;
+  end
+  else if fForca >= ForcaMedia then
+  begin
+    // Verde Lima médio (zona operacional compra)
+    iCorR := 100; iCorG := 210; iCorB :=   0;
+  end
+  else if fForca >= ForcaFraca then
+  begin
+    iCorR := 180; iCorG := 220; iCorB := 100;  // verde claro (fraco, monitora)
+  end
+  else if fForca <= -ForcaForte then
+  begin
+    // Fúcsia (gatilho de venda FORTE) — RGB(255, 0, 255)
+    iCorR := 255; iCorG :=   0; iCorB := 255;
+  end
+  else if fForca <= -ForcaMedia then
+  begin
+    // Fúcsia médio
+    iCorR := 200; iCorG :=   0; iCorB := 200;
+  end
+  else if fForca <= -ForcaFraca then
+  begin
+    iCorR := 220; iCorG := 100; iCorB := 220;  // lilas claro (fraco venda)
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 3 — SEMÁFORO 2/3 TFs (60/30/15 por proxy de médias em 5min)
+  // Regra: TF em alta se Close > media E media subindo (vs N barras atrás)
+  // Precisamos de 2 dos 3 TFs no mesmo sentido para habilitar operação.
+  // ─────────────────────────────────────────────────────────────────────────
+  fMedia15    := Media(iJanela15min, Close);
+  fMedia15Ant := Media(iJanela15min, Close[iJanela15min]);
+  fMedia30    := Media(iJanela30min, Close);
+  fMedia30Ant := Media(iJanela30min, Close[iJanela30min]);
+  fMedia60    := Media(iJanela60min, Close);
+  fMedia60Ant := Media(iJanela60min, Close[iJanela60min]);
+
+  iSemCompra := 0;
+  iSemVenda  := 0;
+
+  if (Close > fMedia15) and (fMedia15 > fMedia15Ant) then iSemCompra := iSemCompra + 1;
+  if (Close > fMedia30) and (fMedia30 > fMedia30Ant) then iSemCompra := iSemCompra + 1;
+  if (Close > fMedia60) and (fMedia60 > fMedia60Ant) then iSemCompra := iSemCompra + 1;
+
+  if (Close < fMedia15) and (fMedia15 < fMedia15Ant) then iSemVenda := iSemVenda + 1;
+  if (Close < fMedia30) and (fMedia30 < fMedia30Ant) then iSemVenda := iSemVenda + 1;
+  if (Close < fMedia60) and (fMedia60 < fMedia60Ant) then iSemVenda := iSemVenda + 1;
+
+  // Semaforo: minimo 2 de 3 no mesmo sentido
+  bSemaforo2de3Alta  := iSemCompra >= 2;
+  bSemaforo2de3Baixa := iSemVenda  >= 2;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 4 — ZONA 15MIN (proxy: candle [3] = 1 barra de 15min atrás em 5min)
+  // Candle nao-esticado: corpo <= MaxCorpoRatio * range
+  // Zona = Close[3] ± ZonaPts
+  // ─────────────────────────────────────────────────────────────────────────
+  if iIdadeZona15Compra > 0 then iIdadeZona15Compra := iIdadeZona15Compra + 1;
+  if iIdadeZona15Venda  > 0 then iIdadeZona15Venda  := iIdadeZona15Venda  + 1;
+  if iIdadeZona15Compra >= MaxBarrasZona then iIdadeZona15Compra := 0;
+  if iIdadeZona15Venda  >= MaxBarrasZona then iIdadeZona15Venda  := 0;
+
+  // Varrer os 3 candles de referencia 15min (representados por [3], [6], [9] em 5min)
+  // Candle de alta nao-esticado -> zona de compra (Ciano)
+  // Candle de baixa nao-esticado -> zona de venda (Laranja)
+  fCorpoRef := Abs(Close[iJanela15min] - Open[iJanela15min]);
+  fRangeRef := High[iJanela15min] - Low[iJanela15min];
+  if fRangeRef < 0.01 then fRangeRef := 0.01;
+  bNaoEsticado := fCorpoRef <= MaxCorpoRatio * fRangeRef;
+
+  if bNaoEsticado and (Close[iJanela15min] > Open[iJanela15min]) then
+  begin
+    fZona15CompraMin   := Close[iJanela15min] - ZonaPts;
+    fZona15CompraMax   := Close[iJanela15min] + ZonaPts;
+    iIdadeZona15Compra := 1;
+  end;
+
+  if bNaoEsticado and (Close[iJanela15min] < Open[iJanela15min]) then
+  begin
+    fZona15VendaMin   := Close[iJanela15min] - ZonaPts;
+    fZona15VendaMax   := Close[iJanela15min] + ZonaPts;
+    iIdadeZona15Venda := 1;
+  end;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 5 — ZONA 5MIN (candles recentes com F=MA significante)
+  // Candle com F >= ForcaMedia + volume acima da media
+  // Zona = Close[N] ± ZonaPts
+  // ─────────────────────────────────────────────────────────────────────────
+  if iIdadeZona5Compra > 0 then iIdadeZona5Compra := iIdadeZona5Compra + 1;
+  if iIdadeZona5Venda  > 0 then iIdadeZona5Venda  := iIdadeZona5Venda  + 1;
+  if iIdadeZona5Compra >= MaxBarrasZona then iIdadeZona5Compra := 0;
+  if iIdadeZona5Venda  >= MaxBarrasZona then iIdadeZona5Venda  := 0;
+
+  // Varrer ultimos 5 candles de 5min (WESQUAD: "5 ultimos candles")
+  // Usa candle [1] como mais recente com F significante
+  if (Volume[1] >= fVolumeMedio * VolumeMultiplicador or ModoBacktestInicial) then
+  begin
+    // Calcular F do candle [1]
+    fCorpoRef := Close[1] - Open[1];
+    fRangeRef := High[1] - Low[1];
+    if fRangeRef < 0.01 then fRangeRef := 0.01;
+    fForcaAnt := (fCorpoRef / fRangeRef) * (Volume[1] / fVolumeMedio) * 100;
+    if fForcaAnt >  100 then fForcaAnt :=  100;
+    if fForcaAnt < -100 then fForcaAnt := -100;
+
+    if fForcaAnt >= ForcaMedia then
+    begin
+      fZona5CompraMin   := Close[1] - ZonaPts;
+      fZona5CompraMax   := Close[1] + ZonaPts;
+      iIdadeZona5Compra := 1;
+    end;
+    if fForcaAnt <= -ForcaMedia then
+    begin
+      fZona5VendaMin   := Close[1] - ZonaPts;
+      fZona5VendaMax   := Close[1] + ZonaPts;
+      iIdadeZona5Venda := 1;
+    end;
+  end;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 6 — GATILHO: 2 CANDLES CONSECUTIVOS COM F SIGNIFICANTE
+  // WESQUAD: "2 candles que tem quase a mesma cor (OS MAIS PROXIMOS)"
+  // Verde Lima = compra / Fúcsia = venda
+  // Barra atual (fForca) E barra anterior (fForcaAnt calculado acima)
+  // ─────────────────────────────────────────────────────────────────────────
+  // Recalcular fForcaAnt para a barra [1] (barra imediatamente anterior)
+  fCorpoRef := Close[1] - Open[1];
+  fRangeRef := High[1] - Low[1];
+  if fRangeRef < 0.01 then fRangeRef := 0.01;
+  fForcaAnt := (fCorpoRef / fRangeRef) * (Volume[1] / fVolumeMedio) * 100;
+  if fForcaAnt >  100 then fForcaAnt :=  100;
+  if fForcaAnt < -100 then fForcaAnt := -100;
+
+  // Gatilho de compra: 2 barras consecutivas com F >= ForcaMedia (Verde Lima)
+  bGatilhoCompra := (fForca >= ForcaMedia) and (fForcaAnt >= ForcaMedia);
+
+  // Gatilho de venda: 2 barras consecutivas com F <= -ForcaMedia (Fúcsia)
+  bGatilhoVenda  := (fForca <= -ForcaMedia) and (fForcaAnt <= -ForcaMedia);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 7 — CONDIÇÕES DE ENTRADA
+  // Compra: semaforo 2/3 alta + preco dentro da zona 15min compra +
+  //         preco rompeu zona 5min compra (Close > fZona5CompraMax) + gatilho 2 barras
+  // Venda: semaforo 2/3 baixa + preco dentro da zona 15min venda +
+  //        preco rompeu zona 5min venda (Close < fZona5VendaMin) + gatilho 2 barras
+  // ─────────────────────────────────────────────────────────────────────────
+  bVolConfirmado := ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador);
+
+  // Preco dentro da zona 15min (ciano/laranja)
+  bNaZonaCompra := (iIdadeZona15Compra > 0) and
+                   (Close >= fZona15CompraMin) and
+                   (Close <= fZona15CompraMax);
+
+  bNaZonaVenda  := (iIdadeZona15Venda > 0) and
+                   (Close >= fZona15VendaMin) and
+                   (Close <= fZona15VendaMax);
+
+  // Sinal de compra completo
+  bSinalCompra := bGatilhoCompra and
+                  bNaZonaCompra and
+                  bVolConfirmado and
+                  // Rompimento da zona 5min para cima
+                  (iIdadeZona5Compra > 0) and
+                  (Close >= fZona5CompraMax) and
+                  (bSemaforo2de3Alta or ModoBacktestInicial);
+
+  // Sinal de venda completo
+  bSinalVenda := bGatilhoVenda and
+                 bNaZonaVenda and
+                 bVolConfirmado and
+                 // Rompimento da zona 5min para baixo
+                 (iIdadeZona5Venda > 0) and
+                 (Close <= fZona5VendaMin) and
+                 (bSemaforo2de3Baixa or ModoBacktestInicial);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 8 — CONTROLE DE HORÁRIO
+  // ─────────────────────────────────────────────────────────────────────────
+  if Time() >= (HoraFim * 10000 + HoraFimM * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := (Time() >= HoraInicio * 10000) or ModoBacktestInicial;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 9 — GESTÃO DE POSIÇÃO
+  // SG: 150pts fixo (SG_Pts)
+  // SL: corpo do candle de gatilho + BufferStop (menor possível — WESQUAD)
+  // ─────────────────────────────────────────────────────────────────────────
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+
+    if bSinalCompra then
+    begin
+      fEntrada  := Close;
+      // SL = abaixo do corpo do candle de gatilho (barra atual, Open como minimo do corpo alta)
+      fStopLoss := Open - BufferStop;
+      if Close < Open then fStopLoss := Close - BufferStop;  // garante abaixo do minimo corpo
+
+      fRisco      := fEntrada - fStopLoss;
+      fTakeProfit := fEntrada + SG_Pts;  // SG FIXO: 150pts (WESQUAD)
+
+      if (fRisco > 0) and (fRisco < SG_Pts * 2.0) then  // sanidade: SL nao pode ser maior que 2x SG
+      begin
+        BuyAtMarket;
+        SellToCoverStop(fStopLoss);
+        SellToCoverLimit(fTakeProfit);
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+    if bSinalVenda then
+    begin
+      fEntrada  := Close;
+      // SL = acima do corpo do candle de gatilho
+      fStopLoss := Open + BufferStop;
+      if Close > Open then fStopLoss := Close + BufferStop;
+
+      fRisco      := fStopLoss - fEntrada;
+      fTakeProfit := fEntrada - SG_Pts;  // SG FIXO: 150pts (WESQUAD)
+
+      if (fRisco > 0) and (fRisco < SG_Pts * 2.0) then
+      begin
+        SellShortAtMarket;
+        BuyToCoverStop(fStopLoss);
+        BuyToCoverLimit(fTakeProfit);
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+  end;
+
+end;
