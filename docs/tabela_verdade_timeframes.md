@@ -80,16 +80,36 @@ dentro de um movimento oposto maior — você entra "a favor do ruído", não da
 
 ---
 
-## Tripletas Disponíveis — ATR Real (WINFUT, 2024_26)
+## Tripletas Disponíveis — Calibração Real 2025 (WINFUT, 14h–17h, F≥60 + Vol×1.5 + 3TF)
 
-| Tripleta | Perfil | ATR Gatilho | SL recomendado | SG (RRR 2.0) | Trades/dia est. |
-|---|---|---|---|---|---|
-| **60 / 30 / 15** | Estrutural / Swing intraday | 249 pts | 250 pts | 500 pts | 1–3 |
-| **30 / 15 / 5** | Day trade clássico ⭐ | 146 pts | 150 pts | 300 pts | 3–6 |
-| **15 / 10 / 5** | Day trade alternativo | 146 pts | 150 pts | 300 pts | 3–6 |
-| **30 / 10 / 5** | Day trade alternativo | 146 pts | 150 pts | 300 pts | 3–6 |
-| **60 / 20 / 5** | Híbrido (longo contexto) | 146 pts | 150 pts | 300 pts | 2–5 |
-| **15 / 5 / 1** | Scalping | 67 pts | 80 pts | 160 pts | 8–15 |
+> Fonte: análise barra a barra sobre 2025 real. **Apenas tarde** (follow-through 61–64%).
+> Assertividade medida = % de trades que atingem SG antes de SL no período de teste.
+
+| Tripleta | Perfil | ATR Gatilho | SL mínimo¹ | SL recomendado | SG ótimo | RRR | Assertividade | Esperança |
+|---|---|---|---|---|---|---|---|---|
+| **60 / 30 / 15** | Estrutural / Swing | 285 pts | 228 pts (ATR×0.8) | **285 pts** (ATR×1.0) | **427 pts** | 1.5× | 50% | +71 pts/op |
+| **30 / 15 / 5** | Day trade clássico ⭐ | 145 pts | 115 pts (ATR×0.8) | **145 pts** (ATR×1.0) | **290 pts** | 2.0× | 42% | +38 pts/op |
+| **15 / 10 / 5** | Day trade alternativo | 140 pts | 112 pts (ATR×0.8) | **140 pts** (ATR×1.0) | **350 pts** | 2.5× | 37% | +40 pts/op |
+| **30 / 10 / 5** | Day trade alternativo | 145 pts | 115 pts | **145 pts** | **290 pts** | 2.0× | ~42% | ~+38 pts/op |
+| **60 / 20 / 5** | Híbrido contexto longo | 145 pts | 115 pts | **145 pts** | **290 pts** | 2.0× | ~42% | ~+38 pts/op |
+| **15 / 5 / 1** | Scalping | ~67 pts | 50 pts | **67 pts** | **134 pts** | 2.0× | ~42% | estimado |
+
+> ¹ **SL mínimo** = ATR×0.8 — aceita mais stops por ruído, mas mantém esperança positiva.
+> O SL **nunca deve ser menor** que ATR×0.8, pois abaixo disso a esperança matemática fica negativa.
+
+### SL mínimo estrutural — Close-to-Low do candle gatilho (ruído de entrada)
+
+> O candle gatilho (F≥60) tem uma sombra inferior. Se o SL for colocado dentro dessa sombra,
+> qualquer reteste do Low dispara o stop antes de o trade se desenvolver.
+
+| TF gatilho | Close-Low P25 | Close-Low P50 | Close-Low P75 | Implicação |
+|---|---|---|---|---|
+| **5min** | 155 pts | **196 pts** | 261 pts | SL < 196 = stop frequente pelo próprio candle |
+| **15min** | 401 pts | **537 pts** | 750 pts | SL < 400 = quase certo de ser parado no candle |
+
+> **Conclusão:** com SL = ATR×1.0 (145pts para 5min), você estará dentro do ruído do candle gatilho
+> em ~50% dos casos — é um **stop apertado intencional**. O RRR≥2.0 compensa estatisticamente.
+> Para operar com SL **seguro estruturalmente** (fora do ruído), use SL ≥ 261pts (5min) ou 750pts (15min).
 
 ---
 
@@ -111,20 +131,37 @@ Contexto (60min): identifica tendência macro do dia
 Direção (30min): confirma que estamos em pullback ou rompimento válido
 Gatilho (15min): candle de força na zona de confluência
 
-Vantagem:  menos sinais, maior qualidade, SL mais amplo aceita mais ruído
-Desvantagem: SL de 250pts no WIN = R$ 50/contrato → precisa de capital maior
-Ideal para: traders com capital > R$ 15k e tolerância a risco maior
+Dados reais 2025 (tarde):
+  ATR gatilho = 285pts | 11 sinais/ano (baixa frequência)
+  SL ótimo    = 285pts (ATR×1.0)
+  SG ótimo    = 427pts (RRR 1.5×) — ATENÇÃO: RRR ótimo é 1.5x, não 2.0x!
+  Assertividade = 50% | Esperança = +71pts/op
+  AVISO: Close-Low P50 = 537pts — SL de 285pts fica DENTRO do candle gatilho
+         Usa stop apertado intencionalmente; estrutura pede >537pts para ser seguro
+
+Vantagem:  menos sinais, maior qualidade, esperança mais alta por operação
+Desvantagem: SL de 285pts = R$57/contrato; candle gatilho frequentemente > SL
+Ideal para: traders com capital > R$20k, foco em qualidade sobre quantidade
 ```
 
 ### 30 / 15 / 5 — Day Trade Clássico ⭐ (recomendada)
 ```
-Contexto (30min): define o viés da manhã/tarde
+Contexto (30min): define o viés da tarde (usar APENAS 14h-17h)
 Direção (15min): confirma que o preço está respeitando o viés
 Gatilho (5min): candle de força com volume na zona de confluência
 
-Vantagem:  melhor equilíbrio entre frequência e qualidade de sinais
-           SL de 150pts WIN = R$ 30/contrato — capital acessível
-Desvantagem: exige monitoramento constante
+Dados reais 2025 (tarde 14h-17h):
+  ATR gatilho = 145pts | 130 sinais/ano (boa frequência)
+  SL ótimo    = 145pts (ATR×1.0) — SL mínimo=115pts (ATR×0.8)
+  SG ótimo    = 290pts (RRR 2.0×)
+  Assertividade = 42% | Esperança = +38pts/op
+  ALERTA: Close-Low P50 = 196pts > SL = 145pts
+          SL apertado intencional — ~50% parados por ruído de candle
+          RRR 2.0x compensa matematicamente: 0.42×290 - 0.58×145 = +38pts OK
+
+Vantagem:  melhor equilíbrio frequência/qualidade; 130 ops/ano
+           SL 145pts = R$29/contrato (acessível)
+Desvantagem: stop apertado = muitas saidas por ruído; exige disciplina
 Ideal para: day trade WIN e WDO — perfil padrão do projeto
 ```
 
@@ -134,7 +171,13 @@ Contexto (15min): micro-tendência
 Direção (5min): confirma micro-direção
 Gatilho (1min): entrada precisa
 
-Vantagem:  SL pequeno (80pts WIN = R$ 16/contrato), muitas oportunidades
+Estimativas 2025 (não simulado em barra a barra por falta de 1min data longa):
+  ATR gatilho 1min ~ 67pts | SL ótimo ~ 67pts (ATR×1.0)
+  SG ótimo ~ 134pts (RRR 2.0×)
+  Assertividade estimada ~ 40-42% (por analogia com 5min)
+  Esperança estimada ~ +15-20pts/op
+
+Vantagem:  SL pequeno (~67pts = R$13/contrato), muitas oportunidades
 Desvantagem: alto ruído, exige execução muito rápida, spread pesa mais
              backtest em 1min exige Tick a Tick obrigatoriamente
 Ideal para: traders experientes com execução automatizada robusta
@@ -146,13 +189,21 @@ Contexto (15min): identifica micro-tendência
 Direção (10min): confirma que o preço respeita a micro-tendência
 Gatilho (5min): candle de força no momento correto
 
-iJanelaDir = 10÷5 = 2  (inteiro ✅)
-iJanelaCtx = 15÷5 = 3  (inteiro ✅)
+iJanelaDir = 10÷5 = 2  (inteiro)
+iJanelaCtx = 15÷5 = 3  (inteiro)
 
-Vantagem:  janelas mais curtas = reage mais rápido ao mercado
-Desvantagem: mais sensível a ruído intraday, necessita stop disciplinado
-Ideal para: traders que preferem TFs curtos mas querem multi-TF confirmado
-Backtest: FALTA (próximo passo: 5min com iJanelaDir=2, iJanelaCtx=3)
+Dados reais 2025 (tarde 14h-17h):
+  ATR gatilho = 140pts | 164 sinais/ano (maior frequência que 30/15/5)
+  SL ótimo    = 140pts (ATR×1.0) — SL mínimo=112pts (ATR×0.8)
+  SG ótimo    = 350pts (RRR 2.5×) — DIFERENTE: RRR ótimo é 2.5x!
+  Assertividade = 37% | Esperança = +40pts/op
+  Close-Low P50 = 190pts > SL = 140pts (mesmo padrão da 30/15/5)
+
+Vantagem:  mais sinais (164 vs 130/ano), boa esperança por operação
+           janelas curtas reagem mais rápido; RRR 2.5x = alvo maior
+Desvantagem: RRR 2.5x = alvos mais difíceis de atingir; 37% wins
+             SL apertado intencional — mesmas considerações da 30/15/5
+Ideal para: traders que preferem mais operações e aceitem 37% assertividade
 ```
 
 ### 30 / 10 / 5 — Alternativa
