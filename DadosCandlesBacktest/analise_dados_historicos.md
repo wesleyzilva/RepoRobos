@@ -207,7 +207,71 @@ pois o ATR se adapta — não precisa recalibrar manualmente.
 
 ---
 
-## 9. Resumo Executivo — O Que Fazer Diferente
+## 9. Foco 2025 — Análise Específica (Base de Calibração para 2026)
+
+### 9.1 ATR 2025 vs 2024 — volatilidade cresceu levemente
+
+| TF | ATR 2024 | ATR 2025 | Variação |
+|---|---:|---:|---:|
+| 5min | 164 pts | **176 pts** | +7.3% |
+| 15min | 292 pts | **304 pts** | +4.3% |
+| 30min | 418 pts | **444 pts** | +6.2% |
+| 60min | 580 pts | **613 pts** | +5.7% |
+
+> 2025 foi ligeiramente mais volátil que 2024 em todos os TFs.
+> A volatilidade foi estável ao longo do ano (Q1 ≈ Q4: +0.7% de variação).
+> **Não houve regime anormal em 2025** — base confiável para projetar 2026.
+
+### 9.2 Evolução Mensal ATR 15min — 2025
+
+| Mês | ATR mediano | Observação |
+|---|---:|---|
+| Jan | 280 pts | baseline |
+| Fev | 288 pts | estável |
+| Mar | 328 pts | leve alta (fim de trimestre) |
+| **Abr** | **423 pts** | pico anual (máximo) |
+| Mai | 328 pts | normaliza |
+| Jun–Set | 253–305 pts | período mais calmo do ano |
+| Out–Nov | 266–271 pts | mínimos anuais |
+| Dez | 365 pts | volatilidade sazonal de final de ano |
+
+> **Implicação para SL:** Abril tende a ser o mês mais volátil — ATR 40% acima da média.
+> Usar SL mais largo ou reduzir tamanho de posição em Abril.
+
+### 9.3 Follow-Through 2025 por Hora
+
+| Hora | Follow-Through | Qualidade |
+|---|---:|---|
+| 09h–11h | 48–49% | ❌ Ruído (abaixo de aleatório) |
+| 12h–13h | 53–54% | ⚠ Marginal |
+| 14h | 57.0% | 🟡 Médio |
+| **15h** | **61.3%** | ✅ Bom |
+| **16h** | **61.5%** | ✅ Bom |
+| **17h** | **64.2%** | ✅ Melhor do dia |
+
+> O follow-through de manhã (48–49%) é **pior que aleatório** em 2025.
+> Isso significa: sinais F=MA entre 9h e 11h tendem a reverter no próximo candle.
+> A janela de qualidade real começa às **14h** e melhora progressivamente.
+
+### 9.4 Range de Operação Proposto — 2026
+
+> **Metodologia:** ATR mediano 2025 × 1.2 = SL. Projeção estável pois Q1≈Q4 em 2025.
+> Sem dados de 2026 ainda — usar 2025 como referência direta.
+
+| TF | ATR ref. | SL 2026 | TP RRR 2.0 | TP RRR 2.5 | Range P50 candle |
+|---|---:|---:|---:|---:|---:|
+| **5min** | 176 pts | **210 pts** | **420 pts** | **525 pts** | 152 pts |
+| **15min** | 304 pts | **365 pts** | **730 pts** | **910 pts** | 261 pts |
+| **30min** | 444 pts | **535 pts** | **1.070 pts** | **1.340 pts** | 377 pts |
+| **60min** | 613 pts | **735 pts** | **1.470 pts** | **1.840 pts** | 538 pts |
+
+> O **Range P50** é o range mediano de um candle — útil para checar se o alvo é realista.
+> Ex no 15min: range mediano = 261 pts. TP de 730 pts = ~2.8 candles de movimento médio.
+> Isso é alcançável dentro de uma sessão.
+
+---
+
+## 10. Resumo Executivo — O Que Fazer Diferente
 
 | # | Ação | Impacto |
 |---|---|---|
