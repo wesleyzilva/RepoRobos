@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "git push abril_teoria",
+			"type": "shell",
+			"command": "git config --local http.sslVerify false && git push origin abril_teoria",
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
