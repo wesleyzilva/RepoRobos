@@ -1,0 +1,391 @@
+{
+  Robo: ROB_CONFLUENCIA_OPCAO2_RANGE_V1
+  Descricao: Confluência geométrica — OPÇÃO 2: zona definida pelo RANGE completo [Low, High]
+             A zona inclui os pavios — representa toda a oscilação do candle, incluindo rejeicoes.
+             SL posicionado abaixo/acima do RANGE da zona (mais largo — inclui pavios).
+
+  COMPARAR COM: abril_confluencia_OPCAO1_corpo_v001.ntsl
+  Diferenca principal: zona e SL baseados no RANGE (Low/High) — pavios fazem parte da zona.
+  Hipotese: zonas de range capturam suporte/resistencia real (incluindo rejeicoes dos pavios),
+            SL mais largo = menos stops prematuros, mas risco maior por trade.
+
+  Ativo: WINFUT
+  Timeframe: 5min (tripleta 30/15/5 — iJanelaDir=3, iJanelaCtx=6)
+  Versao: 1.0
+  Calibracao: dados reais 2025 — tarde 14h-17h, F>=60, Vol>=1.5x
+  SL_referencia: borda do RANGE da zona (Low/High) - BufferStop
+  RRR_padrao: 2.0 (dados reais: 42% assertividade -> E=+38pts/op)
+  Aprovado_em: pendente backtest comparativo
+
+  COMPARATIVO ESPERADO vs OPCAO1 (corpo):
+    SL mais largo: Low/High inclui pavios -> stops mais distantes -> menos stops prematuros
+    Zona mais larga: mais candles se qualificam -> mais sinais
+    Risco/trade maior: compensado pela reducao de stops?
+    Hipotese vencedora: comparar Esperanca (E) pos-backtest
+
+  METRICAS ALVO (baseadas em analise_dados_historicos.md secao 10):
+    Sinais esperados/ano (tarde): ~130 a ~160 (zona mais larga = mais sinais)
+    Assertividade esperada: ~45% (hipotese: menos stops prematuros)
+    SL tipico estimado: ~180-200pts (vs 145pts na opcao1)
+}
+
+input
+  // --- Filtros de entrada ---
+  ForcaFraca(40.0);             // abaixo = BRANCO (ruido, nao opera)
+  ForcaMedia(60.0);             // inicio da zona operacional (MEDIO)
+  ForcaForte(80.0);             // forca plena (FORTE = tamanho cheio)
+  VolumeMultiplicador(1.5);     // volume minimo = media20 x 1.5
+
+  // --- Confluência e zona ---
+  MinConfluencias(2);           // minimo de referencias sobrepostas para validar zona
+  ToleranciaZona(50.0);         // buffer de sobreposicao entre zonas (pts)
+  MaxBarrasZona(30);            // zona expira apos N barras sem toque
+
+  // --- 3TF proxy (tripleta 30/15/5 rodando em 5min) ---
+  iJanelaDir(3);                // TF2=15min = 3 barras de 5min
+  iJanelaCtx(6);                // TF1=30min = 6 barras de 5min
+
+  // --- SL/TP ---
+  ATR_StopMult(1.0);            // SL = ATR(14) x 1.0 (minimo viavel 2025)
+  ATR_AlvoMult(2.0);            // TP = ATR(14) x 2.0 (RRR otimo 30/15/5)
+  BufferStop(5.0);              // buffer adicional alem da borda da zona (pts)
+  ATR_Periodo(14);
+
+  // --- Horario ---
+  HoraInicio(14);               // janela prime: 14h-17h30 (follow-through 61-64%)
+  HoraFim(17);
+  HoraFimM(30);
+  ModoBacktestInicial(true);    // relaxa filtros para gerar amostra inicial
+
+var
+  // F = M x A
+  fCorpoCandle      : float;
+  fRangeCandle      : float;
+  fForca            : float;
+  fVolumeMedio      : float;
+  fATR              : float;
+
+  // Cores (3 niveis)
+  iCorR, iCorG, iCorB : integer;
+
+  // Zona OPCAO2 — definida por RANGE (Low/High)
+  // [fZonaCompraMin, fZonaCompraMax] = [Low, High] do candle de referencia
+  // Inclui pavios: zona mais ampla, captura rejeicoes/wicks
+  fZonaCompraMin    : float;
+  fZonaCompraMax    : float;
+  fZonaVendaMin     : float;
+  fZonaVendaMax     : float;
+  iConfCompra       : integer;
+  iConfVenda        : integer;
+  iIdadeZonaCompra  : integer;
+  iIdadeZonaVenda   : integer;
+
+  // 3TF proxy
+  fMediaDir         : float;
+  fMediaCtx         : float;
+  fMediaDirAnt      : float;
+  fMediaCtxAnt      : float;
+  bContextoAlta     : boolean;
+  bDirecaoAlta      : boolean;
+  bContextoBaixa    : boolean;
+  bDirecaoBaixa     : boolean;
+
+  // Sinais e gestao
+  bNaZonaCompra     : boolean;
+  bNaZonaVenda      : boolean;
+  bSinalCompra      : boolean;
+  bSinalVenda       : boolean;
+  bVolConfirmado    : boolean;
+
+  fEntrada          : float;
+  fStopLoss         : float;
+  fTakeProfit       : float;
+  fRisco            : float;
+  iBarrasEmPosicao  : integer;
+  bDeveOperar       : boolean;
+
+  // Auxiliar para qualificacao do candle [N]
+  fCorpoTamanho_N   : float;
+
+begin
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 1 — FORÇA F = M x A (com sinal direcional)
+  // ─────────────────────────────────────────────────────────────────────────
+  fCorpoCandle := Close - Open;
+  fRangeCandle := High - Low;
+  if fRangeCandle < 0.01 then fRangeCandle := 0.01;
+
+  fVolumeMedio := Media(20, Volume);
+  if fVolumeMedio <= 0 then fVolumeMedio := 1;
+
+  fForca := (fCorpoCandle / fRangeCandle) * (Volume / fVolumeMedio) * 100;
+  if fForca >  100 then fForca :=  100;
+  if fForca < -100 then fForca := -100;
+
+  fATR := ATR(ATR_Periodo);
+  if fATR < MinPriceIncrement then fATR := MinPriceIncrement;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 2 — PALETA 3 NÍVEIS (Fraco/Médio/Forte) — idêntica à OPCAO1
+  // ─────────────────────────────────────────────────────────────────────────
+  iCorR := 128; iCorG := 128; iCorB := 128;
+
+  if (fRangeCandle > 0) and (Abs(fCorpoCandle) < 0.10 * fRangeCandle) then
+  begin
+    iCorR := 128; iCorG := 128; iCorB := 128;  // CINZA — doji
+  end
+  else if Abs(fForca) < ForcaFraca then
+  begin
+    iCorR := 255; iCorG := 255; iCorB := 255;  // BRANCO — ruido
+  end
+  else if fForca >= ForcaForte then
+  begin
+    iCorR :=   0; iCorG := 255; iCorB :=   0;  // verde forte
+  end
+  else if fForca >= ForcaMedia then
+  begin
+    iCorR :=   0; iCorG := 180; iCorB :=   0;  // verde medio
+  end
+  else if fForca >= ForcaFraca then
+  begin
+    iCorR := 100; iCorG := 210; iCorB := 100;  // verde claro
+  end
+  else if fForca <= -ForcaForte then
+  begin
+    iCorR := 255; iCorG :=   0; iCorB :=   0;  // vermelho forte
+  end
+  else if fForca <= -ForcaMedia then
+  begin
+    iCorR := 180; iCorG :=   0; iCorB :=   0;  // vermelho medio
+  end
+  else if fForca <= -ForcaFraca then
+  begin
+    iCorR := 210; iCorG := 100; iCorB := 100;  // vermelho claro
+  end;
+
+  PaintBar(RGB(iCorR, iCorG, iCorB));
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 3 — CONFLUÊNCIA DE ZONAS (OPÇÃO 2: RANGE = Low[N] a High[N])
+  // Lógica: zona definida pelos extremos totais do candle (Low e High).
+  //         Os PAVIOS fazem parte da zona — representam rejeicao de preco.
+  //         Zona mais ampla: captura suporte/resistencia com maior margem.
+  //         SL mais largo: abaixo do Low (compra) / acima do High (venda).
+  // ─────────────────────────────────────────────────────────────────────────
+
+  iConfCompra := 0;
+  iConfVenda  := 0;
+  fZonaCompraMin := 999999; fZonaCompraMax := 0;
+  fZonaVendaMin  := 999999; fZonaVendaMax  := 0;
+
+  if iIdadeZonaCompra > 0 then iIdadeZonaCompra := iIdadeZonaCompra + 1;
+  if iIdadeZonaVenda  > 0 then iIdadeZonaVenda  := iIdadeZonaVenda  + 1;
+  if iIdadeZonaCompra >= MaxBarrasZona then iIdadeZonaCompra := 0;
+  if iIdadeZonaVenda  >= MaxBarrasZona then iIdadeZonaVenda  := 0;
+
+  // --- Varrer candles [1..4] — zona = [Low[N], High[N]] ---
+  // Candle de alta (Close > Open) qualifica para zona de compra
+  // Candle de baixa (Close < Open) qualifica para zona de venda
+  // Requisito de corpo: pelo menos 40% do range (filtra doji)
+
+  // Candle [1]
+  fCorpoTamanho_N := Abs(Close[1] - Open[1]);
+  if (Close[1] > Open[1]) and (fCorpoTamanho_N >= 0.40 * (High[1] - Low[1])) then
+  begin
+    // OPCAO2: zona = range completo [Low, High]
+    fZonaCompraMin := Low[1];
+    fZonaCompraMax := High[1];
+    iConfCompra    := 1;
+    iIdadeZonaCompra := 1;
+  end;
+  if (Close[1] < Open[1]) and (fCorpoTamanho_N >= 0.40 * (High[1] - Low[1])) then
+  begin
+    fZonaVendaMin := Low[1];
+    fZonaVendaMax := High[1];
+    iConfVenda    := 1;
+    iIdadeZonaVenda := 1;
+  end;
+
+  // Candle [2]
+  fCorpoTamanho_N := Abs(Close[2] - Open[2]);
+  if (Close[2] > Open[2]) and (fCorpoTamanho_N >= 0.40 * (High[2] - Low[2])) then
+  begin
+    if iConfCompra >= 1 then
+    begin
+      if (Low[2]  <= fZonaCompraMax + ToleranciaZona) and
+         (High[2] >= fZonaCompraMin - ToleranciaZona) then
+      begin
+        // Intersecao dos ranges: zona refinada
+        if Low[2]  > fZonaCompraMin then fZonaCompraMin := Low[2];
+        if High[2] < fZonaCompraMax then fZonaCompraMax := High[2];
+        iConfCompra := iConfCompra + 1;
+      end;
+    end
+    else
+    begin
+      fZonaCompraMin := Low[2];
+      fZonaCompraMax := High[2];
+      iConfCompra := 1;
+    end;
+  end;
+
+  fCorpoTamanho_N := Abs(Close[2] - Open[2]);
+  if (Close[2] < Open[2]) and (fCorpoTamanho_N >= 0.40 * (High[2] - Low[2])) then
+  begin
+    if iConfVenda >= 1 then
+    begin
+      if (Low[2]  <= fZonaVendaMax + ToleranciaZona) and
+         (High[2] >= fZonaVendaMin - ToleranciaZona) then
+      begin
+        if Low[2]  > fZonaVendaMin then fZonaVendaMin := Low[2];
+        if High[2] < fZonaVendaMax then fZonaVendaMax := High[2];
+        iConfVenda := iConfVenda + 1;
+      end;
+    end
+    else
+    begin
+      fZonaVendaMin := Low[2];
+      fZonaVendaMax := High[2];
+      iConfVenda := 1;
+    end;
+  end;
+
+  // Candle [3]
+  fCorpoTamanho_N := Abs(Close[3] - Open[3]);
+  if (Close[3] > Open[3]) and (fCorpoTamanho_N >= 0.40 * (High[3] - Low[3])) and
+     (iConfCompra >= 1) and
+     (Low[3]  <= fZonaCompraMax + ToleranciaZona) and
+     (High[3] >= fZonaCompraMin - ToleranciaZona) then
+    iConfCompra := iConfCompra + 1;
+
+  fCorpoTamanho_N := Abs(Close[3] - Open[3]);
+  if (Close[3] < Open[3]) and (fCorpoTamanho_N >= 0.40 * (High[3] - Low[3])) and
+     (iConfVenda >= 1) and
+     (Low[3]  <= fZonaVendaMax + ToleranciaZona) and
+     (High[3] >= fZonaVendaMin - ToleranciaZona) then
+    iConfVenda := iConfVenda + 1;
+
+  // Candle [4]
+  fCorpoTamanho_N := Abs(Close[4] - Open[4]);
+  if (Close[4] > Open[4]) and (fCorpoTamanho_N >= 0.40 * (High[4] - Low[4])) and
+     (iConfCompra >= 1) and
+     (Low[4]  <= fZonaCompraMax + ToleranciaZona) and
+     (High[4] >= fZonaCompraMin - ToleranciaZona) then
+    iConfCompra := iConfCompra + 1;
+
+  fCorpoTamanho_N := Abs(Close[4] - Open[4]);
+  if (Close[4] < Open[4]) and (fCorpoTamanho_N >= 0.40 * (High[4] - Low[4])) and
+     (iConfVenda >= 1) and
+     (Low[4]  <= fZonaVendaMax + ToleranciaZona) and
+     (High[4] >= fZonaVendaMin - ToleranciaZona) then
+    iConfVenda := iConfVenda + 1;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 4 — 3TF PROXY (tripleta 30/15/5) — idêntico à OPCAO1
+  // ─────────────────────────────────────────────────────────────────────────
+  fMediaDir    := Media(iJanelaDir, Close);
+  fMediaCtx    := Media(iJanelaCtx, Close);
+  fMediaDirAnt := Media(iJanelaDir, Close[iJanelaDir]);
+  fMediaCtxAnt := Media(iJanelaCtx, Close[iJanelaCtx]);
+
+  bContextoAlta  := (Close > fMediaCtx) and (fMediaCtx > fMediaCtxAnt);
+  bDirecaoAlta   := (Close > fMediaDir) and (fMediaDir > fMediaDirAnt);
+  bContextoBaixa := (Close < fMediaCtx) and (fMediaCtx < fMediaCtxAnt);
+  bDirecaoBaixa  := (Close < fMediaDir) and (fMediaDir < fMediaDirAnt);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 5 — CONDIÇÕES DE ENTRADA
+  // ─────────────────────────────────────────────────────────────────────────
+  bVolConfirmado := ModoBacktestInicial or (Volume >= fVolumeMedio * VolumeMultiplicador);
+
+  // Preco dentro da zona (tolerancia bilateral)
+  bNaZonaCompra := (fZonaCompraMin < 999999) and
+                   (iConfCompra >= MinConfluencias or ModoBacktestInicial) and
+                   (Close >= fZonaCompraMin - ToleranciaZona) and
+                   (Close <= fZonaCompraMax + ToleranciaZona);
+
+  bNaZonaVenda  := (fZonaVendaMin < 999999) and
+                   (iConfVenda >= MinConfluencias or ModoBacktestInicial) and
+                   (Close >= fZonaVendaMin  - ToleranciaZona) and
+                   (Close <= fZonaVendaMax  + ToleranciaZona);
+
+  bSinalCompra := bNaZonaCompra and
+                  (fForca >= ForcaMedia) and
+                  bVolConfirmado and
+                  (bContextoAlta and bDirecaoAlta or ModoBacktestInicial);
+
+  bSinalVenda  := bNaZonaVenda and
+                  (fForca <= -ForcaMedia) and
+                  bVolConfirmado and
+                  (bContextoBaixa and bDirecaoBaixa or ModoBacktestInicial);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 6 — CONTROLE DE HORÁRIO
+  // ─────────────────────────────────────────────────────────────────────────
+  if Time() >= (HoraFim * 10000 + HoraFimM * 100) then
+  begin
+    if IsBought or IsSold then ClosePosition;
+    bDeveOperar := false;
+  end
+  else
+    bDeveOperar := (Time() >= HoraInicio * 10000) or ModoBacktestInicial;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEÇÃO 7 — GESTÃO DE POSIÇÃO
+  // SL OPCAO2: abaixo do LOW (compra) / acima do HIGH (venda) da zona
+  //            MAIS LARGO que OPCAO1 — inclui os pavios no calculo.
+  // ─────────────────────────────────────────────────────────────────────────
+  if IsBought or IsSold then
+    iBarrasEmPosicao := iBarrasEmPosicao + 1
+  else
+    iBarrasEmPosicao := 0;
+
+  if bDeveOperar and (not IsBought) and (not IsSold) then
+  begin
+
+    if bSinalCompra then
+    begin
+      fEntrada  := Close;
+      // OPCAO2: SL abaixo do LOW da zona (inclui pavio inferior)
+      fStopLoss := fZonaCompraMin - BufferStop;
+
+      // Sanidade: SL nao pode ser menor que ATR x mult
+      if (fEntrada - fStopLoss) < (fATR * ATR_StopMult) then
+        fStopLoss := fEntrada - fATR * ATR_StopMult;
+
+      fRisco      := fEntrada - fStopLoss;
+      fTakeProfit := fEntrada + fRisco * ATR_AlvoMult;
+
+      if (fRisco > 0) and (fRisco < fATR * 3.0) then
+      begin
+        BuyAtMarket;
+        SellToCoverStop(fStopLoss);
+        SellToCoverLimit(fTakeProfit);
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+
+    if bSinalVenda then
+    begin
+      fEntrada  := Close;
+      // OPCAO2: SL acima do HIGH da zona (inclui pavio superior)
+      fStopLoss := fZonaVendaMax + BufferStop;
+
+      if (fStopLoss - fEntrada) < (fATR * ATR_StopMult) then
+        fStopLoss := fEntrada + fATR * ATR_StopMult;
+
+      fRisco      := fStopLoss - fEntrada;
+      fTakeProfit := fEntrada - fRisco * ATR_AlvoMult;
+
+      if (fRisco > 0) and (fRisco < fATR * 3.0) then
+      begin
+        SellShortAtMarket;
+        BuyToCoverStop(fStopLoss);
+        BuyToCoverLimit(fTakeProfit);
+        iBarrasEmPosicao := 0;
+      end;
+    end;
+  end;
+
+end;
