@@ -271,14 +271,199 @@ pois o ATR se adapta — não precisa recalibrar manualmente.
 
 ---
 
-## 10. Resumo Executivo — O Que Fazer Diferente
+## 10. Análise 3TF Confluência — SL e SG Mínimos (2025, simulação barra a barra)
 
-| # | Ação | Impacto |
-|---|---|---|
-| 1 | Substituir SL fixo por `ATR(14) × 1.2` nos robôs | Alto — adapta à compressão de vol |
-| 2 | Usar F ≥ 70 de manhã, F ≥ 58 à tarde | Médio — melhora qualidade dos sinais |
-| 3 | Evitar entradas novas após 16h (saídas apenas) | Médio — volume e follow-through ruins |
-| 4 | Walk-Forward obrigatório antes de conta real | Alto — detecta overfitting |
-| 5 | SL mínimo = 205 pts no 5min (não 150) | Alto — evita stop por ruído |
-| 6 | Tripletas: 30/15/5 e 60/30/15 têm mais dados históricos | Médio — mais confiança estatística |
-| 7 | Nunca calibrar sobre 2020_22 isolado — vol 100% maior | Alto — overfitting a regime anormal |
+> Método: para cada sinal F≥60 + Vol×1.5 + confluência 3TF (proxy de médias),
+> simulação barra a barra identificando qual nível é tocado primeiro — SL ou SG.
+> Filtro horário: **apenas tarde 14h–17h** (follow-through real confirmado).
+> Fonte: WINFUT 2025 real, `DadosCandlesBacktest/2024_26`.
+
+### 10.1 Resultados por Tripleta
+
+| Tripleta | Sinais/ano | ATR gatilho | SL ótimo | SG ótimo | RRR | Assert. | Esperança |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **60 / 30 / 15** | 11 | 285 pts | **285 pts** (×1.0) | **427 pts** | 1.5× | 50% | **+71 pts/op** |
+| **30 / 15 / 5** ⭐ | 130 | 145 pts | **145 pts** (×1.0) | **290 pts** | 2.0× | 42% | **+38 pts/op** |
+| **15 / 10 / 5** | 164 | 140 pts | **140 pts** (×1.0) | **350 pts** | 2.5× | 37% | **+40 pts/op** |
+
+> ⭐ Tripleta recomendada para o projeto: melhor equilíbrio frequência × assertividade.
+
+### 10.2 SL Mínimo Candle — Distância Close→Low do Gatilho
+
+> O candle F≥60 tem uma sombra inferior. Se o SL estiver dentro dela,
+> o reteste do Low dispara o stop antes do trade se desenvolver.
+
+| TF gatilho | Close-Low P25 | Close-Low P50 | Close-Low P75 | Implicação |
+|---|---:|---:|---:|---|
+| **5min** | 155 pts | **196 pts** | 261 pts | SL < 196 = stop frequente pelo próprio candle |
+| **15min** | 401 pts | **537 pts** | 750 pts | SL < 400 = quase certo de ser parado no candle |
+
+### 10.3 Dois modos de SL — Apertado vs Estrutural
+
+```
+MODO 1 — SL APERTADO (padrão recomendado):
+  SL = ATR × 1.0 (145pts no 5min)
+  Aceita que ~50% dos trades sejam parados por ruído do candle
+  O RRR 2.0× compensa: 0.42 × 290 - 0.58 × 145 = +38pts matematicamente positivo
+  Vantagem: menos capital em risco por trade
+
+MODO 2 — SL ESTRUTURAL (fora do ruído do candle):
+  SL = Close - Low do candle gatilho + buffer 10pts
+  Equivale a ~200-265pts no 5min (P50 a P75)
+  Nunca stopado pelo próprio candle; exige SG ≥ 500pts que o mercado alcança menos
+  Vantagem: quase zero stops prematuros; desvantagem: risco maior por trade
+```
+
+### 10.4 Tabela SL × Assertividade × Esperança (30/15/5, tarde 2025)
+
+| SL | RRR 1.5× (SG=SL×1.5) | RRR 2.0× (SG=SL×2.0) | RRR 2.5× (SG=SL×2.5) | RRR 3.0× (SG=SL×3.0) |
+|---|---|---|---|---|
+| **115 pts** (ATR×0.8) | 48% / **+24 pts** | 39% / +21 pts | 35% / +27 pts | 31% / +26 pts |
+| **145 pts** (ATR×1.0) ⭐ | 50% / +35 pts | **42% / +38 pts** ⭐ | 36% / +36 pts | 30% / +30 pts |
+| **175 pts** (ATR×1.2) | 46% / +27 pts | 39% / +29 pts | 31% / +16 pts | 27% / +12 pts |
+| **216 pts** (ATR×1.5) | 45% / +28 pts | 36% / +15 pts | 29% / +0 pts | 23% / -14 pts |
+
+> ⭐ **Ponto ótimo:** SL=145 / SG=290 / RRR 2.0× — maior esperança matemática (+38 pts/op).
+> SL menor que ATR×0.8 (115 pts) → esperança ainda positiva, mas margem muito estreita.
+> SL maior que ATR×1.5 (216 pts) → assertividade não sobe o suficiente para compensar.
+
+---
+
+## 11. Guia Operacional 2026 — Síntese Completa
+
+> Todas as recomendações abaixo derivam da análise de dados reais 2024–2025.
+> Nenhum dado de 2026 disponível ainda — usar 2025 como proxy direto.
+
+### 11.1 Parâmetros de Entrada
+
+```
+FILTRO DE FORÇA (F=MA):
+  Tarde 14h–17h: F ≥ 60 + Vol ≥ 1.5× média20
+  Manhã 09h–12h: F ≥ 70 + Vol ≥ 2.0× média20  ← mais exigente, follow-through ruim de manhã
+  Nunca operar F < 60 sem confluência 3TF
+
+CONFLUÊNCIA 3TF OBRIGATÓRIA:
+  TF1 (Contexto): preço acima da média(janela_ctx) E média subindo
+  TF2 (Direção) : preço acima da média(janela_dir) E média subindo
+  TF3 (Gatilho) : candle F≥60 + volume confirmado
+  Sem TF1 confirmado → BLOQUEIO ABSOLUTO (veto)
+
+JANELAS NTSL POR TRIPLETA:
+  60/30/15 rodando em 15min: iJanelaDir=2, iJanelaCtx=4
+  30/15/5  rodando em 5min : iJanelaDir=3, iJanelaCtx=6   ← padrão
+  15/10/5  rodando em 5min : iJanelaDir=2, iJanelaCtx=3
+```
+
+### 11.2 Parâmetros de Stop e Alvo
+
+```
+TRIPLETA 30/15/5 (padrão — WIN 5min):
+  SL  = ATR(14) × 1.0  → ~145 pts em 2025 (mínimo viável: ATR×0.8=115pts)
+  SG  = ATR(14) × 2.0  → ~290 pts (RRR 2.0×)
+  SL em pontos 2026: ~145-160 pts  (projeta +7% de crescimento da vol)
+  SG em pontos 2026: ~290-320 pts
+
+TRIPLETA 60/30/15 (estrutural — WIN 15min):
+  SL  = ATR(14) × 1.0  → ~285 pts em 2025
+  SG  = ATR(14) × 1.5  → ~427 pts (RRR ótimo é 1.5x, não 2.0x!)
+  Atenção: apenas 11 sinais/ano — low frequency, high quality
+
+TRIPLETA 15/10/5 (alta frequência — WIN 5min):
+  SL  = ATR(14) × 1.0  → ~140 pts em 2025
+  SG  = ATR(14) × 2.5  → ~350 pts (RRR ótimo é 2.5x!)
+  164 sinais/ano → maior frequência das 3 tripletas
+
+REFERÊNCIA DIRETA EM PONTOS (projeção 2026):
+  5min  SL≈145-160pts  TP≈290-320pts
+  15min SL≈285-310pts  TP≈430-465pts
+  30min SL≈535pts      TP≈1.070pts
+  60min SL≈735pts      TP≈1.470pts
+```
+
+### 11.3 Gestão de Horários
+
+```
+JANELA PROIBIDA:    09h00–09h14  → abertura, spread alto, dados de candle incompletos
+JANELA RUÍDO:       09h15–12h00  → follow-through 48–49% (pior que aleatório!)
+                                   operar APENAS com F≥70 e confluência perfeita
+JANELA MARGINAL:    12h00–13h59  → follow-through 53–54%, volume abaixo da média
+JANELA PRIME:       14h00–17h30  → follow-through 61–64%, JANELA PRINCIPAL
+JANELA ENCERRAMENTO: 17h30+      → fechar posições abertas; sem novas entradas
+```
+
+### 11.4 Sazonalidade Mensal — Ajuste de Risco
+
+```
+ABRIL (histórico 2025 e recorrente):
+  ATR 15min = 423pts (+40% acima da média anual de 298pts)
+  Ação: reduzir tamanho de posição ÷2, ou ampliar SL × 1.4
+  Fórmula: SL_abril = ATR(14) × 1.0 × 1.4
+
+JUNHO–SETEMBRO (período mais calmo):
+  ATR 15min = 253–305pts (15–30% abaixo da média)
+  Ação: SL padrão ATR×1.0 funciona bem; evitar RRR > 2.5× (alvos irreais)
+
+DEZEMBRO (sazonalidade de encerramento):
+  ATR 15min = 365pts (levemente acima da média)
+  Ação: atenção ao rollover de contratos; usar WINFUT (contínuo) não WINZ25 etc.
+```
+
+### 11.5 Walk-Forward — Validação Obrigatória
+
+```
+APROVADO se: resultado_teste ≥ 60% × resultado_treino  (PF e Esperança)
+REPROVADO  : resultado_teste < 60% → rever parâmetros ou não operar live
+
+Histórico WF do projeto:
+  WF1 (2020→2022): PARCIAL (esperança 23%, PF 78%) — regime pandemia não generalizável
+  WF2 (2022→2024): APROVADO (esperança 97%, PF 106%) ← estratégia tem lógica real
+  WF3 (combined→2024): REPROVADO (esperança 51%, PF 97%) — overfitting detectado
+
+Próximo passo WF: rodar com F=65, Vol×2.0 para tentar aprovação no WF3:
+  python scripts/walk_forward_win.py --forca 65 --vol-mult 2.0
+```
+
+### 11.6 Gestão de Posição por Número de TFs Confirmados
+
+```pascal
+// Score de confiança por alinhamento dos 3 TFs
+// Implementar no NTSL como variável de contratos
+
+if bContextoAlta AND bDirecaoAlta AND bGatilhoAlta then
+  nContratos := ContratosMaximo   // 3/3 — tamanho cheio
+else if bContextoAlta AND bDirecaoAlta then
+  nContratos := ContratosBase     // 2/3 — aguardando gatilho (reduzir tamanho)
+else
+  nContratos := 0;                // TF1 não confirmado → NÃO OPERAR
+```
+
+### 11.7 Checklist Pré-Entrada (manual ou automático)
+
+```
+[ ] TF1 (Contexto) confirmado na direção? → SEM ISSO: bloqueio
+[ ] TF2 (Direção)  confirmado na direção? → SEM ISSO: bloqueio
+[ ] Horário entre 14h e 17h30?            → manhã: exige F≥70
+[ ] F ≥ 60 (ou ≥ 70 se manhã)?           → → sinal válido
+[ ] Volume ≥ 1.5× média 20 (tarde)?       → confirma institucional
+[ ] Não é Abril? (volatilidade +40%)      → se Abril: SL × 1.4 ou ÷2 contratos
+[ ] SL = ATR(14) × 1.0 definido?          → nunca menor que ATR×0.8
+[ ] SG = SL × RRR_ótimo_da_tripleta?      → 30/15/5→2.0x | 15/10/5→2.5x | 60/30/15→1.5x
+[ ] WF aprovado para o período atual?     → sem WF: só paper trading
+```
+
+---
+
+## 12. Resumo Executivo — O Que Fazer Diferente em 2026
+
+| # | Ação | Impacto | Fonte |
+|---|---|---|---|
+| 1 | SL = `ATR(14) × 1.0` (não hardcoded) — valor mínimo viável | 🔴 Alto | Seção 10.4 |
+| 2 | Operar APENAS tarde 14h–17h como regra principal | 🔴 Alto | Seção 9.3, 11.3 |
+| 3 | Confluência 3TF obrigatória — TF1 veto absoluto | 🔴 Alto | Seção 11.1 |
+| 4 | RRR 2.0× para 30/15/5 — não 1.5× nem 3.0× | 🟠 Médio-alto | Seção 10.4 |
+| 5 | Abril: reduzir contratos ÷2 ou SL × 1.4 | 🟠 Médio-alto | Seção 9.2, 11.4 |
+| 6 | Walk-Forward antes de qualquer conta real | 🔴 Alto | Seção 11.5 |
+| 7 | Manhã (09–12h): F ≥ 70, Vol ≥ 2.0× — muito mais exigente | 🟠 Médio-alto | Seção 9.3 |
+| 8 | 15/10/5 usa RRR 2.5×, não 2.0× (ótimo diferente) | 🟡 Médio | Seção 10.1 |
+| 9 | Nunca calibrar em 2020_22 isolado — vol 100% maior | 🔴 Alto | Seção 2 |
+| 10 | Gestão de contratos por score 3TF (1-2-3 contratos) | 🟡 Médio | Seção 11.6 |
